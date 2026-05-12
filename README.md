@@ -11,7 +11,6 @@ OptiTrack combines a fully async FastAPI backend, a Next.js 14 frontend, Postgre
 - **Financial visibility:** Store cost price, sell price, unit price, totals, gross profit, and margin metrics.
 - **AI assistant:** Ask natural-language questions about stock, low inventory, sales, warehouse value, categories, and locations.
 - **Multi-tenant data isolation:** Scope user-owned warehouse data to the authenticated account.
-- **Role-based access control:** Protect administrative operations with JWT authentication and role checks.
 - **Profile image storage:** Upload profile images to S3-compatible storage such as MinIO or AWS S3.
 - **Operational health checks:** Expose liveness and readiness endpoints for deployment platforms.
 
