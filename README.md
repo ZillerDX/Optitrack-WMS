@@ -1,4 +1,4 @@
-# OptiTrack WMS
+# OptiTrack WMS - Tanathon Chanapha
 
 **Warehouse management system with AI-powered decision support.**
 
