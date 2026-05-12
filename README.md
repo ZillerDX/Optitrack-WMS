@@ -1,6 +1,6 @@
 # OptiTrack WMS
 
-**Production-grade warehouse management system with AI-powered decision support.**
+**Warehouse management system with AI-powered decision support.**
 
 OptiTrack combines a fully async FastAPI backend, a Next.js 14 frontend, PostgreSQL, Redis-backed background jobs, S3-compatible object storage, and a Groq-powered AI assistant for live warehouse analytics.
 
@@ -96,13 +96,13 @@ Optitrack/
 - **Python:** 3.11+
 - **Node.js:** 18+
 - **Docker Desktop:** Recommended for the backend infrastructure stack
-- **Groq API key:** Optional for local startup, required for AI responses
+- **Groq API key:** Required for AI responses
 
 ## Quick Start
 
 ### 1. Start the Backend Stack
 
-From the backend directory:
+From the backend directory: (cd backend)
 
 ```bash
 docker compose up --build
@@ -119,6 +119,7 @@ The compose stack starts:
 - **Setup jobs:** `db-init` and `minio-init`
 
 If you want AI responses locally, set `GROQ_API_KEY` before starting Compose:
+You can Groq free API keys at https://console.groq.com/keys 
 
 ```bash
 set GROQ_API_KEY=your-groq-api-key
@@ -134,7 +135,7 @@ docker compose up --build
 
 ### 2. Start the Frontend
 
-From the frontend directory:
+From the frontend directory: (cd frontend)
 
 ```bash
 npm install
@@ -422,16 +423,3 @@ npm run build
 | `NEXT_PUBLIC_API_URL` | Yes | Backend API base URL |
 | `NEXT_PUBLIC_APP_NAME` | No | Display application name |
 
-## Production Notes
-
-- **Secrets:** Use a strong `SECRET_KEY` with at least 32 characters.
-- **CORS:** Do not use localhost CORS origins in production.
-- **Schema setup:** Run `python -m scripts.init_db` as a one-shot pre-deploy job instead of enabling `INIT_DB_ON_STARTUP`.
-- **Workers:** Run at least one arq worker process for AI chat jobs.
-- **Persistence:** Configure durable PostgreSQL, Redis, and S3-compatible storage.
-- **AI:** Set `GROQ_API_KEY` when AI features should be available.
-- **Email:** Configure SMTP if password reset emails are required.
-
-## License
-
-Proprietary - OptiTrack WMS
