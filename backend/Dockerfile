@@ -31,6 +31,7 @@ COPY . .
 # Run as non-root for defense in depth.
 RUN useradd --system --create-home --uid 1001 optitrack \
  && mkdir -p /app/uploads/profiles \
+ && sed -i 's/\r$//' /app/docker-entrypoint.sh \
  && chmod +x /app/docker-entrypoint.sh \
  && chown -R optitrack:optitrack /app
 USER optitrack
