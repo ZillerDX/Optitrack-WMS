@@ -51,7 +51,3 @@ Thumbs.db
 *.swp
 *.swo
 *~
-
-# AI/editor local metadata
-.claude/
-.trae/
