@@ -1,0 +1,113 @@
+{
+  "app": {
+    "title": "OptiTrack WMS",
+    "subtitle": "Warehouse Management System"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "inventory": "Inventory",
+    "products": "Products",
+    "suppliers": "Suppliers",
+    "transactions": "Transactions",
+    "adjustments": "Adjustments",
+    "transfers": "Transfers",
+    "reports": "Reports",
+    "settings": "Settings",
+    "logout": "Logout"
+  },
+  "dashboard": {
+    "title": "Warehouse Management Dashboard",
+    "welcome": "Welcome",
+    "totalValue": "Total Value",
+    "lowStock": "Low Stock",
+    "todayTransactions": "Today's Transactions",
+    "salesVsCost": "Sales vs Cost",
+    "aiAssistant": "AI Assistant"
+  },
+  "action": {
+    "inbound": "Inbound (+)",
+    "outbound": "Outbound (-)",
+    "scan": "Scan",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "search": "Search",
+    "add": "Add",
+    "update": "Update",
+    "create": "Create"
+  },
+  "product": {
+    "sku": "SKU",
+    "name": "Product Name",
+    "category": "Category",
+    "costPrice": "Cost Price",
+    "sellPrice": "Sell Price",
+    "quantity": "Quantity",
+    "location": "Location",
+    "minStock": "Min Stock",
+    "status": "Status"
+  },
+  "transaction": {
+    "refCode": "Reference Code",
+    "type": "Type",
+    "inbound": "Inbound",
+    "outbound": "Outbound",
+    "quantity": "Quantity",
+    "unitPrice": "Unit Price",
+    "total": "Total",
+    "date": "Date",
+    "user": "User"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Sign Up",
+    "email": "Email",
+    "password": "Password",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "forgotPassword": "Forgot Password",
+    "loginButton": "Sign In",
+    "registerButton": "Create Account",
+    "haveAccount": "Already have an account? Sign in",
+    "noAccount": "Don't have an account? Sign up",
+    "role": "Role",
+    "admin": "Administrator",
+    "staff": "Staff"
+  },
+  "status": {
+    "inStock": "In Stock",
+    "lowStock": "Low Stock",
+    "outOfStock": "Out of Stock",
+    "active": "Active",
+    "inactive": "Inactive"
+  },
+  "chat": {
+    "title": "AI Assistant",
+    "placeholder": "Ask a question about your warehouse...",
+    "send": "Send",
+    "thinking": "Thinking...",
+    "greeting": "Hello! I am your OptiTrack Assistant. How can I help you today?",
+    "examples": {
+      "lowStockLabel": "Inventory Levels",
+      "lowStock": "Which items are low in stock?",
+      "valueLabel": "Total Value",
+      "value": "What is the total inventory value?",
+      "transactionsLabel": "Recent Activity",
+      "transactions": "Analyze today's transactions"
+    }
+  },
+  "error": {
+    "generic": "An error occurred",
+    "notFound": "Not found",
+    "unauthorized": "Unauthorized access",
+    "invalidCredentials": "Invalid email or password",
+    "networkError": "Network connection error"
+  },
+  "success": {
+    "saved": "Saved successfully",
+    "updated": "Updated successfully",
+    "deleted": "Deleted successfully",
+    "created": "Created successfully"
+  }
+}

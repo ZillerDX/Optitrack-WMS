@@ -1,0 +1,234 @@
+# OptiTrack WMS — Project Rules & AI Agent Guidelines
+# Source of truth for AI-assisted development tasks.
+# Last updated: May 2026
+
+---
+
+## 1. Project Overview
+
+OptiTrack is a multi-tenant Warehouse Management System with:
+
+- **Backend:** FastAPI async API, SQLAlchemy 2.0 async ORM, PostgreSQL, JWT auth, local/S3-compatible image storage, optional Groq AI assistant
+- **Frontend:** Next.js 14 App Router, React 18, TypeScript, Tailwind CSS, Radix/shadcn-style components, Zustand, Axios
+- **Core WMS flows:** products, categories, locations, inventory, inbound/outbound/adjust transactions, dashboard analytics, profile image upload, and read-only AI chat
+
+Current active authorization scope:
+
+- The current signup UI creates users as `ADMIN`.
+- The frontend does not expose a role selector.
+- Backend and frontend shared types still include legacy non-admin enum values for compatibility, but do not treat them as active project roles unless explicitly requested.
+- Do not reintroduce `STAFF`/`USER` role behavior into docs or UI without first updating the actual code and API contract.
+
+---
+
+## 2. Tech Stack Standards
+
+### Backend
+
+- **Language:** Python 3.11+
+- **Framework:** FastAPI `0.109.0`; route handlers and DB/service methods must be async
+- **ORM:** SQLAlchemy 2.0 async with `AsyncSession` and `await db.execute(...)`
+- **Database:** PostgreSQL through `asyncpg`; SQLite/`aiosqlite` only for tests
+- **Validation:** Pydantic v2 with `BaseModel`, `Field`, `field_validator`, and `ConfigDict`
+- **Config:** `pydantic-settings`; settings live in `app/core/config.py`
+- **Auth:** JWT with `python-jose`, bcrypt password hashing, HTTP Bearer tokens
+- **AI:** Groq SDK `0.4.2`; current AI chat flow is direct/synchronous through `/api/ai/chat`
+- **Storage:** `STORAGE_BACKEND=local` or `STORAGE_BACKEND=s3`; local files are served from `/uploads`
+- **Testing:** pytest, pytest-asyncio, httpx `AsyncClient`, aiosqlite
+- **Dependencies:** Do not upgrade pinned packages or add new packages without explicit instruction
+
+### Frontend
+
+- **Framework:** Next.js 14 App Router under `frontend/src/app/[locale]/`
+- **Language:** TypeScript 5.4+
+- **Styling:** Tailwind CSS; avoid custom CSS unless Tailwind cannot solve the UI
+- **Components:** Radix UI primitives and local shadcn-style components under `src/components/ui/`
+- **State:** Zustand for global UI/state only; keep server data in hooks/pages
+- **API:** Axios through `src/lib/api.ts`; do not add inline `axios.get/post` calls in pages/components
+- **Forms:** Existing pages may use controlled React state; prefer react-hook-form + zod for substantial new forms
+- **i18n:** next-intl with current locale `en`; translation keys live in `src/messages/`
+- **Icons:** lucide-react only
+- **Charts:** Recharts only
+- **Types:** Shared interfaces live in `src/types/index.ts` and must track backend schemas
+
+---
+
+## 3. Backend Architecture Rules
+
+| Layer | Location | Rule |
+|---|---|---|
+| Config | `app/core/config.py` | Declare env vars in `Settings`; do not read environment variables directly elsewhere |
+| Database | `app/core/database.py` | Session factory, `get_db`, engine setup, and schema bootstrap only |
+| Security | `app/core/security.py` | JWT encode/decode and password hashing only |
+| Dependencies | `app/core/dependencies.py` | Auth dependencies such as `get_current_user` and `get_current_admin_user` |
+| Schemas | `app/core/schemas.py` | Pydantic request/response models |
+| Models | `app/models/` | SQLAlchemy ORM definitions only |
+| Routes | `app/routes/` | HTTP handlers, validation, ownership checks, and route-level orchestration |
+| Services | `app/services/` | AI agent, storage, demo reset, queue helpers, and reusable complex service logic |
+
+Guidelines:
+
+- Use ORM/select statements only; never write raw SQL strings.
+- Keep route changes focused and avoid unrelated refactors.
+- If central schemas or models change, update the API client/types/docs in the same task.
+- Product/category/location ownership must always be scoped to the current authenticated user.
+
+---
+
+## 4. Multi-Tenancy and Data Isolation
+
+Critical rule:
+
+- Every query that retrieves user-owned data must filter by the current authenticated user.
+
+Current ownership patterns:
+
+- **Products:** `products.owner_id == current_user.id`
+- **Categories:** `categories.owner_id == current_user.id`
+- **Locations:** `locations.owner_id == current_user.id`
+- **Transactions:** `transactions.user_id == current_user.id` and/or joined product ownership checks
+- **Inventory:** join through `products` and filter by `products.owner_id == current_user.id`
+- **AI tools:** receive `user_id` and must only return data for that user
+
+Never return cross-user warehouse data.
+
+---
+
+## 5. Authorization and Security Rules
+
+- Never hardcode secrets, API keys, or passwords in source code.
+- All runtime secrets/configuration must come through `.env` and `settings`.
+- Use `get_current_user` for authenticated endpoints.
+- Use `get_current_admin_user` for endpoints that mutate categories, products, or user-sensitive data.
+- Current UI-created users are `ADMIN`; do not document active `STAFF` behavior unless the code is intentionally changed.
+- Do not expose cost/profit/margin data to non-admin flows if non-admin roles are reactivated later.
+- CORS origins must come from `settings.ALLOWED_ORIGINS`; never use `allow_origins=["*"]`.
+- Password minimum length is 6 characters and must be hashed with `get_password_hash()`.
+- Do not expose stack traces or internal exception details in API responses.
+
+Production validation in `app/core/config.py` enforces:
+
+- Strong non-placeholder `SECRET_KEY`
+- Non-localhost explicit `ALLOWED_ORIGINS`
+- Non-default local PostgreSQL credentials
+- `INIT_DB_ON_STARTUP=False`
+- Required S3 settings when `STORAGE_BACKEND=s3`
+
+---
+
+## 6. Database and Business Rules
+
+- Schema documentation lives in `database.md`.
+- The current bootstrap path uses `Base.metadata.create_all` through `scripts/init_db.py` or optional development startup.
+- Financial fields use `Numeric(10, 2)` or `Numeric(12, 2)`; use `Decimal` in Python, not `float`.
+- `inventory(product_id, location)` is unique.
+- `transactions.ref_code` is unique and generated by the backend.
+- Inventory and transactions store `location` as text, not a `location_id` foreign key.
+- Products store `category` as text, not a category foreign key.
+- Location capacity must be enforced for inventory creation, inbound transactions, and adjust transactions.
+- Outbound transactions must validate existing stock and sufficient quantity.
+- Transaction stock changes and transaction row creation must commit together.
+- When changing SQLAlchemy models, update `database.md` and frontend/backend contracts as needed.
+
+---
+
+## 7. AI Service Rules
+
+- AI agent logic lives in `app/services/ai_agent_service.py`.
+- `app/routes/ai_chat.py` must remain a thin authenticated route that calls the singleton `ai_agent_service`.
+- Current AI chat is direct/synchronous; Redis/arq infrastructure exists but is not the active chat flow.
+- AI tools must be read-only and scoped by authenticated `user_id`.
+- New AI tools require:
+  - A method on `AIAgentService`
+  - A matching entry in `get_tools_definition()`
+  - A matching entry in `_execute_tool()` tool map
+- AI tool methods must be async, accept `db: AsyncSession` and `user_id: int`, and return JSON strings.
+- Do not casually modify the system prompt in `chat()`.
+- Do not instantiate `AIAgentService` elsewhere; use the module-level singleton.
+
+---
+
+## 8. Frontend Architecture Rules
+
+- Use `src/lib/api.ts` for API wrappers.
+- Use hooks in `src/hooks/` for reusable data-fetching or state logic.
+- Use Zustand stores only for global client state such as selected location, currency, and UI toggles.
+- Do not store server-owned data globally unless there is a clear reason.
+- Shared TypeScript types must stay in sync with backend Pydantic schemas.
+- New components must be functional components with typed props.
+- Avoid adding new `any`; if unavoidable, add a short reason.
+- Prefer `const`; never use `var`.
+- Add new translation keys to `src/messages/` when UI text is internationalized.
+- The transactions page currently previews current stock and projected inbound/outbound stock from loaded inventory data; this preview is informational and backend validation remains authoritative.
+
+---
+
+## 9. Storage and Upload Rules
+
+- Profile image upload is handled by `app/services/storage_service.py`.
+- Local storage writes to `LOCAL_UPLOAD_DIR` and serves files through `/uploads`.
+- S3/MinIO storage uses `aioboto3` and the `S3_*` settings.
+- Do not store uploaded image bytes in the database.
+- Database fields store URL/path values such as `users.image_url` and product `image_url`.
+- Validate MIME type and size before upload.
+
+---
+
+## 10. Testing Rules
+
+- Backend tests live in `backend/tests/`.
+- Use async tests and fixtures from `backend/tests/conftest.py`.
+- Test routes through HTTP with `AsyncClient`, not by calling route functions directly.
+- Never connect tests to the real PostgreSQL database.
+- Do not delete or weaken existing tests.
+- Add or update tests when changing backend behavior.
+- For frontend changes, run `npx tsc --noEmit` or `npm run lint` when relevant.
+
+---
+
+## 11. Documentation Rules
+
+- Keep `README.md`, `database.md`, and `ARCHITECTURE_SUMMARY.md` aligned with the actual code.
+- Do not describe inactive roles or planned architecture as current behavior.
+- If backend schemas/models/routes change, update the corresponding frontend types and docs.
+- If frontend behavior changes materially, update architecture docs when the behavior is project-level.
+- Documentation may mention legacy compatibility only when it is clearly labeled as legacy/compatibility behavior.
+
+---
+
+## 12. AI Agent Coding Instructions
+
+General behavior:
+
+- Prefer minimal, focused edits.
+- Do not refactor unrelated code.
+- Follow existing code patterns unless the user asks for a redesign.
+- Read the relevant files before editing.
+- Do not install dependencies unless explicitly requested.
+- Do not modify generated/cache folders such as `.next`, `node_modules`, `__pycache__`, or `.pytest_cache`.
+
+Python-specific:
+
+- Use type hints for new Python functions and methods.
+- Use `async def` for route handlers, service methods, and functions that touch DB/external APIs.
+- Use Pydantic v2 APIs such as `model_dump()`, not deprecated `.dict()`.
+- Use `HTTPException` with appropriate status codes for route errors.
+- Use `logging.getLogger(__name__)` for application logging.
+
+TypeScript-specific:
+
+- Keep imports at the top of files.
+- Keep API calls centralized through `api` methods.
+- Use Tailwind utility classes for styling.
+- Use lucide-react for icons.
+- Keep new UI consistent with the existing dark/sidebar dashboard aesthetic.
+
+Never do:
+
+- Never write raw SQL strings.
+- Never hardcode secrets.
+- Never expose cross-tenant data.
+- Never add business-critical validation only on the frontend.
+- Never replace backend validation with UI previews.
+- Never expose internal stack traces in API responses.
+- Never introduce role behavior that conflicts with the current admin-centric UI without updating code, types, and docs together.

@@ -1,0 +1,39 @@
+# FastAPI and Web Server
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+gunicorn>=21.2.0
+python-multipart>=0.0.9
+
+# Database
+sqlalchemy[asyncio]>=2.0.25
+asyncpg>=0.29.0
+alembic>=1.13.0
+
+# Authentication & Security
+python-jose[cryptography]==3.3.0
+bcrypt>=4.0.1
+
+# Data Validation
+pydantic>=2.6.0
+pydantic-settings>=2.1.0
+email-validator>=2.1.0
+
+# AI Integration
+groq==0.4.2
+
+# Object storage (S3 / MinIO) — async
+aioboto3>=12.3.0
+botocore>=1.33.2,<1.34.35
+
+# Async background queue + Redis (also used by slowapi when configured)
+arq>=0.25.0
+redis>=5.0.0
+
+# Rate limiting
+slowapi>=0.1.9
+
+# Development & Testing
+pytest==7.4.4
+pytest-asyncio==0.23.3
+httpx==0.26.0
+aiosqlite==0.19.0

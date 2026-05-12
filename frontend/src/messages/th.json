@@ -1,0 +1,113 @@
+{
+  "app": {
+    "title": "OptiTrack WMS",
+    "subtitle": "Warehouse Management System"
+  },
+  "nav": {
+    "dashboard": "แดชบอร์ด",
+    "inventory": "สินค้าคงคลัง",
+    "products": "สินค้า",
+    "suppliers": "ผู้จัดจำหน่าย",
+    "transactions": "รายการเคลื่อนไหว",
+    "adjustments": "การปรับปรุง",
+    "transfers": "การโอนย้าย",
+    "reports": "รายงาน",
+    "settings": "ตั้งค่า",
+    "logout": "ออกจากระบบ"
+  },
+  "dashboard": {
+    "title": "แดชบอร์ดบริหารจัดการคลังสินค้า",
+    "welcome": "ยินดีต้อนรับ",
+    "totalValue": "มูลค่ารวม",
+    "lowStock": "สินค้าใกล้หมด",
+    "todayTransactions": "รายการวันนี้",
+    "salesVsCost": "ยอดขาย vs ต้นทุน",
+    "aiAssistant": "ผู้ช่วย AI"
+  },
+  "action": {
+    "inbound": "รับเข้า (+)",
+    "outbound": "เบิกออก (-)",
+    "scan": "สแกน",
+    "save": "บันทึก",
+    "cancel": "ยกเลิก",
+    "edit": "แก้ไข",
+    "delete": "ลบ",
+    "search": "ค้นหา",
+    "add": "เพิ่ม",
+    "update": "อัปเดต",
+    "create": "สร้าง"
+  },
+  "product": {
+    "sku": "SKU",
+    "name": "ชื่อสินค้า",
+    "category": "หมวดหมู่",
+    "costPrice": "ราคาต้นทุน",
+    "sellPrice": "ราคาขาย",
+    "quantity": "จำนวน",
+    "location": "สถานที่จัดเก็บ",
+    "minStock": "ขั้นต่ำ",
+    "status": "สถานะ"
+  },
+  "transaction": {
+    "refCode": "รหัสอ้างอิง",
+    "type": "ประเภท",
+    "inbound": "รับเข้า",
+    "outbound": "เบิกออก",
+    "quantity": "จำนวน",
+    "unitPrice": "ราคาต่อหน่วย",
+    "total": "รวม",
+    "date": "วันที่",
+    "user": "ผู้ทำรายการ"
+  },
+  "auth": {
+    "login": "เข้าสู่ระบบ",
+    "register": "ลงทะเบียน",
+    "email": "อีเมล",
+    "password": "รหัสผ่าน",
+    "firstName": "ชื่อจริง",
+    "lastName": "นามสกุล",
+    "forgotPassword": "ลืมรหัสผ่าน",
+    "loginButton": "ลงชื่อเข้าใช้",
+    "registerButton": "สร้างบัญชี",
+    "haveAccount": "มีบัญชีอยู่แล้ว? เข้าสู่ระบบ",
+    "noAccount": "ยังไม่มีบัญชี? ลงทะเบียน",
+    "role": "บทบาท",
+    "admin": "ผู้ดูแลระบบ",
+    "staff": "พนักงาน"
+  },
+  "status": {
+    "inStock": "มีสินค้า",
+    "lowStock": "สินค้าใกล้หมด",
+    "outOfStock": "สินค้าหมด",
+    "active": "ใช้งาน",
+    "inactive": "ไม่ใช้งาน"
+  },
+  "chat": {
+    "title": "ผู้ช่วย AI",
+    "placeholder": "ถามคำถามเกี่ยวกับคลังสินค้า...",
+    "send": "ส่ง",
+    "thinking": "กำลังประมวลผล...",
+    "greeting": "สวัสดี! ฉันคือผู้ช่วย OptiTrack ของคุณ มีอะไรให้ฉันช่วยดูแลในวันนี้ไหม?",
+    "examples": {
+      "lowStockLabel": "ระดับสินค้าคงคลัง",
+      "lowStock": "สินค้าใดบ้างใกล้หมด?",
+      "valueLabel": "มูลค่ารวม",
+      "value": "มูลค่าสินค้าคงคลังทั้งหมดเท่าไหร่?",
+      "transactionsLabel": "รายการเคลื่อนไหวล่าสุด",
+      "transactions": "วิเคราะห์รายการวันนี้"
+    }
+  },
+  "error": {
+    "generic": "เกิดข้อผิดพลาด",
+    "notFound": "ไม่พบข้อมูล",
+    "unauthorized": "ไม่มีสิทธิ์เข้าถึง",
+    "invalidCredentials": "อีเมลหรือรหัสผ่านไม่ถูกต้อง",
+    "networkError": "การเชื่อมต่อขัดข้อง"
+  },
+  "success": {
+    "saved": "บันทึกเรียบร้อย",
+    "updated": "อัปเดตเรียบร้อย",
+    "deleted": "ลบเรียบร้อย",
+    "created": "สร้างเรียบร้อย"
+  }
+}

@@ -1,0 +1,26 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" rx="80" fill="#3b82f6"/>
+
+  <!-- Warehouse/Box Icon -->
+  <g transform="translate(96, 96)">
+    <!-- Main building structure -->
+    <path d="M 160 0 L 320 64 L 320 320 L 160 384 L 0 320 L 0 64 Z" fill="#ffffff" opacity="0.9"/>
+
+    <!-- Top face -->
+    <path d="M 160 0 L 320 64 L 160 128 L 0 64 Z" fill="#ffffff"/>
+
+    <!-- Side face -->
+    <path d="M 160 128 L 320 64 L 320 320 L 160 384 Z" fill="#e0e7ff"/>
+
+    <!-- Door -->
+    <rect x="180" y="224" width="80" height="120" rx="4" fill="#1e40af"/>
+
+    <!-- Windows -->
+    <rect x="40" y="160" width="60" height="60" rx="4" fill="#60a5fa"/>
+    <rect x="40" y="240" width="60" height="60" rx="4" fill="#60a5fa"/>
+  </g>
+
+  <!-- Letter 'O' for OptiTrack -->
+  <circle cx="256" cy="256" r="140" fill="none" stroke="#ffffff" stroke-width="24" opacity="0.3"/>
+</svg>
