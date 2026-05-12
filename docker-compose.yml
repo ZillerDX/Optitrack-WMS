@@ -7,7 +7,6 @@ services:
         NEXT_PUBLIC_API_URL: http://localhost:8000
         NEXT_PUBLIC_APP_NAME: OptiTrack WMS
         NEXT_PUBLIC_DEFAULT_LOCALE: ${NEXT_PUBLIC_DEFAULT_LOCALE:-en}
-    container_name: optitrack_frontend
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: http://localhost:8000
@@ -26,7 +25,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: optitrack_api
     command:
       [
         "gunicorn",
@@ -49,7 +47,7 @@ services:
       SECRET_KEY: local-dev-secret-key-change-me-32-chars
       DATABASE_URL: postgresql+asyncpg://postgres:postgrespassword@db:5432/optitrack_wms
       REDIS_URL: redis://redis:6379/0
-      ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      ALLOWED_ORIGINS: '["http://localhost:3000","http://127.0.0.1:3000"]'
       STORAGE_BACKEND: s3
       S3_ENDPOINT_URL: http://minio:9000
       S3_PUBLIC_URL_BASE: http://localhost:9000/optitrack
@@ -80,14 +78,13 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: optitrack_db_init
     command: ["python", "-m", "scripts.init_db"]
     environment:
       ENVIRONMENT: development
       SECRET_KEY: local-dev-secret-key-change-me-32-chars
       DATABASE_URL: postgresql+asyncpg://postgres:postgrespassword@db:5432/optitrack_wms
       REDIS_URL: redis://redis:6379/0
-      ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      ALLOWED_ORIGINS: '["http://localhost:3000","http://127.0.0.1:3000"]'
       STORAGE_BACKEND: s3
       S3_ENDPOINT_URL: http://minio:9000
       S3_PUBLIC_URL_BASE: http://localhost:9000/optitrack
@@ -108,14 +105,13 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: optitrack_worker
     command: ["arq", "app.workers.arq_worker.WorkerSettings"]
     environment:
       ENVIRONMENT: development
       SECRET_KEY: local-dev-secret-key-change-me-32-chars
       DATABASE_URL: postgresql+asyncpg://postgres:postgrespassword@db:5432/optitrack_wms
       REDIS_URL: redis://redis:6379/0
-      ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      ALLOWED_ORIGINS: '["http://localhost:3000","http://127.0.0.1:3000"]'
       STORAGE_BACKEND: s3
       S3_ENDPOINT_URL: http://minio:9000
       S3_PUBLIC_URL_BASE: http://localhost:9000/optitrack
@@ -137,7 +133,6 @@ services:
 
   db:
     image: pgvector/pgvector:pg16
-    container_name: optitrack_db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgrespassword
@@ -155,7 +150,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: optitrack_redis
     ports:
       - "6379:6379"
     command: ["redis-server", "--appendonly", "yes"]
@@ -170,7 +164,6 @@ services:
 
   minio:
     image: minio/minio:RELEASE.2024-05-10T01-41-38Z
-    container_name: optitrack_minio
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: minioadmin
@@ -189,7 +182,6 @@ services:
 
   minio-init:
     image: minio/mc:RELEASE.2024-05-09T17-04-24Z
-    container_name: optitrack_minio_init
     depends_on:
       minio:
         condition: service_healthy
