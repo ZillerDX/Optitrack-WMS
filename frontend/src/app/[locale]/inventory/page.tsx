@@ -382,13 +382,13 @@ export default function InventoryPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'IN_STOCK':
-        return 'px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800';
+        return 'px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
       case 'LOW_STOCK':
-        return 'px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800';
+        return 'px-2.5 py-0.5 text-xs font-semibold rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse';
       case 'OUT_OF_STOCK':
-        return 'px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800';
+        return 'px-2.5 py-0.5 text-xs font-semibold rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20';
       default:
-        return 'px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800';
+        return 'px-2.5 py-0.5 text-xs font-semibold rounded-full bg-slate-800 text-slate-400 border border-slate-700';
     }
   };
 
@@ -407,96 +407,93 @@ export default function InventoryPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-lg">Loading...</div>
+      <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-400">
+        <div className="text-center">
+          <div className="w-10 h-10 border-2 border-slate-800 border-t-blue-500 rounded-full animate-spin mx-auto mb-3"></div>
+          <p className="text-xs font-medium">Loading Warehouse Inventory...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 sm:p-6">
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl blur-lg opacity-30"></div>
-            <div className="relative bg-gradient-to-r from-blue-600 to-cyan-600 p-2.5 sm:p-3 rounded-xl">
-              <Package className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-            </div>
+          <div className="p-2.5 sm:p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 shadow-lg shadow-cyan-500/5">
+            <Package className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              Inventory
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              Warehouse Inventory
             </h1>
-            <p className="text-xs text-slate-500 font-medium">View and manage warehouse inventory.</p>
+            <p className="text-xs text-slate-400 font-medium">Real-time stock levels, location tracking &amp; capacity</p>
           </div>
         </div>
         
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            {selectedLocation !== 'ALL' && (
-                <div className="flex items-center gap-2 px-2.5 py-1.5 bg-white text-blue-700 rounded-xl border border-gray-200 font-semibold text-xs shadow-sm">
-                    <MapPin size={12} className="text-blue-500" />
-                    {selectedLocation}
-                </div>
-            )}
-            <button
-              onClick={openManageLocationsModal}
-              className="group relative overflow-hidden bg-white text-slate-700 px-4 py-2 rounded-xl font-medium shadow-sm border border-gray-200 hover:shadow-md transition-all duration-300 hover:scale-105"
-            >
-               <div className="relative flex items-center gap-2">
-                <Settings2 className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-semibold">Manage Locations</span>
-              </div>
-            </button>
-            <button
-              onClick={() => setIsCreateLocationModalOpen(true)}
-              className="group relative overflow-hidden bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-xl font-medium shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105"
-            >
-               <div className="relative flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                <span className="text-sm font-semibold">New Location</span>
-              </div>
-            </button>
+          {selectedLocation !== 'ALL' && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-cyan-400 rounded-xl border border-slate-800 font-semibold text-xs shadow-sm">
+              <MapPin size={13} className="text-cyan-500" />
+              <span>Zone: {selectedLocation}</span>
+            </div>
+          )}
+          <button
+            onClick={openManageLocationsModal}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 text-xs font-semibold shadow-sm transition-all"
+          >
+            <Settings2 className="h-4 w-4 text-blue-400" />
+            <span>Manage Locations</span>
+          </button>
+          <button
+            onClick={() => setIsCreateLocationModalOpen(true)}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-lg shadow-blue-600/30 transition-all"
+          >
+            <MapPin className="h-4 w-4" />
+            <span>+ New Location</span>
+          </button>
         </div>
       </div>
 
       {/* การ์ดสถิติทันสมัย */}
-      <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4 mb-6 md:mb-8">
+      {/* Stat Cards Grid */}
+      <div className="grid gap-4 sm:gap-5 grid-cols-2 lg:grid-cols-4">
         <ModernStatCard
-          title="Total item"
+          title="Total Stock Units"
           value={stats.totalItems.toLocaleString()}
           icon={Box}
-          gradient="from-blue-500 to-cyan-500"
+          accentColor="blue"
         />
         <ModernStatCard
-          title="Low stock item"
+          title="Low Stock Items"
           value={stats.lowStockCount.toString()}
           icon={TrendingDown}
-          gradient="from-amber-500 to-orange-500"
+          accentColor="amber"
         />
         <ModernStatCard
-          title="Category"
+          title="Active Categories"
           value={stats.categories.toString()}
           icon={Package}
-          gradient="from-emerald-500 to-teal-500"
+          accentColor="emerald"
         />
         <ModernStatCard
-          title="Total value (Retail)"
+          title="Inventory Valuation"
           value={formatCurrency(stats.totalValue)}
           icon={DollarSign}
-          gradient="from-violet-500 to-purple-500"
+          accentColor="violet"
         />
       </div>
 
       {/* Visual Rack & Location Capacity Meters */}
       {managedLocations.length > 0 && (
-        <div className="mb-6 bg-white/70 backdrop-blur border border-slate-200/80 rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
+        <div className="bg-slate-900/60 backdrop-blur-sm border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-xl">
+          <div className="flex items-center justify-between mb-3.5">
             <div className="flex items-center gap-2">
-              <Warehouse className="w-4 h-4 text-blue-600" />
-              <h2 className="text-sm font-bold text-slate-800">Warehouse Location Utilization</h2>
+              <Warehouse className="w-4 h-4 text-blue-400" />
+              <h2 className="text-sm font-bold text-white tracking-tight">Warehouse Location Capacity Utilization</h2>
             </div>
-            <span className="text-xs text-slate-500">Click a zone to filter inventory</span>
+            <span className="text-xs text-slate-400">Click a zone card to filter table</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {managedLocations.map((loc) => {
@@ -514,26 +511,33 @@ export default function InventoryPage() {
                   className={cn(
                     "p-3 rounded-xl border cursor-pointer transition-all duration-200 select-none",
                     isSelected 
-                      ? "border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/40 shadow-sm" 
-                      : "border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/80"
+                      ? "border-blue-500 ring-2 ring-blue-500/20 bg-blue-500/10 shadow-lg shadow-blue-500/10" 
+                      : "border-slate-800/80 hover:border-slate-700 bg-slate-950/70 hover:bg-slate-900/80"
                   )}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-bold text-slate-800 truncate">{loc.name}</span>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-bold text-slate-200 truncate">{loc.name}</span>
                     <span className={cn(
-                      "text-[10px] font-bold px-1.5 py-0.5 rounded font-mono",
-                      tone === 'rose' ? "bg-rose-100 text-rose-700" : tone === 'amber' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+                      "text-[10px] font-bold px-1.5 py-0.5 rounded font-mono border",
+                      tone === 'rose' ? "bg-rose-500/10 text-rose-400 border-rose-500/20" : 
+                      tone === 'amber' ? "bg-amber-500/10 text-amber-400 border-amber-500/20" : 
+                      "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                     )}>
                       {pct}%
                     </span>
                   </div>
-                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mb-1.5">
+                  <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-2">
                     <div
-                      className={cn("h-full rounded-full transition-all duration-500", tone === 'rose' ? "bg-rose-500" : tone === 'amber' ? "bg-amber-500" : "bg-emerald-500")}
+                      className={cn(
+                        "h-full rounded-full transition-all duration-500", 
+                        tone === 'rose' ? "bg-rose-500 shadow-sm shadow-rose-500/50" : 
+                        tone === 'amber' ? "bg-amber-500 shadow-sm shadow-amber-500/50" : 
+                        "bg-emerald-500 shadow-sm shadow-emerald-500/50"
+                      )}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-slate-500">
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
                     <span>{used.toLocaleString()} units</span>
                     <span>Cap {cap.toLocaleString()}</span>
                   </div>
@@ -544,101 +548,108 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {/* ค้นหาและตัวกรอง */}
-      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-3 sm:gap-4">
+      {/* Search & Filter Bar */}
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
           <input
             type="text"
-            placeholder={t('action.search') + "..."}
+            placeholder="Search by SKU, product name, location..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm hover:shadow-md transition-shadow"
+            className="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-900/80 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 shadow-inner transition-all"
           />
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-          <div className="flex items-center gap-2">
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full sm:w-[180px] h-11 sm:h-12 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500">
-                <div className="flex items-center gap-2">
-                  <Tag className="h-4 w-4 text-gray-500" />
-                  <SelectValue placeholder="Category" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Categories</SelectItem>
-                {visibleCategories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-2">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[160px] h-11 sm:h-12 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500">
-                <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-gray-500" />
-                  <SelectValue placeholder="Status" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Status</SelectItem>
-                <SelectItem value="IN_STOCK">In Stock</SelectItem>
-                <SelectItem value="LOW_STOCK">Low Stock</SelectItem>
-                <SelectItem value="OUT_OF_STOCK">Out of Stock</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="flex gap-3">
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-full sm:w-[170px] h-10 bg-slate-900 border-slate-800 text-slate-200 rounded-xl focus:ring-1 focus:ring-blue-500 text-xs">
+              <div className="flex items-center gap-2">
+                <Tag className="h-3.5 w-3.5 text-slate-400" />
+                <SelectValue placeholder="Category" />
+              </div>
+            </SelectTrigger>
+            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+              <SelectItem value="ALL">All Categories</SelectItem>
+              {visibleCategories.map((cat) => (
+                <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[150px] h-10 bg-slate-900 border-slate-800 text-slate-200 rounded-xl focus:ring-1 focus:ring-blue-500 text-xs">
+              <div className="flex items-center gap-2">
+                <Filter className="h-3.5 w-3.5 text-slate-400" />
+                <SelectValue placeholder="Status" />
+              </div>
+            </SelectTrigger>
+            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+              <SelectItem value="ALL">All Status</SelectItem>
+              <SelectItem value="IN_STOCK">In Stock</SelectItem>
+              <SelectItem value="LOW_STOCK">Low Stock</SelectItem>
+              <SelectItem value="OUT_OF_STOCK">Out of Stock</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      {/* ตารางสินค้าคงคลัง */}
-      <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
+      {/* Inventory Data Table */}
+      <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl shadow-xl overflow-hidden backdrop-blur-sm">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
+            <thead className="bg-slate-950/90 border-b border-slate-800">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 tracking-wider border-none">{t('product.sku')}</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 tracking-wider border-none">{t('product.name')}</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 tracking-wider border-none">{t('product.category')}</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 tracking-wider border-none">{t('product.location')}</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 tracking-wider border-none">{t('product.quantity')}</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 tracking-wider border-none">{t('product.status')}</th>
-                <th className="px-6 py-4 text-right text-xs font-medium text-gray-700 tracking-wider border-none">Actions</th>
+                <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">{t('product.sku')}</th>
+                <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">{t('product.name')}</th>
+                <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">{t('product.category')}</th>
+                <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">{t('product.location')}</th>
+                <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">{t('product.quantity')}</th>
+                <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">{t('product.status')}</th>
+                <th className="px-6 py-3.5 text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-slate-800/60">
               {filteredInventory.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                    <Package className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                    <p className="text-lg font-medium">No inventory items found.</p>
+                  <td colSpan={7} className="px-6 py-16 text-center text-slate-400">
+                    <Package className="h-10 w-10 mx-auto mb-3 text-slate-600" />
+                    <p className="text-sm font-semibold text-slate-300">No inventory records found</p>
+                    <p className="text-xs text-slate-500 mt-1">Try adjusting your filters or search keywords</p>
                   </td>
                 </tr>
               ) : (
                 filteredInventory.map((item) => (
-                  <tr key={item.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200">
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">{item.product.sku}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.product.name}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      <span className="px-3 py-1.5 text-xs font-semibold rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-800 shadow-sm">
+                  <tr key={item.id} className="hover:bg-slate-800/40 transition-colors">
+                    <td className="px-6 py-3.5 text-xs font-mono font-semibold text-blue-400">
+                      <span className="bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+                        {item.product.sku}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3.5 text-sm font-semibold text-white">{item.product.name}</td>
+                    <td className="px-6 py-3.5 text-xs">
+                      <span className="px-2.5 py-0.5 font-medium rounded-full bg-slate-800 text-slate-300 border border-slate-700">
                         {item.product.category}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.location}</td>
-                    <td className="px-6 py-4 text-sm font-bold text-gray-900">{item.quantity}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-3.5 text-xs font-medium text-slate-300">
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">
+                        <MapPin size={11} className="text-slate-500" />
+                        {item.location}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3.5 text-sm font-mono font-bold text-white">{item.quantity}</td>
+                    <td className="px-6 py-3.5">
                       <span className={getStatusBadge(item.status)}>
                         {getStatusText(item.status)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-3.5 text-right">
                       <button
                         onClick={() => handleDeleteClick(item.id)}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                        className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
                         title="Delete Item"
                       >
-                        <Trash2 className="h-5 w-5" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </td>
                   </tr>
@@ -853,23 +864,52 @@ interface ModernStatCardProps {
   title: string;
   value: string;
   icon: React.ElementType;
-  gradient: string;
+  accentColor: 'blue' | 'emerald' | 'amber' | 'violet';
 }
 
-function ModernStatCard({ title, value, icon: Icon, gradient }: ModernStatCardProps) {
-  return (
-    <div className="group relative h-full min-h-[112px] overflow-hidden bg-white rounded-xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 text-left w-full border border-gray-100">
-      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}></div>
-      <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${gradient} rounded-full -mr-16 -mt-16 opacity-5 group-hover:scale-110 transition-transform duration-500`}></div>
+function ModernStatCard({ title, value, icon: Icon, accentColor }: ModernStatCardProps) {
+  const colorMap = {
+    blue: {
+      border: 'hover:border-blue-500/40',
+      iconBg: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
+      glow: 'from-blue-600/10'
+    },
+    emerald: {
+      border: 'hover:border-emerald-500/40',
+      iconBg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+      glow: 'from-emerald-600/10'
+    },
+    amber: {
+      border: 'hover:border-amber-500/40',
+      iconBg: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
+      glow: 'from-amber-600/10'
+    },
+    violet: {
+      border: 'hover:border-violet-500/40',
+      iconBg: 'bg-violet-500/10 border-violet-500/20 text-violet-400',
+      glow: 'from-violet-600/10'
+    }
+  };
 
-      <div className="relative flex h-full flex-col justify-between">
-        <div className="flex items-start justify-between mb-3">
+  const scheme = colorMap[accentColor];
+
+  return (
+    <div
+      className={cn(
+        "group relative overflow-hidden bg-slate-900/80 rounded-2xl p-4 sm:p-5 border border-slate-800/90 text-left w-full transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl backdrop-blur-sm",
+        scheme.border
+      )}
+    >
+      <div className={cn("absolute inset-0 bg-gradient-to-br to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500", scheme.glow)}></div>
+
+      <div className="relative flex flex-col justify-between h-full space-y-2">
+        <div className="flex items-start justify-between">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] sm:text-xs font-medium text-slate-400 truncate tracking-wide">{title}</p>
-            <p className="text-lg sm:text-xl md:text-2xl font-bold text-slate-800 mt-0.5 truncate">{value}</p>
+            <p className="text-[11px] font-medium text-slate-400 truncate tracking-wide">{title}</p>
+            <p className="text-xl sm:text-2xl font-bold text-white mt-1 truncate tracking-tight font-mono">{value}</p>
           </div>
-          <div className={`bg-gradient-to-br ${gradient} p-2 rounded-lg shadow-md group-hover:scale-110 transition-transform duration-300 ml-2`}>
-            <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+          <div className={cn("p-2 rounded-xl border shadow-md ml-2 shrink-0 transition-transform duration-300 group-hover:scale-110", scheme.iconBg)}>
+            <Icon className="h-5 w-5" />
           </div>
         </div>
       </div>

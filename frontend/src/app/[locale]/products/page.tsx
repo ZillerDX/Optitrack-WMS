@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, Package, ArrowUpRight, ArrowDownRight, Filter, PlusCircle, X, Barcode as BarcodeIcon } from 'lucide-react';
 import { api } from '@/lib/api';
+import { cn } from '@/lib/utils';
 import { Modal, ConfirmModal, NotificationModal, BarcodeModal } from '@/components/modals';
 import { useLocationStore } from '@/store/useLocationStore';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
@@ -375,177 +376,192 @@ export default function ProductsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 sm:p-6">
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl blur-lg opacity-30"></div>
-            <div className="relative bg-gradient-to-r from-blue-600 to-cyan-600 p-2.5 sm:p-3 rounded-xl">
-              <Package className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-            </div>
+          <div className="p-2.5 sm:p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 shadow-lg shadow-blue-500/5">
+            <Package className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              Products
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              Product Master Catalog
             </h1>
-            <p className="text-xs text-slate-500 font-medium">Manage your product catalog and pricing.</p>
+            <p className="text-xs text-slate-400 font-medium">SKU management, unit pricing &amp; margin calculations</p>
           </div>
         </div>
         
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <button
-              onClick={() => setIsCategoryModalOpen(true)}
-              className="group relative overflow-hidden bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 h-10 rounded-xl font-medium shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105"
-            >
-              <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
-              <div className="relative flex items-center gap-1.5 sm:gap-2">
-                <PlusCircle className="h-4 w-4" />
-                <span className="text-sm font-semibold">Add Category</span>
-              </div>
-            </button>
-            <button
-              onClick={() => {
-                resetForm();
-                setIsModalOpen(true);
-              }}
-              className="group relative overflow-hidden bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 h-10 rounded-xl font-medium shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105"
-            >
-              <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
-              <div className="relative flex items-center gap-1.5 sm:gap-2">
-                <Plus className="h-4 w-4" />
-                <span className="text-sm font-semibold">Add Product</span>
-              </div>
-            </button>
+          <button
+            onClick={() => setIsCategoryModalOpen(true)}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 text-xs font-semibold shadow-sm transition-all"
+          >
+            <PlusCircle className="h-4 w-4 text-violet-400" />
+            <span>Manage Categories</span>
+          </button>
+          <button
+            onClick={() => {
+              resetForm();
+              setIsModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-lg shadow-blue-600/30 transition-all"
+          >
+            <Plus className="h-4 w-4" />
+            <span>+ Add Product</span>
+          </button>
         </div>
       </div>
 
-      {/* การ์ดสถิติทันสมัย */}
-      <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4 mb-6 md:mb-8">
+      {/* Stat Cards Grid */}
+      <div className="grid gap-4 sm:gap-5 grid-cols-2 lg:grid-cols-4">
         <ModernStatCard
-          title="Total product"
+          title="Catalog SKUs"
           value={stats.totalProducts.toString()}
           icon={Package}
-          gradient="from-blue-500 to-cyan-500"
+          accentColor="blue"
         />
         <ModernStatCard
-          title="Active product"
+          title="Stock Tracked Items"
           value={stats.activeProducts.toString()}
           icon={Package}
-          gradient="from-emerald-500 to-teal-500"
+          accentColor="emerald"
         />
         <ModernStatCard
-          title="Category"
+          title="Active Categories"
           value={stats.totalCategories.toString()}
           icon={Package}
-          gradient="from-violet-500 to-purple-500"
+          accentColor="violet"
         />
         <ModernStatCard
-          title="Avg price"
+          title="Average Unit Price"
           value={formatCurrency(stats.avgPrice)}
           icon={Package}
-          gradient="from-amber-500 to-orange-500"
+          accentColor="amber"
         />
       </div>
 
-      {/* ค้นหาและตัวกรองหมวดหมู่ */}
-      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-3 sm:gap-4">
+      {/* Search & Category Filter */}
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
           <input
             type="text"
-            placeholder="Search products..."
+            placeholder="Search by SKU, product name, or category..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm hover:shadow-md transition-shadow"
+            className="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-900/80 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 shadow-inner transition-all"
           />
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-          <div className="flex items-center gap-2">
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full sm:w-[180px] h-11 sm:h-12 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500">
-                <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-gray-500" />
-                  <SelectValue placeholder="Category" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Categories</SelectItem>
-                {visibleCategories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="flex gap-3">
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-full sm:w-[180px] h-10 bg-slate-900 border-slate-800 text-slate-200 rounded-xl focus:ring-1 focus:ring-blue-500 text-xs">
+              <div className="flex items-center gap-2">
+                <Filter className="h-3.5 w-3.5 text-slate-400" />
+                <SelectValue placeholder="Category" />
+              </div>
+            </SelectTrigger>
+            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+              <SelectItem value="ALL">All Categories</SelectItem>
+              {visibleCategories.map((cat) => (
+                <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      {/* ตารางสินค้า */}
-      <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
+      {/* Products Data Table */}
+      <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl shadow-xl overflow-hidden backdrop-blur-sm">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
+            <thead className="bg-slate-950/90 border-b border-slate-800">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 tracking-wider border-none">Sku</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 tracking-wider border-none">Name</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 tracking-wider border-none">Category</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 tracking-wider border-none">Cost price</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 tracking-wider border-none">Sell price</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 tracking-wider border-none">Unit</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 tracking-wider border-none">Actions</th>
+                <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">SKU</th>
+                <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Product Name</th>
+                <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Category</th>
+                <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Cost Price</th>
+                <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Retail Price</th>
+                <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Margin</th>
+                <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Unit</th>
+                <th className="px-6 py-3.5 text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-slate-800/60">
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                    <Package className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                    <p className="text-lg font-medium">No products found.</p>
+                  <td colSpan={8} className="px-6 py-16 text-center text-slate-400">
+                    <Package className="h-10 w-10 mx-auto mb-3 text-slate-600" />
+                    <p className="text-sm font-semibold text-slate-300">No products found</p>
+                    <p className="text-xs text-slate-500 mt-1">Try adjusting your search terms or category filter</p>
                   </td>
                 </tr>
               ) : (
-                filteredProducts.map((product) => (
-                  <tr key={product.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200">
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">{product.sku}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{product.name}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      <span className="px-3 py-1.5 text-xs font-semibold rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-800 shadow-sm">
-                        {product.category}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{formatCurrency(product.cost_price)}</td>
-                    <td className="px-6 py-4 text-sm font-bold text-green-600">{formatCurrency(product.sell_price)}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{product.unit}</td>
-                    <td className="px-6 py-4 text-sm">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            setSelectedBarcodeProduct(product);
-                            setIsBarcodeModalOpen(true);
-                          }}
-                          className="group p-2 text-indigo-600 hover:bg-gradient-to-r hover:from-indigo-500 hover:to-purple-500 hover:text-white rounded-lg transition-all duration-200 hover:scale-110 shadow-sm hover:shadow-md"
-                          title="Print Barcode Label"
-                        >
-                          <BarcodeIcon className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleEdit(product)}
-                          className="group p-2 text-blue-600 hover:bg-gradient-to-r hover:from-blue-500 hover:to-cyan-500 hover:text-white rounded-lg transition-all duration-200 hover:scale-110 shadow-sm hover:shadow-md"
-                          title="Edit product"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteClick(product)}
-                          className="group p-2 text-red-600 hover:bg-gradient-to-r hover:from-red-500 hover:to-pink-500 hover:text-white rounded-lg transition-all duration-200 hover:scale-110 shadow-sm hover:shadow-md"
-                          title="Delete product"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                filteredProducts.map((product) => {
+                  const marginPct = (Number(product.sell_price) > 0 && Number(product.cost_price) > 0)
+                    ? Math.round(((Number(product.sell_price) - Number(product.cost_price)) / Number(product.sell_price)) * 100)
+                    : null;
+
+                  return (
+                    <tr key={product.id} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="px-6 py-3.5 text-xs font-mono font-semibold text-blue-400">
+                        <span className="bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+                          {product.sku}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3.5 text-sm font-semibold text-white">{product.name}</td>
+                      <td className="px-6 py-3.5 text-xs">
+                        <span className="px-2.5 py-0.5 font-medium rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                          {product.category || 'Uncategorized'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3.5 text-xs font-mono text-slate-400">{formatCurrency(product.cost_price)}</td>
+                      <td className="px-6 py-3.5 text-sm font-mono font-bold text-emerald-400">{formatCurrency(product.sell_price)}</td>
+                      <td className="px-6 py-3.5 text-xs font-mono">
+                        {marginPct !== null ? (
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full text-[11px] font-bold border",
+                            marginPct >= 30 ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                            marginPct > 0 ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+                            "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                          )}>
+                            {marginPct >= 0 ? `+${marginPct}%` : `${marginPct}%`}
+                          </span>
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-3.5 text-xs text-slate-400 font-medium">{product.unit}</td>
+                      <td className="px-6 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => {
+                              setSelectedBarcodeProduct(product);
+                              setIsBarcodeModalOpen(true);
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-violet-400 hover:bg-violet-500/10 rounded-lg transition-all"
+                            title="Print Barcode Label"
+                          >
+                            <BarcodeIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleEdit(product)}
+                            className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"
+                            title="Edit product"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(product)}
+                            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
+                            title="Delete product"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -880,23 +896,52 @@ interface ModernStatCardProps {
   title: string;
   value: string;
   icon: React.ElementType;
-  gradient: string;
+  accentColor: 'blue' | 'emerald' | 'amber' | 'violet';
 }
 
-function ModernStatCard({ title, value, icon: Icon, gradient }: ModernStatCardProps) {
-  return (
-    <div className="group relative h-full min-h-[112px] overflow-hidden bg-white rounded-xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 text-left w-full border border-gray-100">
-      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}></div>
-      <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${gradient} rounded-full -mr-16 -mt-16 opacity-5 group-hover:scale-110 transition-transform duration-500`}></div>
+function ModernStatCard({ title, value, icon: Icon, accentColor }: ModernStatCardProps) {
+  const colorMap = {
+    blue: {
+      border: 'hover:border-blue-500/40',
+      iconBg: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
+      glow: 'from-blue-600/10'
+    },
+    emerald: {
+      border: 'hover:border-emerald-500/40',
+      iconBg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+      glow: 'from-emerald-600/10'
+    },
+    amber: {
+      border: 'hover:border-amber-500/40',
+      iconBg: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
+      glow: 'from-amber-600/10'
+    },
+    violet: {
+      border: 'hover:border-violet-500/40',
+      iconBg: 'bg-violet-500/10 border-violet-500/20 text-violet-400',
+      glow: 'from-violet-600/10'
+    }
+  };
 
-      <div className="relative flex h-full flex-col justify-between">
-        <div className="flex items-start justify-between mb-3">
+  const scheme = colorMap[accentColor];
+
+  return (
+    <div
+      className={cn(
+        "group relative overflow-hidden bg-slate-900/80 rounded-2xl p-4 sm:p-5 border border-slate-800/90 text-left w-full transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl backdrop-blur-sm",
+        scheme.border
+      )}
+    >
+      <div className={cn("absolute inset-0 bg-gradient-to-br to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500", scheme.glow)}></div>
+
+      <div className="relative flex flex-col justify-between h-full space-y-2">
+        <div className="flex items-start justify-between">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] sm:text-xs font-medium text-slate-400 truncate tracking-wide">{title}</p>
-            <p className="text-lg sm:text-xl md:text-2xl font-bold text-slate-800 mt-0.5 truncate">{value}</p>
+            <p className="text-[11px] font-medium text-slate-400 truncate tracking-wide">{title}</p>
+            <p className="text-xl sm:text-2xl font-bold text-white mt-1 truncate tracking-tight font-mono">{value}</p>
           </div>
-          <div className={`bg-gradient-to-br ${gradient} p-2 rounded-lg shadow-md group-hover:scale-110 transition-transform duration-300 ml-2`}>
-            <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+          <div className={cn("p-2 rounded-xl border shadow-md ml-2 shrink-0 transition-transform duration-300 group-hover:scale-110", scheme.iconBg)}>
+            <Icon className="h-5 w-5" />
           </div>
         </div>
       </div>

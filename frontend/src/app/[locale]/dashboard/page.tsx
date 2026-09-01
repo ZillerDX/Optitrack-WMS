@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { 
@@ -17,7 +18,9 @@ import {
   LineChart as LineChartIcon, 
   PieChart as PieChartIcon, 
   BarChart3,
-  Warehouse
+  Warehouse,
+  ShieldAlert,
+  ArrowRight
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -88,6 +91,7 @@ interface LocationDetail {
 }
 
 export default function DashboardPage() {       
+  const router = useRouter();
   const { selectedLocation, locations } = useLocationStore();
   const { formatCurrency } = useCurrencyFormatter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -343,153 +347,216 @@ export default function DashboardPage() {
     });
   };
 
+  const lowStockItems = allInventory.filter(
+    (i: any) => i.status === 'LOW_STOCK' || (Number(i.quantity) <= (Number(i.product?.min_stock_level) || 5))
+  ).slice(0, 4);
+
   if (isLoading && allTransactions.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-slate-600 font-bold">Loading dashboard...</p>
+          <div className="w-12 h-12 border-3 border-slate-800 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-xs text-slate-400 font-medium tracking-wide">Syncing Warehouse Analytics...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 sm:p-6">
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">    
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">    
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl blur-lg opacity-30"></div>
-            <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 p-2.5 sm:p-3 rounded-xl">
-              <LayoutDashboard className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-            </div>
+          <div className="p-2.5 sm:p-3 rounded-xl bg-blue-600/10 border border-blue-500/20 text-blue-400 shadow-lg shadow-blue-500/5">
+            <LayoutDashboard className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent tracking-tight">
-              Dashboard
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              Warehouse Command Center
             </h1>
-            <p className="text-xs text-slate-500 font-medium">Overview of your inventory and transactions.</p>
+            <p className="text-xs text-slate-400">Live operational overview &amp; inventory analytics</p>
           </div>
         </div>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            {selectedLocation !== 'ALL' && (    
-                <div className="flex items-center gap-2 px-2.5 py-1.5 bg-white text-blue-700 rounded-xl border border-gray-200 font-semibold text-xs shadow-sm">
-                    <Package size={12} className="text-blue-500" />
-                    {selectedLocation}
-                </div>
-            )}
-            <div className="flex items-center gap-3">
+          {selectedLocation !== 'ALL' && (    
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-blue-400 rounded-xl border border-slate-800 font-semibold text-xs shadow-sm">
+              <Package size={13} className="text-blue-500" />
+              <span>Zone: {selectedLocation}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2.5">
             <DateRangePicker
               dateRange={dateRange || {start: '', end: ''}}
               onChange={setDateRange}
-              className={cn("h-11", !dateRange && "opacity-50 grayscale pointer-events-none")}
+              className={cn("h-10 text-xs bg-slate-900 border-slate-800 text-slate-200", !dateRange && "opacity-50 grayscale pointer-events-none")}
             />
             <button
               onClick={() => setDateRange(dateRange ? null : {start: format(subDays(new Date(), 30), 'yyyy-MM-dd'), end: format(new Date(), 'yyyy-MM-dd')})}
               className={cn(
-                "h-11 px-4 rounded-2xl text-xs font-semibold transition-all duration-200 border flex items-center justify-center shadow-sm",
-                !dateRange ? "border-transparent bg-gradient-to-r from-blue-600 to-indigo-500 text-white shadow-lg shadow-blue-200/70" : "border-slate-200/80 bg-white/90 text-slate-600 hover:border-blue-200 hover:text-blue-600 hover:shadow-md hover:shadow-blue-100/50"
+                "h-10 px-3.5 rounded-xl text-xs font-semibold transition-all duration-200 border flex items-center justify-center shadow-sm",
+                !dateRange 
+                  ? "border-blue-500/30 bg-blue-600 text-white shadow-lg shadow-blue-600/30" 
+                  : "border-slate-800 bg-slate-900 text-slate-400 hover:text-white hover:border-slate-700"
               )}
             >
-              All time
+              All Time
             </button>
           </div>
         </div>
       </div>
 
+      {/* Urgent Action Center (Operator Ergonomic Feature) */}
+      {lowStockItems.length > 0 && (
+        <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 backdrop-blur-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                <ShieldAlert className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-amber-300">
+                  Urgent Restock Action Required ({lowStockItems.length} items below safety threshold)
+                </h3>
+              </div>
+            </div>
+            <button
+              onClick={() => router.push('/inventory')}
+              className="text-xs font-medium text-amber-400 hover:text-amber-300 flex items-center gap-1 transition-colors"
+            >
+              <span>View All Shortages</span>
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {lowStockItems.map((item: any) => (
+              <div
+                key={item.id}
+                className="p-3 rounded-xl bg-slate-900/90 border border-amber-500/20 flex items-center justify-between gap-3 shadow-md hover:border-amber-500/40 transition-colors"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-white truncate">{item.product?.name}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="font-mono text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.2 rounded">
+                      {item.product?.sku}
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      Stock: <strong className="text-rose-400">{item.quantity}</strong> / {item.product?.min_stock_level || 5}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => router.push(`/transactions?action=inbound&product_id=${item.product_id}`)}
+                  className="px-2.5 py-1 text-[11px] font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-sm shrink-0 transition-colors"
+                >
+                  + Inbound
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Main KPI Grid */}
-      <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4 mb-6 md:mb-8">
-        <div className="animate-on-load stagger-1 h-full">
-          <ModernStatCard
-            title="Total product"
-            value={(stats?.total_products || 0).toString()}
-            icon={Package}
-            gradient="from-blue-500 to-cyan-500"
-            onClick={() => openStockChart('products')}
-          />
-        </div>
-        <div className="animate-on-load stagger-2 h-full">
-          <ModernStatCard
-            title="Inventory value (Retail)"
-            value={formatCurrency(stats?.total_inventory_value || 0)}
-            icon={TrendingUp}
-            gradient="from-emerald-500 to-teal-500"
-            onClick={() => openStockChart('value')}
-          />
-        </div>
-        <div className="animate-on-load stagger-3 h-full">
-          <ModernStatCard
-            title="Low stock item"
-            value={(stats?.low_stock_count || 0).toString()}
-            icon={AlertTriangle}
-            gradient="from-amber-500 to-orange-500"
-            onClick={() => openStockChart('lowstock')}
-          />
-        </div>
-        <div className="animate-on-load stagger-4 h-full">
-          <ModernStatCard
-            title="Total transaction"
-            value={(stats?.total_transactions || 0).toString()}
-            icon={Activity}
-            gradient="from-violet-500 to-purple-500"
-            onClick={() => openStockChart('activity')}
-          />
-        </div>
+      <div className="grid gap-4 sm:gap-5 grid-cols-2 lg:grid-cols-4">
+        <ModernStatCard
+          title="Total Catalog SKUs"
+          value={(stats?.total_products || 0).toString()}
+          icon={Package}
+          accentColor="blue"
+          onClick={() => openStockChart('products')}
+        />
+        <ModernStatCard
+          title="Total Valuation (Retail)"
+          value={formatCurrency(stats?.total_inventory_value || 0)}
+          icon={TrendingUp}
+          accentColor="emerald"
+          onClick={() => openStockChart('value')}
+        />
+        <ModernStatCard
+          title="Low Stock Warnings"
+          value={(stats?.low_stock_count || 0).toString()}
+          icon={AlertTriangle}
+          accentColor="amber"
+          onClick={() => openStockChart('lowstock')}
+        />
+        <ModernStatCard
+          title="Total Operations Logged"
+          value={(stats?.total_transactions || 0).toString()}
+          icon={Activity}
+          accentColor="violet"
+          onClick={() => openStockChart('activity')}
+        />
       </div>
 
       {/* Primary Analytics Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 md:mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Movement Chart */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100 animate-on-load stagger-5">
-          <div className="flex items-center justify-between mb-6">
+        <div className="lg:col-span-2 bg-slate-900/60 rounded-2xl p-5 border border-slate-800/80 backdrop-blur-sm shadow-xl">
+          <div className="flex items-center justify-between mb-5">
             <div>
-              <h3 className="text-base font-bold text-slate-900 tracking-tight">Inventory flow</h3>
-              <p className="text-xs font-medium text-slate-400">Inbound vs Outbound activity</p>
+              <h3 className="text-sm font-bold text-white tracking-tight">Stock Movement Velocity</h3>
+              <p className="text-xs text-slate-400">Inbound vs Outbound unit volume</p>
             </div>
             <div className="flex gap-4">        
-                <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span> IN
-                </div>
-                <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase">
-                    <span className="w-2 h-2 rounded-full bg-blue-500"></span> OUT
-                </div>
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-500/50"></span>
+                <span>INBOUND</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-400">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-sm shadow-blue-500/50"></span>
+                <span>OUTBOUND</span>
+              </div>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData} barGap={8}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-              <XAxis dataKey="name" fontSize={10} fontWeight="500" axisLine={false} tickLine={false} tick={{fill: '#94a3b8'}} />
-              <YAxis fontSize={10} fontWeight="500" axisLine={false} tickLine={false} tick={{fill: '#94a3b8'}} />
+          <ResponsiveContainer width="100%" height={290}>
+            <BarChart data={chartData} barGap={6}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e293b" />
+              <XAxis dataKey="name" fontSize={11} axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
+              <YAxis fontSize={11} axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
               <Tooltip
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', padding: '12px', fontSize: '12px' }}
+                contentStyle={{
+                  backgroundColor: '#0f172a',
+                  borderColor: '#334155',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
+                  color: '#f8fafc',
+                  fontSize: '12px'
+                }}
               />
-              <Bar dataKey="inbound" fill="#10b981" radius={[2, 2, 0, 0]} barSize={8} />        
-              <Bar dataKey="outbound" fill="#3b82f6" radius={[2, 2, 0, 0]} barSize={8} />       
+              <Bar dataKey="inbound" fill="#10b981" radius={[4, 4, 0, 0]} barSize={10} />        
+              <Bar dataKey="outbound" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={10} />       
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Category Distribution */}
-        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100 animate-on-load" style={{animationDelay: '0.3s'}}>       
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-1.5 bg-slate-50 rounded-lg text-slate-600 border border-slate-100"><PieChartIcon size={16}/></div>
-            <h3 className="text-base font-bold text-gray-900">{selectedLocation === 'ALL' ? 'Locations' : 'Products'}</h3>
+        {/* Category & Location Distribution */}
+        <div className="bg-slate-900/60 rounded-2xl p-5 border border-slate-800/80 backdrop-blur-sm shadow-xl flex flex-col justify-between">       
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 bg-blue-500/10 rounded-lg text-blue-400 border border-blue-500/20">
+                <PieChartIcon size={16} />
+              </div>
+              <h3 className="text-sm font-bold text-white">
+                {selectedLocation === 'ALL' ? 'Zone Capacity Distribution' : 'Product Share'}
+              </h3>
+            </div>
           </div>
-          <div className="h-[280px]">
+
+          <div className="h-[250px] flex items-center justify-center">
             {categoryData.length > 0 ? (
-              <div className="flex h-full flex-col">
-                <div className="h-[190px]">
+              <div className="flex h-full w-full flex-col">
+                <div className="h-[170px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={categoryData}
                         cx="50%"
                         cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={3}
+                        innerRadius={55}
+                        outerRadius={75}
+                        paddingAngle={4}
                         dataKey="value"
                       >
                         {categoryData.map((entry, index) => (
@@ -500,11 +567,11 @@ export default function DashboardPage() {
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 pt-2 text-[11px] font-medium text-slate-600">
+                <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 pt-2 text-[11px] font-medium text-slate-300">
                   {distributionLegendItems.map((item, index) => (
                     <div key={`${item.name}-${index}`} className="flex items-center gap-2 min-w-0">
                       <span
-                        className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                        className="h-2 w-2 flex-shrink-0 rounded-full"
                         style={{ backgroundColor: getDistributionColor(index, categoryData.length) }}
                       />
                       <span className="truncate">{item.name}</span>
@@ -513,8 +580,8 @@ export default function DashboardPage() {
                 </div>
               </div>
             ) : (
-              <div className="flex h-full items-center justify-center text-xs font-medium text-slate-400">
-                {selectedLocation === 'ALL' ? 'No inventory across locations' : 'No products in this location'}
+              <div className="flex h-full items-center justify-center text-xs text-slate-500">
+                {selectedLocation === 'ALL' ? 'No inventory across warehouse zones' : 'No products in this zone'}
               </div>
             )}
           </div>
@@ -523,156 +590,168 @@ export default function DashboardPage() {
 
       {/* Secondary Analytics Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Top Products */}
-        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100 animate-on-load" style={{animationDelay: '0.35s'}}>       
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-1.5 bg-slate-50 rounded-lg text-slate-600 border border-slate-100"><BarChart3 size={16}/></div>
-            <h3 className="text-base font-bold text-gray-900">Top movers</h3>
+        {/* Top Movers */}
+        <div className="bg-slate-900/60 rounded-2xl p-5 border border-slate-800/80 backdrop-blur-sm shadow-xl">       
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="p-1.5 bg-blue-500/10 rounded-lg text-blue-400 border border-blue-500/20">
+              <BarChart3 size={16} />
+            </div>
+            <h3 className="text-sm font-bold text-white">Top Velocity Products</h3>
           </div>
-          <div className="space-y-5">
+          <div className="space-y-4">
             {topProductsData.map((item, idx) => (
-                <div key={idx}>
-                    <div className="flex justify-between text-xs font-semibold text-gray-700 mb-1.5">
-                        <span className="truncate pr-4">{item.name}</span>
-                        <span className="text-blue-600">{item.quantity} units</span>
-                    </div>
-                    <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">     
-                        <div
-                            className="bg-blue-500 h-full rounded-full transition-all duration-1000"
-                            style={{ width: `${(item.quantity / (topProductsData[0]?.quantity || 1)) * 100}%` }}
-                        ></div>
-                    </div>
+              <div key={idx} className="space-y-1.5">
+                <div className="flex justify-between text-xs font-semibold">
+                  <span className="truncate pr-4 text-slate-300">{item.name}</span>
+                  <span className="text-blue-400 font-mono">{item.quantity} units</span>
                 </div>
+                <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">     
+                  <div
+                    className="bg-gradient-to-r from-blue-500 to-indigo-500 h-full rounded-full transition-all duration-700"
+                    style={{ width: `${(item.quantity / (topProductsData[0]?.quantity || 1)) * 100}%` }}
+                  />
+                </div>
+              </div>
             ))}
-            {topProductsData.length === 0 && <p className="text-center text-gray-400 py-10 text-xs">No activity in this range</p>}
+            {topProductsData.length === 0 && <p className="text-center text-slate-500 py-8 text-xs">No activity in this interval</p>}
           </div>
         </div>
 
-        {/* Storage & Health Metrics */}
-        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100 animate-on-load" style={{animationDelay: '0.4s'}}>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-1.5 bg-slate-50 rounded-lg text-slate-600 border border-slate-100"><Warehouse size={16}/></div>
-            <h3 className="text-base font-bold text-gray-900">Storage & Health</h3>
+        {/* Storage & Health */}
+        <div className="bg-slate-900/60 rounded-2xl p-5 border border-slate-800/80 backdrop-blur-sm shadow-xl">
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-400 border border-emerald-500/20">
+              <Warehouse size={16} />
+            </div>
+            <h3 className="text-sm font-bold text-white">Warehouse Rack Capacity</h3>
           </div>
-          <div className="space-y-5">
-            {/* Warehouse Capacity */}
-            <div className="p-4 bg-blue-50/50 rounded-xl border border-gray-100 shadow-sm">
+          <div className="space-y-4">
+            <div className="p-4 bg-slate-950/80 rounded-xl border border-slate-800 shadow-inner">
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Warehouse size={14} className="text-blue-600" />
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Warehouse Capacity</p>
-                </div>
-                <p className="text-lg font-bold text-blue-600">{storageMetrics?.warehouse_capacity_pct ?? 0}%</p>
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Space Utilization</span>
+                <span className={cn(
+                  "text-lg font-bold font-mono",
+                  (storageMetrics?.warehouse_capacity_pct ?? 0) >= 90 ? "text-rose-400" :
+                  (storageMetrics?.warehouse_capacity_pct ?? 0) >= 75 ? "text-amber-400" : "text-emerald-400"
+                )}>
+                  {storageMetrics?.warehouse_capacity_pct ?? 0}%
+                </span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+              <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
                 <div
                   className={cn(
                     "h-full rounded-full transition-all duration-700",
-                    (storageMetrics?.warehouse_capacity_pct ?? 0) >= 90 ? "bg-red-500" :
-                    (storageMetrics?.warehouse_capacity_pct ?? 0) >= 70 ? "bg-amber-500" : "bg-blue-500"
+                    (storageMetrics?.warehouse_capacity_pct ?? 0) >= 90 ? "bg-rose-500 shadow-lg shadow-rose-500/50" :
+                    (storageMetrics?.warehouse_capacity_pct ?? 0) >= 75 ? "bg-amber-500 shadow-lg shadow-amber-500/50" : "bg-emerald-500 shadow-lg shadow-emerald-500/50"
                   )}
                   style={{ width: `${Math.min(storageMetrics?.warehouse_capacity_pct ?? 0, 100)}%` }}
                 />
               </div>
-              <p className="text-[10px] font-medium text-gray-400 mt-1.5">{storageMetrics?.warehouse_capacity_label ?? '0% Used'}</p>
+              <p className="text-[11px] font-medium text-slate-400 mt-2">{storageMetrics?.warehouse_capacity_label ?? '0% Used'}</p>
             </div>
-
           </div>
         </div>
 
-        {/* Recent Operations */}
-        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100 overflow-hidden animate-on-load" style={{animationDelay: '0.45s'}}>
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-base font-bold text-gray-900">Recent logs</h3>
-            <Clock size={16} className="text-gray-400" />
+        {/* Recent Operations Log */}
+        <div className="bg-slate-900/60 rounded-2xl p-5 border border-slate-800/80 backdrop-blur-sm shadow-xl overflow-hidden">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 bg-violet-500/10 rounded-lg text-violet-400 border border-violet-500/20">
+                <Clock size={16} />
+              </div>
+              <h3 className="text-sm font-bold text-white">Live Activity Feed</h3>
+            </div>
+            <span className="text-[10px] text-slate-500 font-mono">Real-time</span>
           </div>
-          <div className="space-y-2 overflow-y-auto max-h-[350px] pr-2 custom-scrollbar">       
+          <div className="space-y-2 overflow-y-auto max-h-[300px] pr-1">       
             {recentTransactions.map((tx) => (   
-              <div key={tx.id} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
-                <div className={`p-1.5 rounded-md ${tx.type === 'INBOUND' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>   
-                  {tx.type === 'INBOUND' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+              <div key={tx.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-800/60 transition-colors border border-slate-800/50">
+                <div className={cn(
+                  "p-1.5 rounded-lg text-xs font-bold shrink-0",
+                  tx.type === 'INBOUND' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                )}>   
+                  {tx.type === 'INBOUND' ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold truncate text-gray-800">{tx.product?.name}</p>
-                  <p className="text-[10px] font-medium text-gray-400">{tx.type} • {tx.quantity} units</p>
+                  <p className="text-xs font-semibold truncate text-slate-200">{tx.product?.name}</p>
+                  <p className="text-[10px] text-slate-400 font-mono">{tx.type} • {tx.quantity} units</p>
                 </div>
-                <p className="text-[10px] font-medium text-gray-400">{format(parseISO(tx.created_at), 'HH:mm')}</p>
+                <p className="text-[10px] font-mono text-slate-500">{format(parseISO(tx.created_at), 'HH:mm')}</p>
               </div>
             ))}
-            {recentTransactions.length === 0 && <p className="text-center text-gray-400 py-10 text-xs">No recent activity</p>}
+            {recentTransactions.length === 0 && <p className="text-center text-slate-500 py-8 text-xs">No recent transactions</p>}
           </div>
         </div>
       </div>
 
-      {/* Stock Chart Popup */}
+      {/* Stock Chart Modal */}
       {activeChart && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="flex min-h-full items-center justify-center p-4">
-            <div className="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-              <button
-                onClick={() => setActiveChart(null)}
-                className="absolute top-6 right-6 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all z-10"
-              >
-                <X size={24} />
-              </button>
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="relative w-full max-w-3xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+            <button
+              onClick={() => setActiveChart(null)}
+              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all z-10"
+            >
+              <X size={20} />
+            </button>
 
-              <div className="p-8">
-                <div className="flex items-center gap-4 mb-8">
-                  <div className="p-3 rounded-xl bg-slate-50">
-                    <LineChartIcon className="text-slate-600" size={24} />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">{activeChart.title}</h2>
-                    <p className="text-sm text-gray-500 uppercase tracking-wider font-semibold">Performance trend for selected period</p>
-                  </div>
+            <div className="p-6 sm:p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                  <LineChartIcon size={20} />
                 </div>
-
-                <div className="h-[350px] w-full pr-4">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={activeChart.data}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                      <XAxis
-                        dataKey="name"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#94a3b8', fontSize: 12 }}
-                        dy={10}
-                      />
-                      <YAxis
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#94a3b8', fontSize: 12 }}
-                        tickFormatter={(val) => activeChart.isCurrency ? formatCurrency(Number(val)) : Number(val).toLocaleString()}
-                      />
-                      <Tooltip
-                        formatter={(value) => activeChart.isCurrency ? formatCurrency(Number(value)) : Number(value).toLocaleString()}
-                        contentStyle={{
-                          backgroundColor: '#fff',
-                          border: 'none',
-                          borderRadius: '12px',
-                          boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
-                        }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="value"
-                        stroke={activeChart.color}
-                        strokeWidth={3}
-                        dot={{ r: 4, fill: activeChart.color, strokeWidth: 2, stroke: '#fff' }}
-                        activeDot={{ r: 6, strokeWidth: 0 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+                <div>
+                  <h2 className="text-xl font-bold text-white">{activeChart.title}</h2>
+                  <p className="text-xs text-slate-400">Historical performance analytics</p>
                 </div>
               </div>
 
-              <div className="bg-slate-50 p-6 border-t border-gray-100 flex justify-between items-center">
-                <div className="flex gap-2">      
-                  <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
-                  <span className="text-xs font-semibold text-gray-600 uppercase tracking-tight">Live Database Sync</span>
-                </div>
-                <p className="text-xs text-gray-400 italic">Values are calculated from real transaction history</p>
+              <div className="h-[320px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={activeChart.data}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e293b" />
+                    <XAxis
+                      dataKey="name"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: '#64748b', fontSize: 11 }}
+                      dy={10}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: '#64748b', fontSize: 11 }}
+                      tickFormatter={(val) => activeChart.isCurrency ? formatCurrency(Number(val)) : Number(val).toLocaleString()}
+                    />
+                    <Tooltip
+                      formatter={(value) => activeChart.isCurrency ? formatCurrency(Number(value)) : Number(value).toLocaleString()}
+                      contentStyle={{
+                        backgroundColor: '#0f172a',
+                        borderColor: '#334155',
+                        borderRadius: '12px',
+                        color: '#f8fafc',
+                        fontSize: '12px'
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke={activeChart.color}
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: activeChart.color, strokeWidth: 2, stroke: '#0f172a' }}
+                      activeDot={{ r: 6, strokeWidth: 0 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
+            </div>
+
+            <div className="bg-slate-950 px-6 py-3 border-t border-slate-800 flex justify-between items-center text-xs text-slate-400">
+              <div className="flex items-center gap-2">      
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="font-semibold uppercase tracking-wider text-[10px] text-emerald-400">Live Synchronized</span>
+              </div>
+              <p className="text-[11px] text-slate-500 font-mono">Calculated from warehouse ledger records</p>
             </div>
           </div>
         </div>,
@@ -686,43 +765,64 @@ interface ModernStatCardProps {
   title: string;
   value: string;
   icon: React.ElementType;
-  gradient: string;
+  accentColor: 'blue' | 'emerald' | 'amber' | 'violet';
   onClick?: () => void;
 }
 
-function ModernStatCard({ title, value, icon: Icon, gradient, onClick }: ModernStatCardProps) {
+function ModernStatCard({ title, value, icon: Icon, accentColor, onClick }: ModernStatCardProps) {
+  const colorMap = {
+    blue: {
+      border: 'hover:border-blue-500/40',
+      iconBg: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
+      glow: 'from-blue-600/10',
+      tag: 'text-blue-400'
+    },
+    emerald: {
+      border: 'hover:border-emerald-500/40',
+      iconBg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+      glow: 'from-emerald-600/10',
+      tag: 'text-emerald-400'
+    },
+    amber: {
+      border: 'hover:border-amber-500/40',
+      iconBg: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
+      glow: 'from-amber-600/10',
+      tag: 'text-amber-400'
+    },
+    violet: {
+      border: 'hover:border-violet-500/40',
+      iconBg: 'bg-violet-500/10 border-violet-500/20 text-violet-400',
+      glow: 'from-violet-600/10',
+      tag: 'text-violet-400'
+    }
+  };
+
+  const scheme = colorMap[accentColor];
+
   return (
     <button
       onClick={onClick}
-      className="group relative h-full min-h-[112px] overflow-hidden bg-white rounded-xl p-4 sm:p-5 shadow-sm hover:shadow-lg text-left w-full border border-gray-100"
-      style={{ transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}
+      className={cn(
+        "group relative overflow-hidden bg-slate-900/80 rounded-2xl p-4 sm:p-5 border border-slate-800/90 text-left w-full transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl backdrop-blur-sm",
+        scheme.border
+      )}
     >
-      <div
-        className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-5`}
-        style={{ transition: 'opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}
-      ></div>
-      <div
-        className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${gradient} rounded-full -mr-16 -mt-16 opacity-5 group-hover:scale-125`}
-        style={{ transition: 'transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)' }}
-      ></div>     
+      <div className={cn("absolute inset-0 bg-gradient-to-br to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500", scheme.glow)}></div>
 
-      <div className="relative flex h-full flex-col justify-between">
-        <div className="flex items-start justify-between mb-3">
+      <div className="relative flex flex-col justify-between h-full space-y-3">
+        <div className="flex items-start justify-between">
           <div className="min-w-0 flex-1">      
-            <p className="text-[10px] sm:text-xs font-medium text-slate-400 truncate tracking-wide">{title}</p>
-            <p className="text-lg sm:text-xl md:text-2xl font-bold text-slate-800 mt-0.5 truncate">{value}</p>
+            <p className="text-[11px] font-medium text-slate-400 truncate tracking-wide">{title}</p>
+            <p className="text-xl sm:text-2xl font-bold text-white mt-1 truncate tracking-tight font-mono">{value}</p>
           </div>
-          <div
-            className={`bg-gradient-to-br ${gradient} p-2 rounded-lg shadow-md group-hover:scale-110 ml-2`}
-            style={{ transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}
-          >
-            <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+          <div className={cn("p-2 rounded-xl border shadow-md ml-2 shrink-0 transition-transform duration-300 group-hover:scale-110", scheme.iconBg)}>
+            <Icon className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 text-[9px] font-medium text-blue-500 uppercase tracking-wider">
+        <div className={cn("flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider", scheme.tag)}>
           <span>View Trend</span>
-          <ArrowUpRight size={10} />
+          <ArrowUpRight size={12} />
         </div>
       </div>
     </button>

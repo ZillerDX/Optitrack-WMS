@@ -5,7 +5,22 @@
 
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+export const getStoredApiUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('optitrack_api_url') || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+};
+
+export const setStoredApiUrl = (url: string) => {
+  if (typeof window !== 'undefined') {
+    const cleanUrl = url.replace(/\/+$/, '');
+    localStorage.setItem('optitrack_api_url', cleanUrl);
+    apiClient.defaults.baseURL = cleanUrl;
+  }
+};
+
+const API_BASE_URL = getStoredApiUrl();
 
 // สร้างอินสแตนซ์ axios
 const apiClient: AxiosInstance = axios.create({
@@ -15,13 +30,18 @@ const apiClient: AxiosInstance = axios.create({
   },
 });
 
-// ตัวดักจับคำขอเพื่อเพิ่มโทเค็น JWT
+// ตัวดักจับคำขอเพื่อเพิ่มโทเค็น JWT และ dynamic base URL
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('token');
-
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (typeof window !== 'undefined') {
+      const customUrl = localStorage.getItem('optitrack_api_url');
+      if (customUrl) {
+        config.baseURL = customUrl.replace(/\/+$/, '');
+      }
+      const token = localStorage.getItem('token');
+      if (token && config.headers) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
 
     return config;
@@ -240,6 +260,15 @@ export const api = {
   deleteCategory: async (id: number) => {
     const response = await apiClient.delete(`/api/categories/${id}`);
     return response.data;
+  },
+
+  // Health check with latency measurement
+  checkHealth: async (customUrl?: string): Promise<{ status: string; latency: number }> => {
+    const target = (customUrl || getStoredApiUrl()).replace(/\/+$/, '');
+    const start = Date.now();
+    const response = await axios.get(`${target}/livez`, { timeout: 4000 });
+    const latency = Date.now() - start;
+    return { status: response.data.status, latency };
   },
 
 };

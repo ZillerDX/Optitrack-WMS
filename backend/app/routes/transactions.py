@@ -86,7 +86,7 @@ async def create_transaction(
         select(Inventory).where(
             Inventory.product_id == transaction_data.product_id,
             Inventory.location == transaction_data.location
-        )
+        ).with_for_update()
     )
     inventory = inventory_result.scalar_one_or_none()
 

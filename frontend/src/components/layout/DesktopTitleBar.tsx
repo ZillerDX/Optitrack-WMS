@@ -1,7 +1,9 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from 'react';
-import { Minus, Square, Copy, X, Wifi, Box, Search, ShieldCheck } from 'lucide-react';
+import { Minus, Square, Copy, X, Wifi, Box, Search, ShieldCheck, Server } from 'lucide-react';
+import { api } from '@/lib/api';
+import { ApiSettingsModal } from '@/components/modals';
 
 interface WindowControlsProps {
   onOpenCommandMenu?: () => void;
@@ -11,6 +13,19 @@ export function DesktopTitleBar({ onOpenCommandMenu }: WindowControlsProps) {
   const [isElectron, setIsElectron] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const [isApiOnline, setIsApiOnline] = useState(true);
+  const [latency, setLatency] = useState<number | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const checkHealth = async () => {
+    try {
+      const res = await api.checkHealth();
+      setIsApiOnline(res.status === 'alive');
+      setLatency(res.latency);
+    } catch {
+      setIsApiOnline(false);
+      setLatency(null);
+    }
+  };
 
   useEffect(() => {
     // Check if running in Electron environment
@@ -21,19 +36,8 @@ export function DesktopTitleBar({ onOpenCommandMenu }: WindowControlsProps) {
       });
     }
 
-    // Health check ping
-    const checkHealth = async () => {
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        const res = await fetch(`${apiUrl}/livez`, { method: 'GET' });
-        setIsApiOnline(res.ok);
-      } catch {
-        setIsApiOnline(false);
-      }
-    };
-
     checkHealth();
-    const interval = setInterval(checkHealth, 20000);
+    const interval = setInterval(checkHealth, 15000);
     return () => clearInterval(interval);
   }, []);
 
@@ -85,12 +89,18 @@ export function DesktopTitleBar({ onOpenCommandMenu }: WindowControlsProps) {
         </button>
 
         {/* Live System Indicator */}
-        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-900/80 border border-slate-800 text-[10px]">
+        <button
+          type="button"
+          onClick={() => setIsSettingsOpen(true)}
+          className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-[10px] transition-all cursor-pointer shadow-sm group"
+          title="Click to configure backend API endpoint"
+        >
           <span className={`w-1.5 h-1.5 rounded-full ${isApiOnline ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
           <span className={isApiOnline ? 'text-emerald-400 font-medium' : 'text-rose-400 font-medium'}>
-            {isApiOnline ? 'API Connected' : 'Offline Mode'}
+            {isApiOnline ? `API ${latency ? `(${latency}ms)` : 'Connected'}` : 'Offline Mode'}
           </span>
-        </div>
+          <Server className="w-2.5 h-2.5 text-slate-500 group-hover:text-blue-400 transition-colors ml-0.5" />
+        </button>
       </div>
 
       {/* Right: Window Controls */}
@@ -126,6 +136,13 @@ export function DesktopTitleBar({ onOpenCommandMenu }: WindowControlsProps) {
           </div>
         )}
       </div>
+
+      {/* API Endpoint Config Modal */}
+      <ApiSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onSaved={() => checkHealth()}
+      />
     </div>
   );
 }

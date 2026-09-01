@@ -363,172 +363,185 @@ export default function TransactionsPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 items-center justify-center font-sans">
+      <div className="flex h-screen bg-slate-950 text-slate-400 items-center justify-center font-sans">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-500 font-bold">Loading history...</p>
+          <div className="w-10 h-10 border-2 border-slate-800 border-t-blue-500 rounded-full animate-spin mx-auto mb-3"></div>
+          <p className="text-xs font-medium tracking-wide">Syncing Warehouse Ledger...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 sm:p-6 font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 space-y-6 font-sans">
       {/* Header */}
-      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">    
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">    
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl blur-lg opacity-30"></div>
-            <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 p-2.5 sm:p-3 rounded-xl">
-              <Package className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-            </div>
+          <div className="p-2.5 sm:p-3 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-400 shadow-lg shadow-violet-500/5">
+            <Package className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              Transactions
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              Warehouse Transaction Ledger
             </h1>
-            <p className="text-xs text-slate-500 font-medium">History of inbound and outbound movements.</p>
+            <p className="text-xs text-slate-400 font-medium">Auditable record of inbound deliveries and outbound dispatches</p>
           </div>
         </div>
-        <div className="flex flex-col sm:flex-row items-center gap-3 lg:ml-auto w-full lg:w-auto">
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <DateRangePicker
               dateRange={dateRange || {start: '', end: ''}}
               onChange={setDateRange}
-              className={cn("h-11 flex-1 sm:flex-none", !dateRange && "opacity-50 grayscale pointer-events-none")}
+              className={cn("h-10 text-xs bg-slate-900 border-slate-800 text-slate-200", !dateRange && "opacity-50 grayscale pointer-events-none")}
             />
             <button
               onClick={() => setDateRange(dateRange ? null : {start: format(subDays(new Date(), 30), 'yyyy-MM-dd'), end: format(new Date(), 'yyyy-MM-dd')})}
               className={cn(
-                "h-11 px-4 rounded-2xl text-[13px] font-semibold transition-all duration-200 border flex items-center justify-center shadow-sm shrink-0",
-                !dateRange ? "border-transparent bg-gradient-to-r from-blue-600 to-indigo-500 text-white shadow-lg shadow-blue-200/70" : "border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:text-blue-600 hover:shadow-md hover:shadow-blue-100/50"
+                "h-10 px-3.5 rounded-xl text-xs font-semibold transition-all duration-200 border flex items-center justify-center shadow-sm shrink-0",
+                !dateRange ? "border-blue-500/30 bg-blue-600 text-white shadow-lg shadow-blue-600/30" : "border-slate-800 bg-slate-900 text-slate-400 hover:text-white hover:border-slate-700"
               )}
             >
-              All time
+              All Time
             </button>
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2">
             <button
               onClick={exportToCSV}
               disabled={filteredTransactions.length === 0}
-              className="h-11 px-3.5 rounded-2xl text-[13px] font-semibold transition-all duration-200 border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900 shadow-sm flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+              className="h-10 px-3 rounded-xl text-xs font-semibold transition-all duration-200 border border-slate-800 bg-slate-900 text-slate-300 hover:text-white hover:border-slate-700 shadow-sm flex items-center gap-1.5 shrink-0 disabled:opacity-40"
               title="Export filtered records to CSV"
             >
-              <Download className="h-4 w-4 text-slate-500" />
+              <Download className="h-4 w-4 text-slate-400" />
               <span>Export</span>
             </button>
             <button 
               onClick={() => setIsModalOpen(true)}
-              className="group relative overflow-hidden bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 h-11 rounded-2xl font-medium shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 flex items-center justify-center shrink-0 flex-1 sm:flex-none"
+              className="flex items-center gap-1.5 px-3.5 h-10 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-lg shadow-blue-600/30 transition-all shrink-0"
             >
-              <div className="relative flex items-center gap-1.5">
-                <Plus className="h-4 w-4" />
-                <span className="text-[13px]">New Transaction</span>
-              </div>
+              <Plus className="h-4 w-4" />
+              <span>+ Log Transaction</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* KPI Stats */}
-      <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-3 mb-6">
+      {/* KPI Stats Grid */}
+      <div className="grid gap-4 sm:gap-5 grid-cols-2 lg:grid-cols-3">
         <ModernStatCard 
-          title="Total inbound" 
+          title="Total Inbound Volume" 
           value={formatCurrency(stats.totalInbound)} 
           icon={ArrowDownCircle} 
-          gradient="from-emerald-500 to-teal-500" 
+          accentColor="emerald"
           onClick={() => openTransactionChart('inbound')}
         />
         <ModernStatCard 
-          title="Total outbound" 
+          title="Total Outbound Dispatched" 
           value={formatCurrency(stats.totalOutbound)} 
           icon={ArrowUpCircle} 
-          gradient="from-blue-500 to-cyan-500" 
+          accentColor="blue"
           onClick={() => openTransactionChart('outbound')}
         />
         <ModernStatCard 
-          title="Total transaction" 
+          title="Total Ledger Entries" 
           value={stats.count.toString()} 
           icon={Package} 
-          gradient="from-violet-500 to-purple-500" 
+          accentColor="violet"
           onClick={() => openTransactionChart('total')}
         />     
       </div>
 
-      {/* Filters & Sorting */}
-      <div className="bg-white p-3 sm:p-4 rounded-xl border border-gray-100 shadow-sm mb-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-4">
+      {/* Filters & Sorting Bar */}
+      <div className="bg-slate-900/60 p-3 sm:p-4 rounded-2xl border border-slate-800/80 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[140px] bg-slate-50 border-none font-semibold text-xs h-11 rounded-xl">
-              <div className="flex items-center gap-2"><Filter size={14} className="text-slate-400"/> <SelectValue /></div>
+            <SelectTrigger className="w-[150px] bg-slate-950 border-slate-800 text-slate-200 font-semibold text-xs h-10 rounded-xl">
+              <div className="flex items-center gap-2"><Filter size={13} className="text-slate-400"/> <SelectValue /></div>
             </SelectTrigger>
-            <SelectContent className="rounded-xl border-gray-100">
+            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
               <SelectItem value="ALL">All Types</SelectItem>
-              <SelectItem value="INBOUND">Inbound</SelectItem>
-              <SelectItem value="OUTBOUND">Outbound</SelectItem>
+              <SelectItem value="INBOUND">Inbound Only</SelectItem>
+              <SelectItem value="OUTBOUND">Outbound Only</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        <div className="flex items-center gap-4">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest hidden sm:block">Sort by:</p>
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Sort:</span>
           <button
             onClick={() => setSortOrder(sortOrder === 'latest' ? 'oldest' : 'latest')}
-            className="flex items-center gap-2 px-5 py-2.5 bg-slate-50 hover:bg-white hover:shadow-md hover:border-blue-100 border-2 border-transparent rounded-xl text-xs font-bold text-slate-700 transition-all group"
+            className="flex items-center gap-2 px-3.5 py-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-semibold text-slate-300 transition-all group"
           >
-            <ArrowUpDown size={14} className="text-blue-500 group-hover:scale-110 transition-transform" />
-            {sortOrder === 'latest' ? 'Latest First' : 'Oldest First'}
+            <ArrowUpDown size={13} className="text-blue-400 group-hover:scale-110 transition-transform" />
+            <span>{sortOrder === 'latest' ? 'Newest First' : 'Oldest First'}</span>
           </button>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">    
+      {/* Ledger Table */}
+      <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl shadow-xl overflow-hidden backdrop-blur-sm">    
         <div className="overflow-x-auto">       
           <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
-                <th className="px-6 py-4 text-xs font-medium text-gray-700 tracking-wider border-none">Ref code</th>
-                <th className="px-6 py-4 text-xs font-medium text-gray-700 tracking-wider border-none">Type</th>
-                <th className="px-6 py-4 text-xs font-medium text-gray-700 tracking-wider border-none">Product</th>
-                <th className="px-6 py-4 text-xs font-medium text-gray-700 tracking-wider text-right border-none">Qty</th>
-                <th className="px-6 py-4 text-xs font-medium text-gray-700 tracking-wider border-none">Location</th>
-                <th className="px-6 py-4 text-xs font-medium text-gray-700 tracking-wider text-right border-none">Amount</th>
-                <th className="px-6 py-4 text-xs font-medium text-gray-700 tracking-wider text-right border-none">Timestamp</th>
+            <thead className="bg-slate-950/90 border-b border-slate-800">
+              <tr>
+                <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ref Code</th>
+                <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Type</th>
+                <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Product</th>
+                <th className="px-6 py-3.5 text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider">Qty</th>
+                <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Location</th>
+                <th className="px-6 py-3.5 text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Amount</th>
+                <th className="px-6 py-3.5 text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider">Timestamp</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredTransactions.map((tx) => (
-                <tr key={tx.id} onClick={() => setSelectedTx(tx)} className="group hover:bg-blue-50/30 cursor-pointer transition-colors font-sans">
-                  <td className="px-6 py-4">    
-                    <span className="text-[11px] font-bold text-slate-900 font-mono tracking-tight">{tx.ref_code}</span>
-                  </td>
-                  <td className="px-6 py-4">    
-                    <div className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold", tx.type === 'INBOUND' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600')}>
-                      {tx.type === 'INBOUND' ? <ArrowDownCircle size={12}/> : <ArrowUpCircle size={12}/>}
-                      {tx.type}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">    
-                    <div className="flex flex-col min-w-0">
-                      <p className="text-xs font-semibold text-slate-800 truncate max-w-[200px]">{tx.product.name}</p>
-                      <p className="text-[10px] text-slate-400 font-medium uppercase">{tx.product.sku}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="text-xs font-bold text-slate-700">{tx.quantity}</span>     
-                  </td>
-                  <td className="px-6 py-4">    
-                    <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">{tx.location}</span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="text-xs font-bold text-blue-600">{formatCurrency(tx.total_price)}</span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <p className="text-xs font-medium text-slate-500 whitespace-nowrap">{formatDate(tx.created_at)}</p>
+            <tbody className="divide-y divide-slate-800/60">
+              {filteredTransactions.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-16 text-center text-slate-400">
+                    <Package className="h-10 w-10 mx-auto mb-3 text-slate-600" />
+                    <p className="text-sm font-semibold text-slate-300">No transactions recorded</p>
+                    <p className="text-xs text-slate-500 mt-1">Try expanding your date range filter</p>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredTransactions.map((tx) => (
+                  <tr key={tx.id} onClick={() => setSelectedTx(tx)} className="hover:bg-slate-800/40 cursor-pointer transition-colors font-sans">
+                    <td className="px-6 py-3.5">    
+                      <span className="text-xs font-bold text-blue-400 font-mono bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+                        {tx.ref_code}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3.5">    
+                      <div className={cn(
+                        "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border",
+                        tx.type === 'INBOUND' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                      )}>
+                        {tx.type === 'INBOUND' ? <ArrowDownCircle size={12}/> : <ArrowUpCircle size={12}/>}
+                        <span>{tx.type}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-3.5">    
+                      <div className="flex flex-col min-w-0">
+                        <p className="text-sm font-semibold text-white truncate max-w-[240px]">{tx.product.name}</p>
+                        <p className="text-[10px] text-slate-400 font-mono">{tx.product.sku}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-3.5 text-right">
+                      <span className="text-sm font-mono font-bold text-white">{tx.quantity}</span>     
+                    </td>
+                    <td className="px-6 py-3.5">    
+                      <span className="text-xs font-medium text-slate-300 bg-slate-950 px-2 py-0.5 rounded-md border border-slate-800">
+                        {tx.location}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3.5 text-right">
+                      <span className="text-sm font-mono font-bold text-slate-200">{formatCurrency(tx.total_price)}</span>
+                    </td>
+                    <td className="px-6 py-3.5 text-right">
+                      <p className="text-xs font-mono text-slate-400 whitespace-nowrap">{formatDate(tx.created_at)}</p>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -870,23 +883,68 @@ export default function TransactionsPage() {
   );
 }
 
-function ModernStatCard({ title, value, icon: Icon, gradient, onClick }: { title: string, value: string, icon: any, gradient: string, onClick?: () => void }) {
+interface ModernStatCardProps {
+  title: string;
+  value: string;
+  icon: any;
+  accentColor: 'blue' | 'emerald' | 'amber' | 'violet';
+  onClick?: () => void;
+}
+
+function ModernStatCard({ title, value, icon: Icon, accentColor, onClick }: ModernStatCardProps) {
+  const colorMap = {
+    blue: {
+      border: 'hover:border-blue-500/40',
+      iconBg: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
+      glow: 'from-blue-600/10',
+      tag: 'text-blue-400'
+    },
+    emerald: {
+      border: 'hover:border-emerald-500/40',
+      iconBg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+      glow: 'from-emerald-600/10',
+      tag: 'text-emerald-400'
+    },
+    amber: {
+      border: 'hover:border-amber-500/40',
+      iconBg: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
+      glow: 'from-amber-600/10',
+      tag: 'text-amber-400'
+    },
+    violet: {
+      border: 'hover:border-violet-500/40',
+      iconBg: 'bg-violet-500/10 border-violet-500/20 text-violet-400',
+      glow: 'from-violet-600/10',
+      tag: 'text-violet-400'
+    }
+  };
+
+  const scheme = colorMap[accentColor];
+
   return (
-    <button onClick={onClick} className="group relative h-full min-h-[112px] overflow-hidden bg-white rounded-xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 text-left w-full border border-gray-100 font-sans">
-      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}></div>  
-      <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${gradient} rounded-full -mr-16 -mt-16 opacity-5 group-hover:scale-110 transition-transform duration-500`}></div>     
-      <div className="relative flex h-full flex-col justify-between">
-        <div className="flex items-start justify-between mb-3">
+    <button
+      onClick={onClick}
+      className={cn(
+        "group relative overflow-hidden bg-slate-900/80 rounded-2xl p-4 sm:p-5 border border-slate-800/90 text-left w-full transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl backdrop-blur-sm",
+        scheme.border
+      )}
+    >
+      <div className={cn("absolute inset-0 bg-gradient-to-br to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500", scheme.glow)}></div>
+
+      <div className="relative flex flex-col justify-between h-full space-y-3">
+        <div className="flex items-start justify-between">
           <div className="min-w-0 flex-1">      
-            <p className="text-[10px] sm:text-xs font-medium text-slate-400 truncate tracking-wide">{title}</p>
-            <p className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600 mt-0.5 truncate">{value}</p>
+            <p className="text-[11px] font-medium text-slate-400 truncate tracking-wide">{title}</p>
+            <p className="text-xl sm:text-2xl font-bold text-white mt-1 truncate tracking-tight font-mono">{value}</p>
           </div>
-          <div className={`bg-gradient-to-br ${gradient} p-2 rounded-lg shadow-md group-hover:scale-110 transition-transform duration-300 ml-2`}><Icon className="h-4 w-4 sm:h-5 sm:w-5 text-white" /></div>
+          <div className={cn("p-2 rounded-xl border shadow-md ml-2 shrink-0 transition-transform duration-300 group-hover:scale-110", scheme.iconBg)}>
+            <Icon className="h-5 w-5" />
+          </div>
         </div>
-        
-        <div className="flex items-center gap-1.5 text-[9px] font-medium text-blue-500 uppercase tracking-wider">
+
+        <div className={cn("flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider", scheme.tag)}>
           <span>View Trend</span>
-          <ArrowUpRight size={10} />
+          <ArrowUpRight size={12} />
         </div>
       </div>
     </button>
