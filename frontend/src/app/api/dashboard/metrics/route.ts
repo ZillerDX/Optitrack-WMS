@@ -1,11 +1,19 @@
-﻿import { NextResponse } from 'next/server';
-import { supabaseRest } from '@/lib/supabase';
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseRest, getAuthUser } from '@/lib/supabase';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const user = await getAuthUser(req);
+    if (!user) {
+      return NextResponse.json({
+        warehouse_capacity_pct: 0,
+        warehouse_capacity_label: '0 / 0 (0%)',
+      });
+    }
+
     const [invRes, locRes] = await Promise.all([
-      supabaseRest('inventory?select=quantity'),
-      supabaseRest('locations?select=capacity'),
+      supabaseRest(`inventory?select=quantity,product:products!inner(owner_id)&product.owner_id=eq.${user.id}`),
+      supabaseRest(`locations?owner_id=eq.${user.id}&select=capacity`),
     ]);
 
     let totalQty = 0;
@@ -32,7 +40,7 @@ export async function GET() {
       warehouse_capacity_pct: pct,
       warehouse_capacity_label: label,
     });
-  } catch (err: any) {
+  } catch {
     return NextResponse.json({
       warehouse_capacity_pct: 0,
       warehouse_capacity_label: '0 / 0 (0%)',

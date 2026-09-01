@@ -1,4 +1,4 @@
-﻿import { SignJWT, jwtVerify } from 'jose';
+import { SignJWT, jwtVerify } from 'jose';
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hdvalaxaujjyqcejhyqb.supabase.co';
@@ -44,4 +44,25 @@ export async function verifySessionToken(token: string) {
   } catch {
     return null;
   }
+}
+
+export interface AuthUser {
+  id: number;
+  email: string;
+  role: string;
+}
+
+export async function getAuthUser(req: Request): Promise<AuthUser | null> {
+  const authHeader = req.headers.get('Authorization') || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  if (!token) return null;
+
+  const payload = await verifySessionToken(token);
+  if (!payload || !payload.sub) return null;
+
+  return {
+    id: Number(payload.sub),
+    email: (payload.email as string) || '',
+    role: (payload.role as string) || 'ADMIN',
+  };
 }

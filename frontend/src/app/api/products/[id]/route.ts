@@ -1,11 +1,16 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
-import { supabaseRest } from '@/lib/supabase';
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseRest, getAuthUser } from '@/lib/supabase';
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const user = await getAuthUser(req);
+    if (!user) {
+      return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await req.json();
     const id = params.id;
-    const res = await supabaseRest(`products?id=eq.${id}`, {
+    const res = await supabaseRest(`products?id=eq.${id}&owner_id=eq.${user.id}`, {
       method: 'PATCH',
       body: JSON.stringify(body),
     });
@@ -22,8 +27,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const user = await getAuthUser(req);
+    if (!user) {
+      return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+    }
+
     const id = params.id;
-    const res = await supabaseRest(`products?id=eq.${id}`, {
+    const res = await supabaseRest(`products?id=eq.${id}&owner_id=eq.${user.id}`, {
       method: 'DELETE',
     });
 

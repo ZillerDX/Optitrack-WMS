@@ -1,10 +1,13 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
-import { supabaseRest } from '@/lib/supabase';
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseRest, getAuthUser } from '@/lib/supabase';
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const user = await getAuthUser(req);
+    if (!user) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+
     const body = await req.json();
-    const res = await supabaseRest(`locations?id=eq.${params.id}`, {
+    const res = await supabaseRest(`locations?id=eq.${params.id}&owner_id=eq.${user.id}`, {
       method: 'PATCH',
       body: JSON.stringify(body),
     });
@@ -18,7 +21,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const res = await supabaseRest(`locations?id=eq.${params.id}`, { method: 'DELETE' });
+    const user = await getAuthUser(req);
+    if (!user) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+
+    const res = await supabaseRest(`locations?id=eq.${params.id}&owner_id=eq.${user.id}`, { method: 'DELETE' });
     if (!res.ok) return NextResponse.json({ detail: await res.text() }, { status: 400 });
     return NextResponse.json({ message: 'Location deleted' });
   } catch (err: any) {

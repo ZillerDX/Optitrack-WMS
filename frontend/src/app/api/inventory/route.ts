@@ -1,11 +1,16 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
-import { supabaseRest } from '@/lib/supabase';
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseRest, getAuthUser } from '@/lib/supabase';
 
 export async function GET(req: NextRequest) {
   try {
+    const user = await getAuthUser(req);
+    if (!user) {
+      return NextResponse.json([]);
+    }
+
     const { searchParams } = new URL(req.url);
     const location = searchParams.get('location');
-    let path = 'inventory?select=*,product:products(*)&order=id.desc';
+    let path = `inventory?select=*,product:products!inner(*)&product.owner_id=eq.${user.id}&order=id.desc`;
     if (location && location !== 'ALL') {
       path += `&location=eq.${encodeURIComponent(location)}`;
     }
@@ -25,7 +30,23 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getAuthUser(req);
+    if (!user) {
+      return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await req.json();
+
+    // Verify product belongs to user
+    const prodRes = await supabaseRest(`products?id=eq.${body.product_id}&owner_id=eq.${user.id}`);
+    if (!prodRes.ok) {
+      return NextResponse.json({ detail: 'Product not found or access denied' }, { status: 403 });
+    }
+    const prodList = await prodRes.json();
+    if (!Array.isArray(prodList) || prodList.length === 0) {
+      return NextResponse.json({ detail: 'Product not found or access denied' }, { status: 403 });
+    }
+
     const res = await supabaseRest('inventory', {
       method: 'POST',
       body: JSON.stringify({

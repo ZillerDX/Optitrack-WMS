@@ -5,7 +5,8 @@
  * Featuring advanced filtering, sorting, and modern E-Document detail popups.
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { Suspense, useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import {
   ArrowDownCircle,
@@ -67,6 +68,12 @@ interface Product {
   id: number;
   sku: string;
   name: string;
+  min_stock_level?: number;
+  cost_price?: number;
+  sell_price?: number;
+  supplier?: string;
+  category?: string;
+  unit?: string;
 }
 
 interface Transaction {
@@ -101,8 +108,13 @@ interface NotificationState {
   message: string;
 }
 
-export default function TransactionsPage() {    
-  const { selectedLocation } = useLocationStore();
+function TransactionsContent() {    
+  const searchParams = useSearchParams();
+  const actionParam = searchParams.get('action');
+  const productIdParam = searchParams.get('product_id');
+  const locationParam = searchParams.get('location');
+
+  const { selectedLocation, setSelectedLocation, locations } = useLocationStore();
   const { formatCurrency } = useCurrencyFormatter();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -136,9 +148,51 @@ export default function TransactionsPage() {
     type: 'INBOUND' as 'INBOUND' | 'OUTBOUND',  
     product_id: '',
     quantity: '',
+    location: '',
     notes: '',
     date: format(new Date(), 'yyyy-MM-dd')      
   });
+
+  const lowStockProducts = useMemo(() => {
+    return inventory.filter(
+      (item) => item.status === 'LOW_STOCK' || (Number(item.quantity) <= (Number(item.product?.min_stock_level) || 5))
+    );
+  }, [inventory]);
+
+  // Handle URL navigation params (e.g. ?action=inbound&product_id=3&location=Zone%20B-02)
+  useEffect(() => {
+    if (actionParam === 'inbound' && productIdParam && products.length > 0) {
+      const targetProd = products.find(p => p.id.toString() === productIdParam);
+      if (targetProd) {
+        if (locationParam && locationParam !== 'ALL') {
+          setSelectedLocation(locationParam);
+        } else {
+          const invItem = inventory.find(i => i.product_id === targetProd.id);
+          if (invItem?.location) {
+            setSelectedLocation(invItem.location);
+          } else if (locations.length > 0 && locations[0] !== 'ALL') {
+            setSelectedLocation(locations[0]);
+          }
+        }
+
+        const invForLoc = inventory.find(i => i.product_id === targetProd.id);
+        const currentQty = invForLoc ? invForLoc.quantity : 0;
+        const minLevel = targetProd.min_stock_level || 5;
+        const restockSuggested = Math.max(1, minLevel * 2 - currentQty);
+
+        setFormData(prev => ({
+          ...prev,
+          type: 'INBOUND',
+          product_id: productIdParam,
+          quantity: String(restockSuggested),
+          location: locationParam || invForLoc?.location || prev.location,
+          notes: `Inbound Restock (Current: ${currentQty}, Min: ${minLevel})`,
+          date: format(new Date(), 'yyyy-MM-dd')
+        }));
+        setIsModalOpen(true);
+      }
+    }
+  }, [actionParam, productIdParam, locationParam, products, inventory, locations, setSelectedLocation]);
 
   useEffect(() => {
     loadData();
@@ -199,14 +253,18 @@ export default function TransactionsPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      if (selectedLocation === 'ALL') {
-        showNotification('warning', 'Location Required', 'Please select a specific location from the sidebar.');
+      const targetLocation = selectedLocation !== 'ALL' 
+        ? selectedLocation 
+        : (formData.location || locations.find(l => l !== 'ALL') || 'Zone A-01');
+
+      if (!targetLocation || targetLocation === 'ALL') {
+        showNotification('warning', 'Location Required', 'Please select a specific warehouse zone.');
         setIsSubmitting(false);
         return;
       }
 
       const quantity = parseInt(formData.quantity);
-      if (formData.type === 'OUTBOUND' && getLocationStock(selectedLocation) < quantity) {      
+      if (formData.type === 'OUTBOUND' && getLocationStock(targetLocation) < quantity) {      
         showNotification('error', 'Insufficient Stock', 'Not enough stock at this location.');  
         setIsSubmitting(false);
         return;
@@ -216,7 +274,7 @@ export default function TransactionsPage() {
         type: formData.type,
         product_id: parseInt(formData.product_id),
         quantity: quantity,
-        location: selectedLocation,
+        location: targetLocation,
         notes: formData.notes,
         created_at: formData.date ? new Date(formData.date).toISOString() : undefined
       });
@@ -226,6 +284,7 @@ export default function TransactionsPage() {
         type: 'INBOUND',
         product_id: '',
         quantity: '',
+        location: '',
         notes: '',
         date: format(new Date(), 'yyyy-MM-dd')  
       });
@@ -738,35 +797,110 @@ export default function TransactionsPage() {
             type: 'INBOUND',
             product_id: '',
             quantity: '',
+            location: '',
             notes: '',
             date: format(new Date(), 'yyyy-MM-dd')
           });
         }}
-        title={`New Transaction (${selectedLocation !== 'ALL' ? selectedLocation : 'Select Location First'})`}
+        title={`New Transaction (${selectedLocation !== 'ALL' ? selectedLocation : (formData.location || 'Select Location')})`}
         size="lg"
       >
-        {selectedLocation === 'ALL' ? (
-          <div className="text-center py-8">    
-            <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-3" />
-            <h3 className="text-lg font-bold text-gray-900 mb-2 font-sans">Location Required</h3>
-            <p className="text-gray-600 mb-4 font-medium font-sans">Please select a specific location from the sidebar.</p>
-            <button onClick={() => setIsModalOpen(false)} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-bold">Close</button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3 text-medium">Transaction type <span className="text-red-500">*</span></label>
-              <div className="grid grid-cols-2 gap-4">
-                <button type="button" onClick={() => setFormData({ ...formData, type: 'INBOUND' })} className={cn("p-4 rounded-xl border-2 transition-all", formData.type === 'INBOUND' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 hover:border-green-300')}>
-                  <ArrowDownCircle className="h-8 w-8 mx-auto mb-2" />
-                  <div className="font-bold text-sm">INBOUND</div>
-                </button>
-                <button type="button" onClick={() => setFormData({ ...formData, type: 'OUTBOUND' })} className={cn("p-4 rounded-xl border-2 transition-all", formData.type === 'OUTBOUND' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-blue-300')}>
-                  <ArrowUpCircle className="h-8 w-8 mx-auto mb-2" />
-                  <div className="font-bold text-sm">OUTBOUND</div>
-                </button>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Urgent Low Stock Restock Banner & Multi-item Shortage Switcher */}
+          {formData.type === 'INBOUND' && lowStockProducts.length > 0 && (
+            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-wider">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>Urgent Restock Shortage Items ({lowStockProducts.length})</span>
+                </div>
+                <span className="text-[11px] text-amber-300 font-medium">Click to pre-fill</span>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                {lowStockProducts.map((shortItem) => {
+                  const isSelected = formData.product_id === shortItem.product_id.toString();
+                  const pName = shortItem.product?.name || `Product #${shortItem.product_id}`;
+                  const currentQty = shortItem.quantity;
+                  const minLevel = shortItem.product?.min_stock_level || 5;
+                  const deficit = Math.max(1, minLevel * 2 - currentQty);
+
+                  return (
+                    <button
+                      key={shortItem.id}
+                      type="button"
+                      onClick={() => {
+                        setFormData(prev => ({
+                          ...prev,
+                          type: 'INBOUND',
+                          product_id: shortItem.product_id.toString(),
+                          quantity: String(deficit),
+                          location: shortItem.location || prev.location,
+                          notes: `Restock below safety threshold (${currentQty}/${minLevel})`,
+                        }));
+                        if (shortItem.location && shortItem.location !== 'ALL') {
+                          setSelectedLocation(shortItem.location);
+                        }
+                      }}
+                      className={cn(
+                        "px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border flex items-center gap-2",
+                        isSelected
+                          ? "bg-amber-500 border-amber-400 text-slate-950 shadow-md font-bold scale-[1.02]"
+                          : "bg-slate-900/90 border-slate-700 text-amber-300 hover:bg-slate-800 hover:border-amber-400/60"
+                      )}
+                    >
+                      <span className="truncate max-w-[160px]">{pName}</span>
+                      <span className={cn(
+                        "px-1.5 py-0.5 rounded text-[10px] font-mono",
+                        isSelected ? "bg-slate-950/20 text-slate-900 font-black" : "bg-amber-500/20 text-amber-400 font-bold"
+                      )}>
+                        Stock: {currentQty} / {minLevel}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
+          )}
+
+          {/* Location Selector if All Locations is selected in sidebar */}
+          {selectedLocation === 'ALL' && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Target Warehouse Zone <span className="text-red-500">*</span>
+              </label>
+              <Select 
+                value={formData.location || locations.find(l => l !== 'ALL') || 'Zone A-01'} 
+                onValueChange={(val) => {
+                  setFormData(prev => ({ ...prev, location: val }));
+                  setSelectedLocation(val);
+                }}
+              >
+                <SelectTrigger className="w-full h-11 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500">
+                  <SelectValue placeholder="Select warehouse zone..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.filter(l => l !== 'ALL').map((loc) => (
+                    <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-3 text-medium">Transaction type <span className="text-red-500">*</span></label>
+            <div className="grid grid-cols-2 gap-4">
+              <button type="button" onClick={() => setFormData({ ...formData, type: 'INBOUND' })} className={cn("p-4 rounded-xl border-2 transition-all", formData.type === 'INBOUND' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 hover:border-green-300')}>
+                <ArrowDownCircle className="h-8 w-8 mx-auto mb-2" />
+                <div className="font-bold text-sm">INBOUND</div>
+              </button>
+              <button type="button" onClick={() => setFormData({ ...formData, type: 'OUTBOUND' })} className={cn("p-4 rounded-xl border-2 transition-all", formData.type === 'OUTBOUND' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-blue-300')}>
+                <ArrowUpCircle className="h-8 w-8 mx-auto mb-2" />
+                <div className="font-bold text-sm">OUTBOUND</div>
+              </button>
+            </div>
+          </div>
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -869,7 +1003,6 @@ export default function TransactionsPage() {
               <button type="submit" disabled={isSubmitting} className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 font-medium transition-all disabled:opacity-50 shadow-lg text-sm">{isSubmitting ? 'Recording...' : `Submit ${formData.type}`}</button>       
             </div>
           </form>
-        )}
       </Modal>
 
       <NotificationModal
@@ -880,6 +1013,23 @@ export default function TransactionsPage() {
         message={notification.message}
       />
     </div>
+  );
+}
+
+export default function TransactionsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-12 h-12 border-3 border-slate-800 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-xs text-slate-400 font-medium tracking-wide">Syncing Transaction Ledger...</p>
+          </div>
+        </div>
+      }
+    >
+      <TransactionsContent />
+    </Suspense>
   );
 }
 

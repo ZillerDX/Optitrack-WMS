@@ -349,7 +349,7 @@ export default function DashboardPage() {
 
   const lowStockItems = allInventory.filter(
     (i: any) => i.status === 'LOW_STOCK' || (Number(i.quantity) <= (Number(i.product?.min_stock_level) || 5))
-  ).slice(0, 4);
+  );
 
   if (isLoading && allTransactions.length === 0) {
     return (
@@ -447,7 +447,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => router.push(`/transactions?action=inbound&product_id=${item.product_id}`)}
+                  onClick={() => router.push(`/transactions?action=inbound&product_id=${item.product_id}&location=${encodeURIComponent(item.location || '')}`)}
                   className="px-2.5 py-1 text-[11px] font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-sm shrink-0 transition-colors"
                 >
                   + Inbound

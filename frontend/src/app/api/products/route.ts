@@ -1,9 +1,14 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
-import { supabaseRest } from '@/lib/supabase';
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseRest, getAuthUser } from '@/lib/supabase';
 
 export async function GET(req: NextRequest) {
   try {
-    const res = await supabaseRest('products?select=*&order=id.desc');
+    const user = await getAuthUser(req);
+    if (!user) {
+      return NextResponse.json([]);
+    }
+
+    const res = await supabaseRest(`products?owner_id=eq.${user.id}&select=*&order=id.desc`);
     if (!res.ok) {
       console.error('[Supabase Products Error]:', await res.text());
       return NextResponse.json([]);
@@ -18,9 +23,14 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getAuthUser(req);
+    if (!user) {
+      return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await req.json();
     const payload = {
-      owner_id: body.owner_id || 1,
+      owner_id: user.id,
       sku: body.sku,
       name: body.name,
       category: body.category,
@@ -43,7 +53,27 @@ export async function POST(req: NextRequest) {
     }
 
     const created = await res.json();
-    return NextResponse.json(created[0] || payload);
+    const newProduct = created[0] || payload;
+
+    // Auto-create initial 0-quantity inventory record in the user's primary location if exists
+    if (newProduct.id) {
+      const locRes = await supabaseRest(`locations?owner_id=eq.${user.id}&limit=1`);
+      if (locRes.ok) {
+        const locs = await locRes.json();
+        const primaryLoc = locs[0]?.name || 'Zone A-01';
+        await supabaseRest('inventory', {
+          method: 'POST',
+          body: JSON.stringify({
+            product_id: newProduct.id,
+            location: primaryLoc,
+            quantity: 0,
+            status: 'OUT_OF_STOCK',
+          }),
+        });
+      }
+    }
+
+    return NextResponse.json(newProduct);
   } catch (err: any) {
     return NextResponse.json({ detail: err.message }, { status: 500 });
   }
