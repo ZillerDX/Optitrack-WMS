@@ -50,6 +50,13 @@ export function AIChatWidget() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+  const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
+
+  const getStorageKey = useCallback((email?: string) => {
+    const sanitized = email ? email.replace(/[^a-zA-Z0-9_]/g, '_') : 'guest';
+    return `optitrack_ai_history_${sanitized}`;
+  }, []);
+
   const getImageUrl = (path?: string) => {
     if (!path) return null;
     if (path.startsWith('http')) return path;
@@ -84,6 +91,49 @@ export function AIChatWidget() {
       window.removeEventListener('focus', loadUser);
     };
   }, []);
+
+  // Load chat history from localStorage whenever active user is resolved
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const key = getStorageKey(user?.email);
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(
+            parsed.map((m: any) => ({
+              ...m,
+              timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+            }))
+          );
+        } else {
+          setMessages([]);
+        }
+      } else {
+        setMessages([]);
+      }
+    } catch (err) {
+      console.warn('[AIChatWidget] Failed to load saved chat history:', err);
+    } finally {
+      setIsHistoryLoaded(true);
+    }
+  }, [user?.email, getStorageKey]);
+
+  // Persist messages to localStorage whenever messages change
+  useEffect(() => {
+    if (!isHistoryLoaded || typeof window === 'undefined') return;
+    const key = getStorageKey(user?.email);
+    try {
+      if (messages.length > 0) {
+        localStorage.setItem(key, JSON.stringify(messages));
+      } else {
+        localStorage.removeItem(key);
+      }
+    } catch (err) {
+      console.warn('[AIChatWidget] Failed to save chat history:', err);
+    }
+  }, [messages, isHistoryLoaded, user?.email, getStorageKey]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -157,6 +207,10 @@ export function AIChatWidget() {
 
   const clearChat = () => {
     setMessages([]);
+    if (typeof window !== 'undefined') {
+      const key = getStorageKey(user?.email);
+      localStorage.removeItem(key);
+    }
   };
 
   // English prompts for AI regardless of UI language
@@ -322,76 +376,83 @@ export function AIChatWidget() {
                 </div>
               </div>
             ) : (
-              messages.map((message, i) => (
-                <div
-                  key={message.id}
-                  className={cn(
-                    "flex w-full animate-in fade-in slide-in-from-bottom-2 duration-300",
-                    message.isBot ? "justify-start" : "justify-end"
-                  )}
-                >
+              <>
+                <div className="flex items-center justify-center pt-0.5 pb-2">
+                  <span className="text-[10px] font-semibold text-slate-400 bg-slate-100/90 border border-slate-200/60 px-2.5 py-0.5 rounded-full shadow-2xs select-none">
+                    Conversation History
+                  </span>
+                </div>
+                {messages.map((message, i) => (
                   <div
+                    key={message.id}
                     className={cn(
-                      "flex min-w-0 gap-2.5",
-                      message.isBot ? "max-w-[96%]" : "max-w-[85%] sm:max-w-[80%]",
-                      !message.isBot && "flex-row-reverse"
+                      "flex w-full animate-in fade-in slide-in-from-bottom-2 duration-300",
+                      message.isBot ? "justify-start" : "justify-end"
                     )}
                   >
-                    {/* Avatar */}
                     <div
                       className={cn(
-                        "h-7 w-7 rounded-lg flex-shrink-0 flex items-center justify-center mt-auto mb-1 overflow-hidden transition-all duration-300",
-                        message.isBot
-                          ? "bg-white border border-slate-200/80 text-blue-600 shadow-sm"
-                          : "bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20"
+                        "flex min-w-0 gap-2.5",
+                        message.isBot ? "max-w-[96%]" : "max-w-[85%] sm:max-w-[80%]",
+                        !message.isBot && "flex-row-reverse"
                       )}
                     >
-                      {message.isBot ? (
-                        <Bot size={14} />
-                      ) : userImageUrl ? (
-                        <img
-                          src={userImageUrl}
-                          alt={userDisplayName}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-xs font-bold">{userInitial}</span>
-                      )}
-                    </div>
-
-                    {/* Bubble */}
-                    <div
-                      className={cn(
-                        "min-w-0 rounded-2xl px-4 py-3 transition-all duration-200",
-                        message.isBot
-                          ? "bg-white text-slate-800 rounded-bl-sm border border-slate-100/80 shadow-sm"
-                          : "bg-gradient-to-tr from-blue-600 via-blue-600 to-indigo-600 text-white rounded-br-sm shadow-lg shadow-blue-500/15"
-                      )}
-                    >
-                      {message.isBot ? (
-                        <div className="overflow-x-auto text-[13px] prose prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-slate-800 prose-pre:text-slate-100 prose-th:border-slate-200 prose-td:border-slate-200 prose-table:border-collapse prose-table:w-full prose-table:text-[11px] prose-th:text-left prose-th:p-1.5 prose-td:p-1.5 prose-th:align-top prose-td:align-top prose-a:text-blue-600">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {message.content}
-                          </ReactMarkdown>
-                        </div>
-                      ) : (
-                        <p className="text-[13px] whitespace-pre-wrap leading-relaxed">{message.content}</p>
-                      )}
-                      <p
+                      {/* Avatar */}
+                      <div
                         className={cn(
-                          "text-[9px] mt-1.5 font-medium",
-                          message.isBot ? "text-slate-300" : "text-blue-200"
+                          "h-7 w-7 rounded-lg flex-shrink-0 flex items-center justify-center mt-auto mb-1 overflow-hidden transition-all duration-300",
+                          message.isBot
+                            ? "bg-white border border-slate-200/80 text-blue-600 shadow-sm"
+                            : "bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20"
                         )}
                       >
-                        {new Intl.DateTimeFormat('default', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        }).format(message.timestamp)}
-                      </p>
+                        {message.isBot ? (
+                          <Bot size={14} />
+                        ) : userImageUrl ? (
+                          <img
+                            src={userImageUrl}
+                            alt={userDisplayName}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-xs font-bold">{userInitial}</span>
+                        )}
+                      </div>
+
+                      {/* Bubble */}
+                      <div
+                        className={cn(
+                          "min-w-0 rounded-2xl px-4 py-3 transition-all duration-200",
+                          message.isBot
+                            ? "bg-white text-slate-800 rounded-bl-sm border border-slate-100/80 shadow-sm"
+                            : "bg-gradient-to-tr from-blue-600 via-blue-600 to-indigo-600 text-white rounded-br-sm shadow-lg shadow-blue-500/15"
+                        )}
+                      >
+                        {message.isBot ? (
+                          <div className="overflow-x-auto text-[13px] prose prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-slate-800 prose-pre:text-slate-100 prose-th:border-slate-200 prose-td:border-slate-200 prose-table:border-collapse prose-table:w-full prose-table:text-[11px] prose-th:text-left prose-th:p-1.5 prose-td:p-1.5 prose-th:align-top prose-td:align-top prose-a:text-blue-600">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {message.content}
+                            </ReactMarkdown>
+                          </div>
+                        ) : (
+                          <p className="text-[13px] whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                        )}
+                        <p
+                          className={cn(
+                            "text-[9px] mt-1.5 font-medium",
+                            message.isBot ? "text-slate-300" : "text-blue-200"
+                          )}
+                        >
+                          {new Intl.DateTimeFormat('default', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          }).format(message.timestamp)}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </>
             )}
 
             {/* Typing indicator */}
