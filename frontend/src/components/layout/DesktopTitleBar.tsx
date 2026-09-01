@@ -134,8 +134,8 @@ export function DesktopTitleBar({ onOpenCommandMenu }: WindowControlsProps) {
             <button
               type="button"
               onClick={() => {
-                if (typeof window !== 'undefined' && window.triggerPWAInstall) {
-                  window.triggerPWAInstall();
+                if (typeof window !== 'undefined' && (window as any).triggerPWAInstall) {
+                  (window as any).triggerPWAInstall();
                 }
               }}
               className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 text-[10px] font-medium transition-colors"

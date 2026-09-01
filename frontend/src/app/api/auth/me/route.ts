@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, verifySessionToken } from '@/lib/supabase';
 
 export async function GET(req: NextRequest) {
@@ -37,5 +37,51 @@ export async function GET(req: NextRequest) {
     });
   } catch (error: any) {
     return NextResponse.json({ detail: error.message || 'Error fetching user' }, { status: 500 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const authHeader = req.headers.get('Authorization') || '';
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+
+    if (!token) {
+      return NextResponse.json({ detail: 'Not authenticated' }, { status: 401 });
+    }
+
+    const payload = await verifySessionToken(token);
+    if (!payload || !payload.sub) {
+      return NextResponse.json({ detail: 'Invalid or expired token' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const updateData: any = {};
+    if (body.first_name !== undefined) updateData.first_name = body.first_name.trim();
+    if (body.last_name !== undefined) updateData.last_name = body.last_name.trim();
+    if (body.image_url !== undefined) updateData.image_url = body.image_url;
+
+    const userRes = await supabaseRest(`users?id=eq.${payload.sub}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updateData),
+    });
+
+    if (!userRes.ok) {
+      return NextResponse.json({ detail: await userRes.text() }, { status: 400 });
+    }
+
+    const updatedUsers = await userRes.json();
+    const updated = updatedUsers[0] || updateData;
+
+    return NextResponse.json({
+      id: updated.id || Number(payload.sub),
+      email: updated.email || payload.email,
+      first_name: updated.first_name,
+      last_name: updated.last_name,
+      role: updated.role || payload.role,
+      image_url: updated.image_url,
+      is_active: updated.is_active ?? true,
+    });
+  } catch (error: any) {
+    return NextResponse.json({ detail: error.message || 'Failed to update profile' }, { status: 500 });
   }
 }
