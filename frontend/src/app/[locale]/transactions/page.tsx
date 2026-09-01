@@ -608,105 +608,105 @@ function TransactionsContent() {
 
       {/* E-Document Detail Popup */}
       {selectedTx && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-y-auto max-h-[95vh] animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-2xl bg-slate-900/95 border border-slate-800 rounded-3xl shadow-2xl overflow-y-auto max-h-[92vh] animate-in zoom-in-95 duration-200 text-slate-100 ring-1 ring-white/5 backdrop-blur-xl">
             {/* Header Control */}
-            <div className="px-8 py-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+            <div className="px-6 py-4 bg-slate-950/60 border-b border-slate-800 flex justify-between items-center">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Electronic record active</span>
+                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Electronic Ledger Record</span>
               </div>
-              <button onClick={() => setSelectedTx(null)} className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-200">
+              <button onClick={() => setSelectedTx(null)} className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
                 <X size={18} />
               </button>
             </div>
 
-            <div className="p-10 lg:p-14">      
+            <div className="p-6 sm:p-10">      
               {/* Brand & Type */}
-              <div className="flex justify-between items-start mb-12">
+              <div className="flex justify-between items-start mb-8 sm:mb-10">
                 <div>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <Globe size={16} className="text-slate-900" />
-                    <span className="text-sm font-bold tracking-tight text-slate-900 uppercase">OptiTrack digital</span>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Globe size={16} className="text-blue-400" />
+                    <span className="text-sm font-bold tracking-tight text-white uppercase">OptiTrack digital</span>
                   </div>
-                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Warehouse Management System</p>
+                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Warehouse Management System</p>
                 </div>
                 <div className="text-right">    
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Doc type</p>
-                  <h2 className={cn("text-xl font-medium uppercase tracking-tight", selectedTx.type === 'INBOUND' ? 'text-emerald-600' : 'text-blue-600')}>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Doc type</p>
+                  <h2 className={cn("text-lg sm:text-xl font-bold uppercase tracking-tight", selectedTx.type === 'INBOUND' ? 'text-emerald-400' : 'text-blue-400')}>
                     Stock {selectedTx.type.toLowerCase()}
                   </h2>
                 </div>
               </div>
 
               {/* Core Ledger Data */}
-              <div className="grid grid-cols-2 gap-12 border-y border-slate-100 py-10 mb-10">   
-                <div className="space-y-6">     
+              <div className="grid grid-cols-2 gap-6 sm:gap-10 border-y border-slate-800/80 py-6 sm:py-8 mb-8">   
+                <div className="space-y-4 sm:space-y-5">     
                   <div>
-                    <label className="text-[9px] font-bold text-slate-300 uppercase tracking-widest block mb-2">Record ID</label>
-                    <p className="text-xs font-mono font-semibold text-slate-900">{selectedTx.ref_code}</p>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Record ID</label>
+                    <p className="text-xs font-mono font-semibold text-white bg-slate-950/60 border border-slate-800/80 px-2 py-1 rounded-lg inline-block">{selectedTx.ref_code}</p>
                   </div>
                   <div>
-                    <label className="text-[9px] font-bold text-slate-300 uppercase tracking-widest block mb-2">Facility node</label>
-                    <div className="flex items-center gap-2 text-slate-700">
-                      <MapPin size={12} className="text-slate-300" />
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Facility node</label>
+                    <div className="flex items-center gap-1.5 text-slate-200">
+                      <MapPin size={13} className="text-slate-400" />
                       <span className="text-xs font-medium">{selectedTx.location || 'Central warehouse'}</span>
                     </div>
                   </div>
                 </div>
-                <div className="space-y-6 text-right">
+                <div className="space-y-4 sm:space-y-5 text-right">
                   <div>
-                    <label className="text-[9px] font-bold text-slate-300 uppercase tracking-widest block mb-2">Entry date</label>
-                    <p className="text-xs font-semibold text-slate-900">{format(parseISO(selectedTx.created_at), 'MMMM dd, yyyy')}</p>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Entry date</label>
+                    <p className="text-xs font-semibold text-white">{format(parseISO(selectedTx.created_at), 'MMMM dd, yyyy')}</p>
                   </div>
                   <div>
-                    <label className="text-[9px] font-bold text-slate-300 uppercase tracking-widest block mb-2">Entry time</label>
-                    <p className="text-xs font-semibold text-slate-900">{format(parseISO(selectedTx.created_at), 'HH:mm:ss')} (Local)</p>       
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Entry time</label>
+                    <p className="text-xs font-semibold text-slate-300 font-mono">{format(parseISO(selectedTx.created_at), 'HH:mm:ss')} (Local)</p>       
                   </div>
                 </div>
               </div>
 
               {/* Asset Details */}
-              <div className="mb-12">
-                <label className="text-[9px] font-bold text-slate-300 uppercase tracking-widest block mb-4">Itemized asset</label>
-                <div className="bg-slate-50/50 rounded-2xl p-6 border border-slate-100 flex items-center justify-between">
+              <div className="mb-8">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-3">Itemized Asset</label>
+                <div className="bg-slate-950/60 rounded-2xl p-4 sm:p-5 border border-slate-800/80 flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-slate-900 mb-0.5">{selectedTx.product.name}</p>
-                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{selectedTx.product.sku}</p>
+                    <p className="text-sm font-semibold text-white mb-0.5">{selectedTx.product.name}</p>
+                    <p className="text-[10px] font-mono font-medium text-slate-400 uppercase tracking-wider">{selectedTx.product.sku}</p>
                   </div>
                   <div className="text-right">  
                     <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Quantity</p>
-                    <p className="text-sm font-bold text-slate-900">{selectedTx.quantity} units</p>
+                    <p className="text-sm font-bold text-white font-mono">{selectedTx.quantity} units</p>
                   </div>
                 </div>
               </div>
 
               {/* Financial Summary */}
               <div className="flex flex-col items-end pt-2">
-                <div className="w-full max-w-[240px] space-y-3">
-                  <div className="flex justify-between items-center text-[11px] font-medium text-slate-400">
+                <div className="w-full max-w-[260px] space-y-2.5">
+                  <div className="flex justify-between items-center text-xs font-medium text-slate-400">
                     <span>Unit valuation</span> 
-                    <span className="text-blue-600">{formatCurrency(selectedTx.unit_price)}</span>
+                    <span className="text-blue-400 font-mono">{formatCurrency(selectedTx.unit_price)}</span>
                   </div>
-                  <div className="flex justify-between items-center text-[11px] font-medium text-slate-400">
+                  <div className="flex justify-between items-center text-xs font-medium text-slate-400">
                     <span>System fees</span>    
-                    <span className="text-slate-900">{formatCurrency(0)}</span>
+                    <span className="text-slate-300 font-mono">{formatCurrency(0)}</span>
                   </div>
-                  <div className="h-px bg-slate-100 my-2"></div>
+                  <div className="h-px bg-slate-800/80 my-2"></div>
                   <div className="flex justify-between items-end">
-                    <span className="text-[10px] font-bold text-slate-900 uppercase">Total value</span>
-                    <span className="text-2xl font-semibold tracking-tighter text-blue-600">{formatCurrency(selectedTx.total_price)}</span>     
+                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Total Value</span>
+                    <span className="text-xl sm:text-2xl font-bold tracking-tight text-blue-400 font-mono">{formatCurrency(selectedTx.total_price)}</span>     
                   </div>
                 </div>
               </div>
 
               {/* Footer Audit */}
-              <div className="mt-16 pt-8 border-t border-slate-100 flex justify-between items-center opacity-40">
-                <div className="flex items-center gap-2">
-                  <FileCode size={14} />        
-                  <span className="text-[9px] font-bold uppercase tracking-widest">Electronic record audit trail</span>
+              <div className="mt-10 pt-5 border-t border-slate-800/80 flex justify-between items-center text-slate-500">
+                <div className="flex items-center gap-1.5">
+                  <FileCode size={13} />        
+                  <span className="text-[9px] font-bold uppercase tracking-wider">Electronic record audit trail</span>
                 </div>
-                <p className="text-[9px] font-bold uppercase tracking-widest">WMS node verified</p>
+                <p className="text-[9px] font-bold uppercase tracking-wider">WMS node verified</p>
               </div>
             </div>
           </div>
@@ -715,72 +715,72 @@ function TransactionsContent() {
 
       {/* Transaction Chart Popup */}
       {activeChart && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
           <div className="flex min-h-full items-center justify-center p-4">
-            <div className="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="relative w-full max-w-3xl bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 text-slate-100 ring-1 ring-white/5 backdrop-blur-xl">
               <button
                 onClick={() => setActiveChart(null)}
-                className="absolute top-6 right-6 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all z-10"
+                className="absolute top-5 right-5 p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all z-10"
               >
-                <X size={24} />
+                <X size={20} />
               </button>
 
-              <div className="p-8">
-                <div className="flex items-center gap-4 mb-8">
-                  <div className="p-3 rounded-xl bg-slate-50">
-                    <LineChartIcon className="text-slate-600" size={24} />
+              <div className="p-6 sm:p-8">
+                <div className="flex items-center gap-3.5 mb-6">
+                  <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                    <LineChartIcon size={20} />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">{activeChart.title}</h2>
-                    <p className="text-sm text-gray-500 uppercase tracking-wider font-semibold">Movement trend for selected period</p>
+                    <h2 className="text-xl font-bold text-white tracking-tight">{activeChart.title}</h2>
+                    <p className="text-xs text-slate-400 font-medium">Movement trend for selected period</p>
                   </div>
                 </div>
 
-                <div className="h-[350px] w-full pr-4">
+                <div className="h-[320px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={activeChart.data}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e293b" />
                       <XAxis
                         dataKey="name"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: '#94a3b8', fontSize: 12 }}
+                        tick={{ fill: '#64748b', fontSize: 11 }}
                         dy={10}
                       />
                       <YAxis
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: '#94a3b8', fontSize: 12 }}
+                        tick={{ fill: '#64748b', fontSize: 11 }}
                         tickFormatter={(val) => activeChart.isCurrency ? formatCurrency(Number(val)) : Number(val).toLocaleString()}
                       />
                       <Tooltip
                         formatter={(value) => activeChart.isCurrency ? formatCurrency(Number(value)) : Number(value).toLocaleString()}
                         contentStyle={{
-                          backgroundColor: '#fff',
-                          border: 'none',
+                          backgroundColor: '#0f172a',
+                          border: '1px solid #1e293b',
                           borderRadius: '12px',
-                          boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+                          color: '#f8fafc',
+                          boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
                         }}
                       />
                       <Line
                         type="monotone"
                         dataKey="value"
                         stroke={activeChart.color}
-                        strokeWidth={3}
-                        dot={{ r: 4, fill: activeChart.color, strokeWidth: 2, stroke: '#fff' }}
-                        activeDot={{ r: 6, strokeWidth: 0 }}
+                        strokeWidth={2.5}
+                        dot={{ r: 4, fill: activeChart.color, strokeWidth: 2, stroke: '#0f172a' }}
                       />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
-              <div className="bg-slate-50 p-6 border-t border-gray-100 flex justify-between items-center">
-                <div className="flex gap-2">
-                  <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
-                  <span className="text-xs font-semibold text-gray-600 uppercase tracking-tight">Live Database Sync</span>
+              <div className="bg-slate-950/60 px-6 py-4 border-t border-slate-800 flex justify-between items-center text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  <span className="font-semibold text-slate-300">Live Database Ledger</span>
                 </div>
-                <p className="text-xs text-gray-400 italic">Data from filtered transaction history</p>
+                <p className="text-slate-400">Filtered transaction analytics</p>
               </div>
             </div>
           </div>
@@ -866,8 +866,8 @@ function TransactionsContent() {
           {/* Location Selector if All Locations is selected in sidebar */}
           {selectedLocation === 'ALL' && (
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Target Warehouse Zone <span className="text-red-500">*</span>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+                Target Warehouse Zone <span className="text-rose-400">*</span>
               </label>
               <Select 
                 value={formData.location || locations.find(l => l !== 'ALL') || 'Zone A-01'} 
@@ -876,7 +876,7 @@ function TransactionsContent() {
                   setSelectedLocation(val);
                 }}
               >
-                <SelectTrigger className="w-full h-11 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <SelectTrigger className="w-full h-11 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 focus:ring-1 focus:ring-blue-500 text-xs sm:text-sm">
                   <SelectValue placeholder="Select warehouse zone..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -889,119 +889,169 @@ function TransactionsContent() {
           )}
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-3 text-medium">Transaction type <span className="text-red-500">*</span></label>
-            <div className="grid grid-cols-2 gap-4">
-              <button type="button" onClick={() => setFormData({ ...formData, type: 'INBOUND' })} className={cn("p-4 rounded-xl border-2 transition-all", formData.type === 'INBOUND' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 hover:border-green-300')}>
-                <ArrowDownCircle className="h-8 w-8 mx-auto mb-2" />
-                <div className="font-bold text-sm">INBOUND</div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2.5">
+              Transaction Type <span className="text-rose-400">*</span>
+            </label>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <button 
+                type="button" 
+                onClick={() => setFormData({ ...formData, type: 'INBOUND' })} 
+                className={cn(
+                  "p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 flex flex-col items-center justify-center gap-2", 
+                  formData.type === 'INBOUND' 
+                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-lg shadow-emerald-500/10' 
+                    : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                )}
+              >
+                <ArrowDownCircle className="h-7 w-7 shrink-0" />
+                <div className="font-bold text-xs uppercase tracking-wider">Inbound (Stock In)</div>
               </button>
-              <button type="button" onClick={() => setFormData({ ...formData, type: 'OUTBOUND' })} className={cn("p-4 rounded-xl border-2 transition-all", formData.type === 'OUTBOUND' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-blue-300')}>
-                <ArrowUpCircle className="h-8 w-8 mx-auto mb-2" />
-                <div className="font-bold text-sm">OUTBOUND</div>
+              <button 
+                type="button" 
+                onClick={() => setFormData({ ...formData, type: 'OUTBOUND' })} 
+                className={cn(
+                  "p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 flex flex-col items-center justify-center gap-2", 
+                  formData.type === 'OUTBOUND' 
+                    ? 'border-blue-500 bg-blue-500/10 text-blue-400 shadow-lg shadow-blue-500/10' 
+                    : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                )}
+              >
+                <ArrowUpCircle className="h-7 w-7 shrink-0" />
+                <div className="font-bold text-xs uppercase tracking-wider">Outbound (Stock Out)</div>
               </button>
             </div>
           </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-semibold text-gray-700 text-medium">
-                  Product <span className="text-red-500">*</span>
-                </label>
-                <div className="flex items-center gap-1 text-[11px] font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
-                  <BarcodeIcon className="w-3 h-3" />
-                  <span>Scanner Ready</span>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300">
+                Product <span className="text-rose-400">*</span>
+              </label>
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-md">
+                <BarcodeIcon className="w-3 h-3 shrink-0" />
+                <span>Scanner Ready</span>
+              </div>
+            </div>
+
+            {/* Barcode Quick Scan / SKU Input */}
+            <div className="relative mb-2.5">
+              <input
+                type="text"
+                placeholder="Scan barcode with handheld gun or type SKU..."
+                className="w-full pl-8 pr-3 py-2 text-xs border border-slate-800 rounded-xl bg-slate-950/80 hover:border-slate-700 focus:bg-slate-950 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-mono text-slate-200 transition-all placeholder:text-slate-500"
+                onChange={(e) => {
+                  const val = e.target.value.trim().toLowerCase();
+                  if (!val) return;
+                  const matched = products.find(p => 
+                    p.sku?.toLowerCase() === val || 
+                    (p as any).barcode?.toLowerCase() === val
+                  );
+                  if (matched) {
+                    setFormData(prev => ({ ...prev, product_id: matched.id.toString() }));
+                  }
+                }}
+              />
+              <BarcodeIcon className="w-3.5 h-3.5 text-indigo-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+
+            <Select value={formData.product_id} onValueChange={(val) => setFormData({ ...formData, product_id: val })}>
+              <SelectTrigger className="w-full h-11 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 focus:ring-1 focus:ring-blue-500 text-xs sm:text-sm">
+                <SelectValue placeholder="Or select product from list..." />
+              </SelectTrigger>   
+              <SelectContent>{products.map((product) => (<SelectItem key={product.id} value={product.id.toString()}>{product.name} ({product.sku})</SelectItem>))}</SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+              Transaction Date <span className="text-rose-400">*</span>
+            </label>
+            <DatePicker value={formData.date} onChange={(value) => setFormData({ ...formData, date: value })} className="w-full" />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+              Quantity <span className="text-rose-400">*</span>
+            </label>
+            <input 
+              type="number" 
+              required 
+              min="1" 
+              value={formData.quantity} 
+              onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} 
+              className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-xs sm:text-sm font-mono font-medium transition-all" 
+              placeholder="Enter quantity"
+            />
+          </div>
+
+          {showTransactionStockInfo && (
+            <div className={cn(
+              "rounded-2xl border p-4 backdrop-blur-xl",
+              stockInfoTone === 'red' ? "border-rose-500/30 bg-rose-500/10" : stockInfoTone === 'green' ? "border-emerald-500/30 bg-emerald-500/10" : "border-blue-500/30 bg-blue-500/10"
+            )}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className={cn(
+                    "text-[10px] font-bold uppercase tracking-wider",
+                    stockInfoTone === 'red' ? "text-rose-400" : stockInfoTone === 'green' ? "text-emerald-400" : "text-blue-400"
+                  )}>Selected item stock</p>
+                  <p className="mt-1 text-sm font-bold text-white">{selectedProduct?.name}</p>
+                  <p className="text-xs font-medium text-slate-400">{selectedLocation}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Available now</p>
+                  <p className="text-2xl font-black tracking-tight text-white font-mono">{selectedLocationStock.toLocaleString()}</p>
                 </div>
               </div>
-
-              {/* Barcode Quick Scan / SKU Input */}
-              <div className="relative mb-2">
-                <input
-                  type="text"
-                  placeholder="Scan barcode with handheld gun or type SKU..."
-                  className="w-full pl-8 pr-3 py-2 text-xs border border-indigo-200 rounded-lg bg-indigo-50/30 hover:bg-white focus:bg-white focus:ring-2 focus:ring-indigo-500 font-mono text-slate-800 transition-all placeholder:text-slate-400"
-                  onChange={(e) => {
-                    const val = e.target.value.trim().toLowerCase();
-                    if (!val) return;
-                    const matched = products.find(p => 
-                      p.sku?.toLowerCase() === val || 
-                      (p as any).barcode?.toLowerCase() === val
-                    );
-                    if (matched) {
-                      setFormData(prev => ({ ...prev, product_id: matched.id.toString() }));
-                    }
-                  }}
-                />
-                <BarcodeIcon className="w-3.5 h-3.5 text-indigo-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-
-              <Select value={formData.product_id} onValueChange={(val) => setFormData({ ...formData, product_id: val })}>
-                <SelectTrigger className="w-full h-11 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500">
-                  <SelectValue placeholder="Or select product from list..." />
-                </SelectTrigger>   
-                <SelectContent>{products.map((product) => (<SelectItem key={product.id} value={product.id.toString()}>{product.name} ({product.sku})</SelectItem>))}</SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 text-medium">Transaction date <span className="text-red-500">*</span></label>
-              <DatePicker value={formData.date} onChange={(value) => setFormData({ ...formData, date: value })} className="w-full" />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 text-medium">Quantity <span className="text-red-500">*</span></label>
-              <input type="number" required min="1" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Enter quantity"/>
-            </div>
-
-            {showTransactionStockInfo && (
-              <div className={cn(
-                "rounded-2xl border p-4",
-                stockInfoTone === 'red' ? "border-red-200 bg-red-50" : stockInfoTone === 'green' ? "border-green-100 bg-green-50" : "border-blue-100 bg-blue-50"
-              )}>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className={cn(
-                      "text-xs font-bold uppercase tracking-wider",
-                      stockInfoTone === 'red' ? "text-red-600" : stockInfoTone === 'green' ? "text-green-600" : "text-blue-600"
-                    )}>Selected item stock</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">{selectedProduct?.name}</p>
-                    <p className="text-xs font-medium text-slate-500">{selectedLocation}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs font-semibold text-slate-500">Available now</p>
-                    <p className="text-2xl font-black tracking-tight text-slate-900">{selectedLocationStock.toLocaleString()}</p>
-                  </div>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-slate-950/60 border border-slate-800/80 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{formData.type === 'INBOUND' ? 'Inbound qty' : 'Outbound qty'}</p>
+                  <p className="mt-1 text-lg font-bold text-white font-mono">{requestedQuantity.toLocaleString()}</p>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <div className="rounded-xl bg-white/80 p-3">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{formData.type === 'INBOUND' ? 'Inbound qty' : 'Outbound qty'}</p>
-                    <p className="mt-1 text-lg font-bold text-slate-900">{requestedQuantity.toLocaleString()}</p>
-                  </div>
-                  <div className="rounded-xl bg-white/80 p-3">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{formData.type === 'INBOUND' ? 'Items after inbound' : 'Items left'}</p>
-                    <p className={cn(
-                      "mt-1 text-lg font-bold",
-                      stockInfoTone === 'red' ? "text-red-600" : stockInfoTone === 'green' ? "text-green-700" : "text-blue-700"
-                    )}>{stockAfterTransaction.toLocaleString()}</p>
-                  </div>
+                <div className="rounded-xl bg-slate-950/60 border border-slate-800/80 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{formData.type === 'INBOUND' ? 'Items after inbound' : 'Items left'}</p>
+                  <p className={cn(
+                    "mt-1 text-lg font-bold font-mono",
+                    stockInfoTone === 'red' ? "text-rose-400" : stockInfoTone === 'green' ? "text-emerald-400" : "text-blue-400"
+                  )}>{stockAfterTransaction.toLocaleString()}</p>
                 </div>
-                {hasOutboundShortage && (
-                  <div className="mt-3 flex items-center gap-2 rounded-xl bg-red-100 px-3 py-2 text-xs font-semibold text-red-700">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>Not enough stock. Short by {outboundShortage.toLocaleString()} item{outboundShortage === 1 ? '' : 's'}.</span>
-                  </div>
-                )}
               </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 text-medium">Notes</label>
-              <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" rows={3} placeholder="Remarks..."/>
+              {hasOutboundShortage && (
+                <div className="mt-3 flex items-center gap-2 rounded-xl bg-rose-500/20 border border-rose-500/30 px-3 py-2 text-xs font-semibold text-rose-300">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>Not enough stock. Short by {outboundShortage.toLocaleString()} item{outboundShortage === 1 ? '' : 's'}.</span>
+                </div>
+              )}
             </div>
+          )}
 
-            <div className="flex gap-3 pt-6 border-t border-gray-200">
-              <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-medium transition-all text-sm">Cancel</button>
-              <button type="submit" disabled={isSubmitting} className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 font-medium transition-all disabled:opacity-50 shadow-lg text-sm">{isSubmitting ? 'Recording...' : `Submit ${formData.type}`}</button>       
-            </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">Notes</label>
+            <textarea 
+              value={formData.notes} 
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })} 
+              className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-xs sm:text-sm font-medium transition-all" 
+              rows={3} 
+              placeholder="Remarks..."
+            />
+          </div>
+
+          <div className="flex gap-3 pt-5 border-t border-slate-800/80">
+            <button 
+              type="button" 
+              onClick={() => setIsModalOpen(false)} 
+              className="flex-1 px-4 py-2.5 border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition-all"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              disabled={isSubmitting} 
+              className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-all disabled:opacity-50 shadow-lg shadow-blue-600/30"
+            >
+              {isSubmitting ? 'Recording...' : `Submit ${formData.type}`}
+            </button>       
+          </div>
           </form>
       </Modal>
 

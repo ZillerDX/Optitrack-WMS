@@ -1,9 +1,9 @@
 /**
- * Notification Modal Component
- * For success/error messages after CRUD operations
+ * Modern Notification Modal Component
+ * Dark glassmorphism toast/alert for OptiTrack WMS
  */
 
-import { CheckCircle, XCircle, AlertCircle, Info } from 'lucide-react';
+import { CheckCircle, XCircle, AlertCircle, Info, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -48,31 +48,35 @@ export function NotificationModal({
   const typeConfig = {
     success: {
       icon: CheckCircle,
-      iconColor: 'text-green-600',
-      iconBg: 'bg-green-100',
-      borderColor: 'border-green-500',
-      bgGradient: 'from-green-50 to-emerald-50',
+      iconColor: 'text-emerald-400',
+      iconBg: 'bg-emerald-500/10 border border-emerald-500/20',
+      borderColor: 'border-emerald-500/30',
+      glowColor: 'shadow-emerald-500/10',
+      barColor: 'bg-emerald-500',
     },
     error: {
       icon: XCircle,
-      iconColor: 'text-red-600',
-      iconBg: 'bg-red-100',
-      borderColor: 'border-red-500',
-      bgGradient: 'from-red-50 to-rose-50',
+      iconColor: 'text-rose-400',
+      iconBg: 'bg-rose-500/10 border border-rose-500/20',
+      borderColor: 'border-rose-500/30',
+      glowColor: 'shadow-rose-500/10',
+      barColor: 'bg-rose-500',
     },
     warning: {
       icon: AlertCircle,
-      iconColor: 'text-yellow-600',
-      iconBg: 'bg-yellow-100',
-      borderColor: 'border-yellow-500',
-      bgGradient: 'from-yellow-50 to-amber-50',
+      iconColor: 'text-amber-400',
+      iconBg: 'bg-amber-500/10 border border-amber-500/20',
+      borderColor: 'border-amber-500/30',
+      glowColor: 'shadow-amber-500/10',
+      barColor: 'bg-amber-500',
     },
     info: {
       icon: Info,
-      iconColor: 'text-blue-600',
-      iconBg: 'bg-blue-100',
-      borderColor: 'border-blue-500',
-      bgGradient: 'from-blue-50 to-indigo-50',
+      iconColor: 'text-blue-400',
+      iconBg: 'bg-blue-500/10 border border-blue-500/20',
+      borderColor: 'border-blue-500/30',
+      glowColor: 'shadow-blue-500/10',
+      barColor: 'bg-blue-500',
     },
   };
 
@@ -83,83 +87,57 @@ export function NotificationModal({
     <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+        className="fixed inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity"
         onClick={onClose}
       />
 
-      {/* Notification */}
-      <div className={`relative bg-gradient-to-br ${config.bgGradient} rounded-xl shadow-2xl max-w-md w-full border-l-4 ${config.borderColor} transform transition-all animate-in`}>
-        <div className="p-6">
+      {/* Notification Card */}
+      <div className={`relative bg-slate-900/95 border ${config.borderColor} rounded-2xl shadow-2xl ${config.glowColor} max-w-md w-full overflow-hidden transform transition-all animate-in zoom-in-95 duration-150 backdrop-blur-xl ring-1 ring-white/5`}>
+        <div className="p-5 sm:p-6">
           <div className="flex items-start gap-4">
             {/* Icon */}
-            <div className={`${config.iconBg} p-3 rounded-full flex-shrink-0`}>
-              <Icon className={`h-8 w-8 ${config.iconColor}`} />
+            <div className={`${config.iconBg} p-2.5 rounded-xl flex-shrink-0`}>
+              <Icon className={`h-6 w-6 ${config.iconColor}`} />
             </div>
 
             {/* Content */}
             <div className="flex-1 min-w-0">
-              <h3 className="text-xl font-bold text-gray-900 mb-1">{title}</h3>
-              <p className="text-gray-600 text-sm leading-relaxed">{message}</p>
-
-              {/* Auto-close indicator */}
-              {autoClose && (
-                <div className="mt-3 h-1 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full ${config.iconColor.replace('text-', 'bg-')} transition-all`}
-                    style={{
-                      animation: `shrink ${autoCloseDelay}ms linear`,
-                    }}
-                  />
-                </div>
-              )}
+              <h3 className="text-base font-bold text-white mb-1 tracking-tight">{title}</h3>
+              <p className="text-slate-400 text-xs sm:text-sm leading-relaxed">{message}</p>
             </div>
 
             {/* Close button */}
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors flex-shrink-0"
             >
-              <XCircle className="h-6 w-6" />
+              <X className="h-4 w-4" />
             </button>
           </div>
 
           {/* Action button */}
-          <div className="mt-4 flex justify-end">
+          <div className="mt-5 flex justify-end">
             <button
               onClick={onClose}
-              className={`px-4 py-2 ${config.iconColor.replace('text-', 'bg-')} text-white rounded-lg font-medium hover:opacity-90 transition-opacity`}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition-all border border-slate-700/60"
             >
-              OK
+              Dismiss
             </button>
           </div>
         </div>
+
+        {/* Auto-close progress bar */}
+        {autoClose && (
+          <div className="h-1 bg-slate-800/80 w-full overflow-hidden">
+            <div
+              className={`h-full ${config.barColor} transition-all`}
+              style={{
+                animation: `shrink ${autoCloseDelay}ms linear`,
+              }}
+            />
+          </div>
+        )}
       </div>
-
-      <style jsx>{`
-        @keyframes shrink {
-          from {
-            width: 100%;
-          }
-          to {
-            width: 0%;
-          }
-        }
-
-        .animate-in {
-          animation: slideIn 0.3s ease-out;
-        }
-
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateY(-20px) scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-      `}</style>
     </div>,
     document.body
   );

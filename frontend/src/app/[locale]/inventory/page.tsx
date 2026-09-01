@@ -674,38 +674,38 @@ export default function InventoryPage() {
         title="Create New Location"
         size="md"
       >
-        <form onSubmit={handleCreateLocation} className="space-y-6">
+        <form onSubmit={handleCreateLocation} className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Location Name <span className="text-red-500">*</span>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+              Location Name <span className="text-rose-400">*</span>
             </label>
             <input
               type="text"
               required
               value={locationFormData.name}
               onChange={(e) => setLocationFormData({ ...locationFormData, name: e.target.value.toUpperCase() })}
-              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-xs sm:text-sm font-medium font-mono uppercase transition-all"
               placeholder="e.g. WAREHOUSE-C, SHELF-22"
             />
-            <p className="text-xs text-gray-500 mt-1">Enter a unique location name.</p>
+            <p className="text-xs text-slate-400 mt-1">Enter a unique location name.</p>
           </div>
           
            <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Description <span className="text-gray-400 font-normal">(Optional)</span>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+              Description <span className="text-slate-500 font-normal normal-case">(Optional)</span>
             </label>
             <input
               type="text"
               value={locationFormData.description}
               onChange={(e) => setLocationFormData({ ...locationFormData, description: e.target.value })}
-              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-xs sm:text-sm font-medium transition-all"
               placeholder="e.g. Storage for electronics"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Capacity <span className="text-red-500">*</span> <span className="text-gray-400 font-normal">(Max items)</span>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+              Capacity <span className="text-rose-400">*</span> <span className="text-slate-500 font-normal normal-case">(Max items)</span>
             </label>
             <input
               type="number"
@@ -713,24 +713,24 @@ export default function InventoryPage() {
               required
               value={locationFormData.capacity}
               onChange={(e) => setLocationFormData({ ...locationFormData, capacity: e.target.value })}
-              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-xs sm:text-sm font-mono font-medium transition-all"
               placeholder="e.g. 500"
             />
-            <p className="text-xs text-gray-500 mt-1">Maximum number of items this location can hold. Used for warehouse capacity metrics.</p>
+            <p className="text-xs text-slate-400 mt-1">Maximum number of items this location can hold. Used for warehouse capacity metrics.</p>
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 pt-4 border-t border-slate-800/80">
             <button
               type="button"
               onClick={() => setIsCreateLocationModalOpen(false)}
-              className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-medium transition-all"
+              className="flex-1 px-4 py-2.5 border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition-all"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 hover:to-cyan-700 font-medium transition-all disabled:opacity-50 shadow-lg"
+              className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-all disabled:opacity-50 shadow-lg shadow-blue-600/30"
             >
               {isSubmitting ? 'Creating...' : 'Create Location'}
             </button>
@@ -750,74 +750,70 @@ export default function InventoryPage() {
       >
         <div className="space-y-4">
           {managedLocations.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-6 py-10 text-center text-sm font-medium text-gray-500">
+            <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-950/40 px-6 py-10 text-center text-xs font-medium text-slate-400">
               No warehouse locations available.
             </div>
           ) : (
             managedLocations.map((location) => (
-              <div key={location.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                <div className="grid gap-4 md:grid-cols-3">
+              <div key={location.id} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 shadow-sm backdrop-blur-xl">
+                <div className="grid gap-3 sm:gap-4 md:grid-cols-3">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Location Name <span className="text-red-500">*</span>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+                      Location Name <span className="text-rose-400">*</span>
                     </label>
                     <input
                       type="text"
                       value={location.name}
                       onChange={(e) => handleManagedLocationChange(location.id, 'name', e.target.value)}
-                      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 font-mono uppercase text-xs font-medium focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Description <span className="text-gray-400 font-normal">(Optional)</span>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+                      Description <span className="text-slate-500 font-normal normal-case">(Optional)</span>
                     </label>
                     <input
                       type="text"
                       value={location.description}
                       onChange={(e) => handleManagedLocationChange(location.id, 'description', e.target.value)}
-                      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 text-xs font-medium focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Capacity <span className="text-red-500">*</span>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+                      Capacity <span className="text-rose-400">*</span>
                     </label>
                     <input
                       type="number"
                       min="0"
                       value={location.capacity}
                       onChange={(e) => handleManagedLocationChange(location.id, 'capacity', e.target.value)}
-                      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 font-mono text-xs font-medium focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
                 </div>
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-xs text-gray-500">
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-slate-800/80 pt-3">
+                  <div className="text-xs text-slate-400">
                     {location.originalName !== location.name.trim() && location.name.trim() ? `Renaming from ${location.originalName}` : `Current location: ${location.originalName}`}
                   </div>
-                  <div className="flex gap-3">
+                  <div className="flex gap-2.5">
                     <button
                       type="button"
                       onClick={() => handleLocationDeleteClick(location)}
                       disabled={isLocationActionSubmitting}
-                      className="px-4 py-2.5 border-2 border-red-200 text-red-600 rounded-xl hover:bg-red-50 font-medium transition-all disabled:opacity-50"
+                      className="px-3.5 py-2 border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 rounded-xl text-xs font-semibold transition-all disabled:opacity-50 flex items-center gap-1.5"
                     >
-                      <span className="flex items-center gap-2">
-                        <Trash2 className="h-4 w-4" />
-                        Delete
-                      </span>
+                      <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                      <span>Delete</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => handleUpdateLocation(location)}
                       disabled={isLocationActionSubmitting}
-                      className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 hover:to-cyan-700 font-medium transition-all disabled:opacity-50 shadow-lg"
+                      className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-all disabled:opacity-50 shadow-md shadow-blue-600/30 flex items-center gap-1.5"
                     >
-                      <span className="flex items-center gap-2">
-                        <Save className="h-4 w-4" />
-                        {isLocationActionSubmitting && activeLocationId === location.id ? 'Saving...' : 'Save Changes'}
-                      </span>
+                      <Save className="h-3.5 w-3.5 shrink-0" />
+                      <span>{isLocationActionSubmitting && activeLocationId === location.id ? 'Saving...' : 'Save Changes'}</span>
                     </button>
                   </div>
                 </div>

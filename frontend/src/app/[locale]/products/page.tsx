@@ -592,44 +592,44 @@ export default function ProductsPage() {
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                SKU <span className="text-red-500">*</span>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+                SKU <span className="text-rose-400">*</span>
               </label>
               <input
                 type="text"
                 required
                 value={formData.sku}
                 onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-xs sm:text-sm font-medium transition-all"
                 placeholder="PROD-001"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Product Name <span className="text-red-500">*</span>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+                Product Name <span className="text-rose-400">*</span>
               </label>
               <input
                 type="text"
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-xs sm:text-sm font-medium transition-all"
                 placeholder="Product Name"
               />
             </div>
 
             {!editingProduct && (
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Location <span className="text-red-500">*</span>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+                  Location <span className="text-rose-400">*</span>
                 </label>
                 <Select
                   required
                   value={formData.location}
                   onValueChange={(val) => setFormData({ ...formData, location: val })}
                 >
-                  <SelectTrigger className="w-full h-11 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500">
+                  <SelectTrigger className="w-full h-11 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 focus:ring-1 focus:ring-blue-500 text-xs sm:text-sm">
                     <SelectValue placeholder="Select Location" />
                   </SelectTrigger>
                   <SelectContent>
@@ -639,21 +639,21 @@ export default function ProductsPage() {
                   </SelectContent>
                 </Select>
                 {locations.filter(loc => loc !== 'ALL').length === 0 && (
-                  <p className="text-xs text-amber-600 mt-1">No locations available.</p>
+                  <p className="text-xs text-amber-400 mt-1">No locations available.</p>
                 )}
               </div>
             )}
 
             <div className={editingProduct ? "sm:col-span-1" : ""}>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Category <span className="text-red-500">*</span>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+                Category <span className="text-rose-400">*</span>
               </label>
               <Select
                 required
                 value={formData.category}
                 onValueChange={(val) => setFormData({ ...formData, category: val })}
               >
-                <SelectTrigger className="w-full h-11 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <SelectTrigger className="w-full h-11 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 focus:ring-1 focus:ring-blue-500 text-xs sm:text-sm">
                   <SelectValue placeholder="Select Category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -663,19 +663,19 @@ export default function ProductsPage() {
                 </SelectContent>
               </Select>
               {categories.length === 0 && (
-                <p className="text-xs text-amber-600 mt-1">No categories yet. Add one first!</p>
+                <p className="text-xs text-amber-400 mt-1">No categories yet. Add one first!</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Unit <span className="text-red-500">*</span>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+                Unit <span className="text-rose-400">*</span>
               </label>
               <Select
                 value={formData.unit}
                 onValueChange={(val) => setFormData({ ...formData, unit: val })}
               >
-                <SelectTrigger className="w-full h-11 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <SelectTrigger className="w-full h-11 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 focus:ring-1 focus:ring-blue-500 text-xs sm:text-sm">
                   <SelectValue placeholder="Select Unit" />
                 </SelectTrigger>
                 <SelectContent>
@@ -689,8 +689,8 @@ export default function ProductsPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Cost Price <span className="text-red-500">*</span>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+                Cost Price <span className="text-rose-400">*</span>
               </label>
               <div className="flex gap-2">
                 <input
@@ -699,14 +699,14 @@ export default function ProductsPage() {
                   required
                   value={formData.cost_price}
                   onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })}
-                  className="min-w-0 flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="min-w-0 flex-1 px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-xs sm:text-sm font-medium font-mono transition-all"
                   placeholder="100.00"
                 />
                 <Select
                   value={formData.cost_currency}
                   onValueChange={(val) => handleCostCurrencyChange(val as SupportedCurrency)}
                 >
-                  <SelectTrigger className="h-11 w-[92px] border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500">
+                  <SelectTrigger className="h-11 w-[92px] bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 focus:ring-1 focus:ring-blue-500 text-xs font-semibold shrink-0">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -721,8 +721,8 @@ export default function ProductsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Sell Price <span className="text-red-500">*</span>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+                Sell Price <span className="text-rose-400">*</span>
               </label>
               <div className="flex gap-2">
                 <input
@@ -731,14 +731,14 @@ export default function ProductsPage() {
                   required
                   value={formData.sell_price}
                   onChange={(e) => setFormData({ ...formData, sell_price: e.target.value })}
-                  className="min-w-0 flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="min-w-0 flex-1 px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-xs sm:text-sm font-medium font-mono transition-all"
                   placeholder="150.00"
                 />
                 <Select
                   value={formData.sell_currency}
                   onValueChange={(val) => handleSellCurrencyChange(val as SupportedCurrency)}
                 >
-                  <SelectTrigger className="h-11 w-[92px] border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500">
+                  <SelectTrigger className="h-11 w-[92px] bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 focus:ring-1 focus:ring-blue-500 text-xs font-semibold shrink-0">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -753,35 +753,35 @@ export default function ProductsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Min Stock Level <span className="text-red-500">*</span>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+                Min Stock Level <span className="text-rose-400">*</span>
               </label>
               <input
                 type="number"
                 required
                 value={formData.min_stock_level}
                 onChange={(e) => setFormData({ ...formData, min_stock_level: e.target.value })}
-                className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-xs sm:text-sm font-medium font-mono transition-all"
                 placeholder="10"
               />
             </div>
           </div>
 
-          <div className="flex gap-3 pt-6 border-t border-gray-200">
+          <div className="flex gap-3 pt-5 border-t border-slate-800/80">
             <button
               type="button"
               onClick={() => {
                 setIsModalOpen(false);
                 resetForm();
               }}
-              className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-medium transition-all"
+              className="flex-1 px-4 py-2.5 border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition-all"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 font-medium transition-all disabled:opacity-50 shadow-lg"
+              className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-all disabled:opacity-50 shadow-lg shadow-blue-600/30"
             >
               {isLoading ? 'Saving...' : (editingProduct ? 'Update Product' : 'Create Product')}
             </button>
@@ -811,16 +811,16 @@ export default function ProductsPage() {
         title="Add New Category"
         size="sm"
       >
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Category Name <span className="text-red-500">*</span>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+              Category Name <span className="text-rose-400">*</span>
             </label>
             <input
               type="text"
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
-              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-4 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 text-xs sm:text-sm font-medium transition-all"
               placeholder="e.g., Electronics, Construction, Food"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -832,19 +832,19 @@ export default function ProductsPage() {
           </div>
 
           {categories.length > 0 && (
-            <div className="pt-4 border-t border-gray-200">
-              <p className="text-sm font-medium text-gray-600 mb-2">Existing Categories:</p>
+            <div className="pt-4 border-t border-slate-800/80">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Existing Categories</p>
               <div className="flex flex-wrap gap-2">
                 {categories.map((cat) => (
                   <div
                     key={cat.id}
-                    className="group flex items-center gap-1 pl-3 pr-2 py-1 text-xs font-medium rounded-full bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-800 border border-purple-200"
+                    className="group flex items-center gap-1.5 pl-3 pr-2 py-1 text-xs font-medium rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20"
                   >
                     <span>{cat.name}</span>
                     <button
                       type="button"
                       onClick={() => handleDeleteCategoryClick(cat)}
-                      className="p-0.5 rounded-full text-purple-600 hover:bg-purple-200 hover:text-red-600 transition-colors"
+                      className="p-0.5 rounded-full text-purple-400 hover:bg-rose-500/20 hover:text-rose-400 transition-colors"
                       title="Delete category"
                     >
                       <X className="h-3 w-3" />
@@ -855,14 +855,14 @@ export default function ProductsPage() {
             </div>
           )}
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 pt-4 border-t border-slate-800/80">
             <button
               type="button"
               onClick={() => {
                 setIsCategoryModalOpen(false);
                 setNewCategoryName('');
               }}
-              className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-medium transition-all"
+              className="flex-1 px-4 py-2.5 border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition-all"
             >
               Cancel
             </button>
@@ -870,7 +870,7 @@ export default function ProductsPage() {
               type="button"
               onClick={handleCreateCategory}
               disabled={isLoading || !newCategoryName.trim()}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:from-purple-700 hover:to-indigo-700 font-medium transition-all disabled:opacity-50 shadow-lg"
+              className="flex-1 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-semibold transition-all disabled:opacity-50 shadow-lg shadow-purple-600/30"
             >
               {isLoading ? 'Creating...' : 'Create Category'}
             </button>
