@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { 
@@ -33,6 +33,7 @@ interface DateRangePickerProps {
   dateRange: { start: string; end: string } | null;
   onChange: (range: { start: string; end: string }) => void;
   className?: string;
+  triggerClassName?: string;
 }
 
 const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
@@ -50,7 +51,7 @@ function formatDateStr(date: Date) {
   return format(date, 'yyyy-MM-dd');
 }
 
-export function DateRangePicker({ dateRange, onChange, className = "" }: DateRangePickerProps) {
+export function DateRangePicker({ dateRange, onChange, className = "", triggerClassName = "" }: DateRangePickerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -190,16 +191,17 @@ export function DateRangePicker({ dateRange, onChange, className = "" }: DateRan
   };
 
   return (
-    <div ref={containerRef} className={cn("relative inline-block", className)}>
+    <div ref={containerRef} className={cn("relative inline-flex items-center", className)}>
       {/* Trigger Button */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "h-10 px-3.5 rounded-xl border flex items-center gap-2.5 text-xs font-semibold transition-all duration-200 shadow-sm",
+          "h-10 px-3.5 rounded-xl border flex items-center gap-2.5 text-xs font-semibold transition-all duration-200",
           isOpen
-            ? "border-blue-500 bg-slate-900 text-white shadow-md shadow-blue-500/10 ring-1 ring-blue-500"
-            : "border-slate-800 bg-slate-900/90 text-slate-200 hover:border-slate-700 hover:bg-slate-800/80 hover:text-white"
+            ? "border-blue-500 bg-slate-900 text-white ring-1 ring-blue-500"
+            : "border-slate-800 bg-slate-900 text-slate-200 hover:border-slate-700 hover:bg-slate-800/80 hover:text-white",
+          triggerClassName
         )}
       >
         <CalendarIcon className="h-4 w-4 text-blue-400 shrink-0" />

@@ -452,7 +452,7 @@ function TransactionsContent() {
             <DateRangePicker
               dateRange={dateRange || {start: '', end: ''}}
               onChange={setDateRange}
-              className={cn("h-10 text-xs bg-slate-900 border-slate-800 text-slate-200", !dateRange && "opacity-50 grayscale pointer-events-none")}
+              className={cn(!dateRange && "opacity-50 grayscale pointer-events-none")}
             />
             <button
               onClick={() => setDateRange(dateRange ? null : {start: format(subDays(new Date(), 30), 'yyyy-MM-dd'), end: format(new Date(), 'yyyy-MM-dd')})}
@@ -478,8 +478,8 @@ function TransactionsContent() {
               onClick={() => setIsModalOpen(true)}
               className="flex items-center gap-1.5 px-3.5 h-10 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-lg shadow-blue-600/30 transition-all shrink-0"
             >
-              <Plus className="h-4 w-4" />
-              <span>+ Log Transaction</span>
+              <Plus className="h-4 w-4 shrink-0" />
+              <span>Log Transaction</span>
             </button>
           </div>
         </div>

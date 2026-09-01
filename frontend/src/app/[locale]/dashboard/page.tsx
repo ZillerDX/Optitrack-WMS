@@ -389,7 +389,7 @@ export default function DashboardPage() {
             <DateRangePicker
               dateRange={dateRange || {start: '', end: ''}}
               onChange={setDateRange}
-              className={cn("h-10 text-xs bg-slate-900 border-slate-800 text-slate-200", !dateRange && "opacity-50 grayscale pointer-events-none")}
+              className={cn(!dateRange && "opacity-50 grayscale pointer-events-none")}
             />
             <button
               onClick={() => setDateRange(dateRange ? null : {start: format(subDays(new Date(), 30), 'yyyy-MM-dd'), end: format(new Date(), 'yyyy-MM-dd')})}
@@ -450,7 +450,7 @@ export default function DashboardPage() {
                   onClick={() => router.push(`/transactions?action=inbound&product_id=${item.product_id}&location=${encodeURIComponent(item.location || '')}`)}
                   className="px-2.5 py-1 text-[11px] font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-sm shrink-0 transition-colors"
                 >
-                  + Inbound
+                  Inbound
                 </button>
               </div>
             ))}

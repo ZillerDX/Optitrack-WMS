@@ -417,8 +417,8 @@ export default function ProductsPage() {
             }}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-lg shadow-blue-600/30 transition-all"
           >
-            <Plus className="h-4 w-4" />
-            <span>+ Add Product</span>
+            <Plus className="h-4 w-4 shrink-0" />
+            <span>Add Product</span>
           </button>
         </div>
       </div>

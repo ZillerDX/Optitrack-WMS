@@ -7,7 +7,7 @@
 
 import { useTranslations } from '@/lib/translations';
 import { useState, useEffect } from 'react';
-import { Package, Search, Filter, TrendingDown, Box, DollarSign, ArrowUpRight, ArrowDownRight, Tag, Trash2, MapPin, Settings2, Save, Warehouse } from 'lucide-react';
+import { Package, Search, Filter, TrendingDown, Box, DollarSign, ArrowUpRight, ArrowDownRight, Tag, Trash2, MapPin, Settings2, Save, Warehouse, Plus } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
@@ -454,8 +454,8 @@ export default function InventoryPage() {
             onClick={() => setIsCreateLocationModalOpen(true)}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-lg shadow-blue-600/30 transition-all"
           >
-            <MapPin className="h-4 w-4" />
-            <span>+ New Location</span>
+            <Plus className="h-4 w-4 shrink-0" />
+            <span>New Location</span>
           </button>
         </div>
       </div>
