@@ -123,7 +123,11 @@ export function AIChatWidget() {
     setIsLoading(true);
 
     try {
-      const response = await api.sendChatMessage(messageToSend);
+      const historyPayload = messages.slice(-8).map((m) => ({
+        role: m.isBot ? 'assistant' : 'user',
+        content: m.content,
+      }));
+      const response = await api.sendChatMessage(messageToSend, historyPayload);
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         content: response.response,
