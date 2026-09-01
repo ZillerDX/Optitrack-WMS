@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { AIChatWidget } from '@/components/AIChatWidget';
 import { PageTransition } from '@/components/PageTransition';
-import { DesktopTitleBar } from '@/components/layout/DesktopTitleBar';
 import { CommandMenu } from '@/components/ui/CommandMenu';
 import { Menu, Package } from 'lucide-react';
 import { useUIStore } from '@/store/useUIStore';
@@ -97,13 +96,10 @@ export default function ClientLayout({
   };
 
   return (
-    <div className="flex flex-col h-screen bg-slate-950 overflow-hidden">
-      <DesktopTitleBar onOpenCommandMenu={() => setIsCommandMenuOpen(true)} />
+    <div className="flex h-screen bg-slate-950 overflow-hidden">
+      <Sidebar userRole={userRole} user={user} />
       
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        <Sidebar userRole={userRole} user={user} />
-        
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-900">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-900">
           {/* Mobile Header */}
           <header className="lg:hidden flex items-center justify-between h-16 px-4 bg-slate-900 text-white shadow-md z-30 flex-shrink-0 border-b border-slate-800">
             <div className="flex items-center gap-3">
@@ -144,7 +140,6 @@ export default function ClientLayout({
           isOpen={isCommandMenuOpen} 
           onClose={() => setIsCommandMenuOpen(false)} 
         />
-      </div>
     </div>
   );
 }
