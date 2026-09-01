@@ -1,0 +1,87 @@
+name: OptiTrack WMS - CI/CD & PWA Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  backend-test:
+    name: Backend API Tests & Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install Backend Dependencies
+        run: |
+          uv pip install --system -r requirements.txt pytest pytest-asyncio httpx
+
+      - name: Run Pytest Suite
+        env:
+          DATABASE_URL: "sqlite+aiosqlite:///ci_test.db"
+          SECRET_KEY: "ci-secret-key-32-characters-long-safe-jwt"
+          ENVIRONMENT: "development"
+        run: |
+          pytest -v --tb=short
+
+  frontend-pwa-build:
+    name: Frontend PWA Build & Artifact
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package.json
+
+      - name: Install Frontend Dependencies
+        run: npm install
+
+      - name: Verify TypeScript Types
+        run: npx tsc --noEmit
+
+      - name: Verify PWA Assets
+        run: |
+          test -f public/manifest.json || { echo "manifest.json missing"; exit 1; }
+          test -f public/sw.js || { echo "sw.js missing"; exit 1; }
+          test -f public/offline.html || { echo "offline.html missing"; exit 1; }
+          echo "PWA core files verified!"
+
+      - name: Build Next.js Production PWA
+        env:
+          NEXT_PUBLIC_API_URL: "http://localhost:8000"
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+        run: npm run build
+
+      - name: Upload PWA Standalone Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: optitrack-pwa-build
+          path: |
+            frontend/.next/standalone
+            frontend/public
+          retention-days: 7

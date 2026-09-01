@@ -77,6 +77,11 @@ export const api = {
     return response.data;
   },
 
+  loginWithGoogle: async (credential: string) => {
+    const response = await apiClient.post('/api/auth/google', { credential });
+    return response.data;
+  },
+
   forgotPassword: async (email: string) => {
     const response = await apiClient.post('/api/auth/forgot-password', { email });
     return response.data;

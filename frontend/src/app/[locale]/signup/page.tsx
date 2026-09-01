@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Package, Lock, Mail, Boxes, TrendingUp, Shield, Zap, User } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -244,6 +245,24 @@ export default function SignUpPage() {
               )}
             </Button>
           </form>
+
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-slate-50 px-4 text-slate-400 font-semibold tracking-wider">
+                Or sign up with
+              </span>
+            </div>
+          </div>
+
+          {/* Google Sign-Up Button */}
+          <GoogleSignInButton 
+            mode="signup" 
+            onError={(msg) => setError(msg)} 
+          />
 
           {/* Sign In Link */}
           <div className="mt-8 text-center">

@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Package, Lock, Mail, Boxes, TrendingUp, Shield, Zap, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/modals';
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -235,6 +236,24 @@ export default function LoginPage() {
             </Button>
           </form>
 
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-slate-50 px-4 text-slate-400 font-semibold tracking-wider">
+                Or continue with
+              </span>
+            </div>
+          </div>
+
+          {/* Google Sign-In Button */}
+          <GoogleSignInButton 
+            mode="signin" 
+            onError={(msg) => setError(msg)} 
+          />
+
           {/* Sign Up Link */}
           <div className="mt-8 text-center">
             <p className="text-slate-500 font-medium">
@@ -259,9 +278,9 @@ export default function LoginPage() {
             <div className="space-y-3">
               <div className="flex justify-between items-center text-sm p-3 bg-white rounded-xl border border-blue-100 shadow-sm">
                 <span className="text-slate-500">Account:</span>
-                <code className="text-blue-600 font-bold">admin@optitrack.com</code>
+                <code className="text-blue-600 font-bold">admin@optitrack.io</code>
               </div>
-              <p className="text-[10px] text-center text-slate-400 font-medium uppercase tracking-wider">Password: <span className="text-blue-500">admin123</span></p>
+              <p className="text-[10px] text-center text-slate-400 font-medium uppercase tracking-wider">Password: <span className="text-blue-500">admin1234</span></p>
             </div>
           </div>
         </div>

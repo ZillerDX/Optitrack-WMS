@@ -1,17 +1,21 @@
 """Authentication routes for user identity and account management."""
 
 import logging
+import secrets
 from datetime import timedelta
 
+import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.emails import send_reset_password_email
 from app.core.limiter import limiter
 from app.core.schemas import (
+    GoogleAuthRequest,
     LoginRequest,
     PasswordChangeRequest,
     PasswordResetRequest,
@@ -166,6 +170,115 @@ async def login(
         access_token=access_token,
         token_type="bearer",
         user=UserResponse.model_validate(user)
+    )
+
+
+@router.post("/google", response_model=TokenResponse)
+@limiter.limit("10/minute")
+async def google_auth(
+    request: Request,
+    auth_data: GoogleAuthRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Authenticate or register a user using Google OAuth ID token."""
+    token = auth_data.credential.strip()
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google credential token is required",
+        )
+
+    # Verify ID token with Google's tokeninfo API
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                f"https://oauth2.googleapis.com/tokeninfo?id_token={token}"
+            )
+    except Exception as exc:
+        logger.exception("Failed to connect to Google verification endpoint")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Unable to verify Google token with Google servers",
+        ) from exc
+
+    if resp.status_code != 200:
+        logger.warning("Google token validation rejected: %s", resp.text)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired Google token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    payload = resp.json()
+
+    # Validate Audience if GOOGLE_CLIENT_ID is configured
+    expected_client_id = settings.GOOGLE_CLIENT_ID
+    if expected_client_id and payload.get("aud") != expected_client_id:
+        logger.warning(
+            "Google token audience mismatch. Expected: %s, Received: %s",
+            expected_client_id,
+            payload.get("aud"),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Google token audience mismatch",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Verify email
+    email = payload.get("email")
+    email_verified = payload.get("email_verified") in (True, "true", "True")
+    if not email or not email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google account must have a verified email address",
+        )
+
+    first_name = payload.get("given_name") or payload.get("name", "Google").split()[0]
+    last_name = payload.get("family_name") or (
+        payload.get("name", "User").split()[-1] if len(payload.get("name", "").split()) > 1 else "User"
+    )
+    picture = payload.get("picture")
+
+    # Find existing user or auto-create new account
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+
+    if user:
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User account is inactive",
+            )
+        # Update picture if user doesn't have one
+        if picture and not user.image_url:
+            user.image_url = picture
+            await db.commit()
+            await db.refresh(user)
+    else:
+        # Create new user
+        random_password = secrets.token_urlsafe(32)
+        user = User(
+            email=email,
+            password_hash=get_password_hash(random_password),
+            first_name=first_name,
+            last_name=last_name,
+            role=UserRole.ADMIN,
+            image_url=picture,
+            is_active=True,
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+    access_token = create_access_token(
+        data={"sub": str(user.id), "email": user.email, "role": user.role}
+    )
+
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user=UserResponse.model_validate(user),
     )
 
 

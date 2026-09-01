@@ -218,6 +218,10 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class GoogleAuthRequest(BaseModel):
+    credential: str
+
+
 class PasswordResetRequest(BaseModel):
     email: EmailStr
 

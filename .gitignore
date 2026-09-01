@@ -16,6 +16,7 @@ __pycache__/
 .mypy_cache/
 .coverage
 htmlcov/
+.testsprite/
 
 # Python virtual environments
 .venv/
@@ -35,7 +36,7 @@ electron/node_modules/
 
 # Local uploads and generated files
 backend/uploads/
-frontend/public/sw.js
+!frontend/public/sw.js
 frontend/public/workbox-*.js
 frontend/public/worker-*.js
 frontend/public/*.map
