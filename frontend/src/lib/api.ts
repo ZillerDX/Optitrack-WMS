@@ -7,9 +7,14 @@ import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 
 export const getStoredApiUrl = (): string => {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('optitrack_api_url') || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const custom = localStorage.getItem('optitrack_api_url');
+    if (custom) return custom;
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      return '';
+    }
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
   }
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  return process.env.NEXT_PUBLIC_API_URL || '';
 };
 
 export const setStoredApiUrl = (url: string) => {
@@ -37,6 +42,8 @@ apiClient.interceptors.request.use(
       const customUrl = localStorage.getItem('optitrack_api_url');
       if (customUrl) {
         config.baseURL = customUrl.replace(/\/+$/, '');
+      } else if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        config.baseURL = '';
       }
       const token = localStorage.getItem('token');
       if (token && config.headers) {

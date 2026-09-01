@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from 'react';
 import { Download, X, Sparkles } from 'lucide-react';
@@ -107,7 +107,7 @@ export function PWARegister() {
   if (!showInstallBanner || isInstalled) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 max-w-sm animate-in slide-in-from-bottom-5 duration-300">
+    <div className="fixed top-5 right-5 z-50 max-w-sm animate-in slide-in-from-top-5 duration-300">
       <div className="bg-slate-900/95 border border-blue-500/30 rounded-2xl p-4 shadow-2xl backdrop-blur-md text-white flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">

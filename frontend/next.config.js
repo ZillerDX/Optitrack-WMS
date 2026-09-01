@@ -16,12 +16,16 @@ const nextConfig = {
     ],
   },
   async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/api/:path*',
-      },
-    ];
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (apiUrl && !apiUrl.includes('localhost') && !apiUrl.includes('127.0.0.1')) {
+      return [
+        {
+          source: '/api/:path*',
+          destination: `${apiUrl}/api/:path*`,
+        },
+      ];
+    }
+    return [];
   },
   async headers() {
     return [

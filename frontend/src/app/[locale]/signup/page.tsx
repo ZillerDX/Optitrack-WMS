@@ -154,7 +154,7 @@ export default function SignUpPage() {
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
                       placeholder="John"
-                      className="h-14 pl-12 bg-slate-50 border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-base font-medium"
+                      className="h-14 pl-12 bg-slate-50 text-slate-900 placeholder:text-slate-400 border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-base font-semibold"
                       required
                       disabled={isLoading}
                     />
@@ -172,7 +172,7 @@ export default function SignUpPage() {
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
                       placeholder="Doe"
-                      className="h-14 pl-12 bg-slate-50 border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-base font-medium"
+                      className="h-14 pl-12 bg-slate-50 text-slate-900 placeholder:text-slate-400 border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-base font-semibold"
                       required
                       disabled={isLoading}
                     />
@@ -192,7 +192,7 @@ export default function SignUpPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@company.com"
-                    className="h-14 pl-12 bg-slate-50 border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-base font-medium"
+                    className="h-14 pl-12 bg-slate-50 text-slate-900 placeholder:text-slate-400 border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-base font-semibold"
                     required
                     disabled={isLoading}
                   />
@@ -211,7 +211,7 @@ export default function SignUpPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="h-14 pl-12 bg-slate-50 border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-base font-medium"
+                    className="h-14 pl-12 bg-slate-50 text-slate-900 placeholder:text-slate-400 border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-base font-semibold"
                     required
                     disabled={isLoading}
                     minLength={6}
