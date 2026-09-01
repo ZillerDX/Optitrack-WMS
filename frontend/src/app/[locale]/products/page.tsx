@@ -119,9 +119,10 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     try {
       const data = await api.getProducts();
-      setProducts(data);
+      setProducts(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch products:', error);
+      setProducts([]);
       showNotification('error', 'Error', 'Failed to load products');
     }
   };
@@ -129,9 +130,10 @@ export default function ProductsPage() {
   const fetchInventoryItems = async () => {
     try {
       const data = await api.getInventory(selectedLocation);
-      setInventoryItems(data);
+      setInventoryItems(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch inventory:', error);
+      setInventoryItems([]);
       showNotification('error', 'Error', 'Failed to load inventory');
     }
   };
@@ -139,9 +141,10 @@ export default function ProductsPage() {
   const fetchCategories = async () => {
     try {
       const data = await api.getCategories();
-      setCategories(data);
+      setCategories(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch categories:', error);
+      setCategories([]);
     }
   };
 
@@ -347,20 +350,28 @@ export default function ProductsPage() {
     setEditingProduct(null);
   };
 
+  const safeProducts = Array.isArray(products) ? products : [];
+  const safeInventory = Array.isArray(inventoryItems) ? inventoryItems : [];
+  const safeCategories = Array.isArray(categories) ? categories : [];
+
   const locationScopedProducts = selectedLocation === 'ALL'
-    ? products
-    : products.filter((product) => inventoryItems.some((item) => item.product_id === product.id));
+    ? safeProducts
+    : safeProducts.filter((product) => safeInventory.some((item) => item?.product_id === product?.id));
 
   const visibleCategories = selectedLocation === 'ALL'
-    ? categories
-    : categories.filter((category) => locationScopedProducts.some((product) => product.category === category.name));
+    ? safeCategories
+    : safeCategories.filter((category) => locationScopedProducts.some((product) => product?.category === category?.name));
 
   const filteredProducts = locationScopedProducts.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (product.category && product.category.toLowerCase().includes(searchTerm.toLowerCase()));
+    if (!product) return false;
+    const name = product.name || '';
+    const sku = product.sku || '';
+    const category = product.category || '';
+    const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      category.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesCategory = categoryFilter === 'ALL' || product.category === categoryFilter;
+    const matchesCategory = categoryFilter === 'ALL' || category === categoryFilter;
 
     return matchesSearch && matchesCategory;
   });

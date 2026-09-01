@@ -144,10 +144,10 @@ export default function DashboardPage() {
         api.getInventory(selectedLocation),
         api.getLocationDetails()
       ]);
-      setAllProducts(products);
-      setAllTransactions(transactions);
-      setAllInventory(inventory);
-      setLocationDetails(locations);
+      setAllProducts(Array.isArray(products) ? products : []);
+      setAllTransactions(Array.isArray(transactions) ? transactions : []);
+      setAllInventory(Array.isArray(inventory) ? inventory : []);
+      setLocationDetails(Array.isArray(locations) ? locations : []);
 
       // Fetch storage & health metrics from backend
       try {

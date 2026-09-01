@@ -153,9 +153,9 @@ export default function TransactionsPage() {
         api.getProducts(),
         api.getInventory()
       ]);
-      setTransactions(transactionsData);        
-      setProducts(productsData);
-      setInventory(inventoryData);
+      setTransactions(Array.isArray(transactionsData) ? transactionsData : []);        
+      setProducts(Array.isArray(productsData) ? productsData : []);
+      setInventory(Array.isArray(inventoryData) ? inventoryData : []);
       setLoading(false);
     } catch (error) {
       console.error('Failed to load data:', error);

@@ -134,10 +134,11 @@ export default function InventoryPage() {
   const loadInventory = async () => {
     try {
       const data = await api.getInventory(selectedLocation);
-      setInventory(data);
+      setInventory(Array.isArray(data) ? data : []);
       setLoading(false);
     } catch (error) {
       console.error('Failed to load inventory:', error);
+      setInventory([]);
       setLoading(false);
     }
   };
@@ -145,30 +146,33 @@ export default function InventoryPage() {
   const loadCategories = async () => {
     try {
       const data = await api.getCategories();
-      setCategories(data);
+      setCategories(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to load categories:', error);
+      setCategories([]);
     }
   };
 
   const loadProducts = async () => {
     try {
       const data = await api.getProducts();
-      setProducts(data);
+      setProducts(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to load products:', error);
+      setProducts([]);
     }
   };
 
   const loadLocationDetails = async () => {
     try {
-      const data: LocationDetail[] = await api.getLocationDetails();
-      return data.map((location) => ({
+      const data = await api.getLocationDetails();
+      const safeData = Array.isArray(data) ? data : [];
+      return safeData.map((location: any) => ({
         id: location.id,
         originalName: location.name,
         name: location.name,
         description: location.description || '',
-        capacity: location.capacity.toString(),
+        capacity: (location.capacity ?? 0).toString(),
       }));
     } catch (error) {
       console.error('Failed to load location details:', error);
