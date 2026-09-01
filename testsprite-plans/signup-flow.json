@@ -1,0 +1,22 @@
+﻿{
+  "$schema": "https://raw.githubusercontent.com/TestSprite/testsprite-cli/v0.7.0/schemas/plan.schema.json",
+  "projectId": "d6cd3821-4e35-4f80-92de-00c45a350a8d",
+  "type": "frontend",
+  "name": "Auth - User can navigate to Sign Up registration page",
+  "description": "Verify user can switch from login to signup page",
+  "priority": "p1",
+  "planSteps": [
+    {
+      "type": "action",
+      "description": "Navigate to /login"
+    },
+    {
+      "type": "action",
+      "description": "Click the 'Sign up' link or button"
+    },
+    {
+      "type": "assertion",
+      "description": "Verify navigation to /signup and the registration form is visible"
+    }
+  ]
+}

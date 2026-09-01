@@ -1,0 +1,26 @@
+﻿{
+  "$schema": "https://raw.githubusercontent.com/TestSprite/testsprite-cli/v0.7.0/schemas/plan.schema.json",
+  "projectId": "d6cd3821-4e35-4f80-92de-00c45a350a8d",
+  "type": "frontend",
+  "name": "Auth - Login rejects invalid credentials with error alert",
+  "description": "Verify that login rejects wrong credentials with an alert message",
+  "priority": "p1",
+  "planSteps": [
+    {
+      "type": "action",
+      "description": "Navigate to /login"
+    },
+    {
+      "type": "action",
+      "description": "Fill in the email input with 'wrong@example.com' and password input with 'wrongpass'"
+    },
+    {
+      "type": "action",
+      "description": "Click the 'Sign In' button"
+    },
+    {
+      "type": "assertion",
+      "description": "Verify an error message or alert appears indicating invalid credentials"
+    }
+  ]
+}

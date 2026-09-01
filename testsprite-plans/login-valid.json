@@ -1,0 +1,26 @@
+﻿{
+  "$schema": "https://raw.githubusercontent.com/TestSprite/testsprite-cli/v0.7.0/schemas/plan.schema.json",
+  "projectId": "d6cd3821-4e35-4f80-92de-00c45a350a8d",
+  "type": "frontend",
+  "name": "Auth - Operator can sign in with valid credentials",
+  "description": "Verify warehouse operator can login with valid email and password",
+  "priority": "p0",
+  "planSteps": [
+    {
+      "type": "action",
+      "description": "Navigate to /login"
+    },
+    {
+      "type": "action",
+      "description": "Fill in the email input with 'admin@optitrack.io' and password input with 'admin1234'"
+    },
+    {
+      "type": "action",
+      "description": "Click the 'Sign In' button"
+    },
+    {
+      "type": "assertion",
+      "description": "Verify the URL becomes /dashboard and the warehouse command center is displayed"
+    }
+  ]
+}
