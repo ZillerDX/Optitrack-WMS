@@ -23,8 +23,5 @@ export default function middleware(request: NextRequest) {
 }
  
 export const config = {
-  // จับคู่ชื่อเส้นทางทั้งหมด ยกเว้น
-  // - … หากเริ่มต้นด้วย `/api`, `/_next` หรือ `/_vercel`
-  // - … ชื่อที่มีจุด (เช่น `favicon.ico`)
-  matcher: ['/((?!api|_next|_vercel|.*\\..*).*)']
+  matcher: ['/((?!api|_next|_vercel|manifest\\.json|manifest\\.webmanifest|sw\\.js|icons|favicon\\.ico|.*\\..*).*)']
 };

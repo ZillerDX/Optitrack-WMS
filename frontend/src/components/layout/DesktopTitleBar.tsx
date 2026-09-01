@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { Minus, Square, Copy, X, Wifi, Box, Search, ShieldCheck, Server } from 'lucide-react';
+import { Minus, Square, Copy, X, Wifi, Box, Search, ShieldCheck, Server, Download } from 'lucide-react';
 import { api } from '@/lib/api';
 import { ApiSettingsModal } from '@/components/modals';
 
@@ -130,9 +130,24 @@ export function DesktopTitleBar({ onOpenCommandMenu }: WindowControlsProps) {
             </button>
           </>
         ) : (
-          <div className="flex items-center gap-1 text-[11px] text-slate-500">
-            <ShieldCheck className="w-3 h-3 text-emerald-500" />
-            <span>Secure Enterprise Workspace</span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.triggerPWAInstall) {
+                  window.triggerPWAInstall();
+                }
+              }}
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 text-[10px] font-medium transition-colors"
+              title="Install OptiTrack WMS as Progressive Web App"
+            >
+              <Download className="w-2.5 h-2.5" />
+              <span>Install PWA</span>
+            </button>
+            <div className="flex items-center gap-1 text-[11px] text-slate-400">
+              <ShieldCheck className="w-3 h-3 text-emerald-400" />
+              <span className="font-mono text-[10px]">Enterprise Web</span>
+            </div>
           </div>
         )}
       </div>

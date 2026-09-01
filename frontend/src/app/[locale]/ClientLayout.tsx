@@ -38,31 +38,32 @@ export default function ClientLayout({
       return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
-  // หน้าที่ไม่ควรแสดงแถบด้านข้าง
+  // Pages that should not display the full enterprise sidebar / titlebar shell
   const isLoginPage = pathname?.includes('/login') || pathname?.includes('/signup');
+  const isRootPage = !pathname || pathname === '/' || pathname === '/en';
 
-  // แสดงเค้าโครงแบบแยกเดี่ยวสำหรับการเข้าสู่ระบบและเส้นทางมือถือ
+  // Display standalone layout for root splash, login, and signup
   const isStandalonePage = isStandalonePageCheck(pathname);
 
   function isStandalonePageCheck(path: string | null) {
-      if (!path) return false;
-      return path.includes('/login') || path.includes('/signup');
+      if (!path) return true;
+      return path === '/' || path === '/en' || path.includes('/login') || path.includes('/signup');
   }
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userStr = localStorage.getItem('user');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
 
-    // การป้องกันการยืนยันตัวตน
-    if (!token && !isLoginPage) {
-      router.push('/login');
+    // Authentication Guard
+    if (!token && !isLoginPage && !isRootPage) {
+      router.replace('/login');
       return;
     }
 
-    // เปลี่ยนเส้นทางผู้ใช้ที่เข้าสู่ระบบแล้วจากหน้าเข้าสู่ระบบ
+    // Redirect already authenticated users from login page to dashboard
     if (token && isLoginPage) {
-        router.push('/dashboard');
-        return;
+      router.replace('/dashboard');
+      return;
     }
 
     if (userStr) {
