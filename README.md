@@ -2,6 +2,8 @@
 
 OptiTrack WMS is a multi-tenant warehouse management system with a FastAPI backend, Next.js frontend, PostgreSQL, Redis, MinIO/S3-compatible storage, and an optional Groq-powered AI assistant.
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FZillerDX%2FOptitrack-WMS&root-directory=frontend&env=NEXT_PUBLIC_GOOGLE_CLIENT_ID,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY)
+
 ## Quick Start
 
 Install these first:
