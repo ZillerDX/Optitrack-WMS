@@ -8,6 +8,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.product import Product
+from app.models.user import User
 
 
 class TestProductCreation:
@@ -180,11 +181,12 @@ class TestProductUpdate:
 
     @pytest.mark.asyncio
     async def test_update_product_sku_conflict(
-        self, client: AsyncClient, admin_token: str, db_session: AsyncSession
+        self, client: AsyncClient, admin_token: str, admin_user: User, db_session: AsyncSession
     ):
         """Test updating product SKU to existing SKU fails."""
         # Create two products
         product1 = Product(
+            owner_id=admin_user.id,
             sku="PROD-A",
             name="Product A",
             category="Test",
@@ -194,6 +196,7 @@ class TestProductUpdate:
             unit="pcs"
         )
         product2 = Product(
+            owner_id=admin_user.id,
             sku="PROD-B",
             name="Product B",
             category="Test",

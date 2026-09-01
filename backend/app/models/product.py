@@ -2,7 +2,7 @@
 Product model for product master data.
 """
 
-from sqlalchemy import Column, Integer, String, Numeric, ForeignKey
+from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, Index
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -13,6 +13,10 @@ class Product(Base):
     Stores product master data including SKU, pricing, and stock levels.
     """
     __tablename__ = "products"
+    __table_args__ = (
+        Index("ix_products_owner_sku", "owner_id", "sku"),
+        Index("ix_products_owner_category", "owner_id", "category"),
+    )
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)

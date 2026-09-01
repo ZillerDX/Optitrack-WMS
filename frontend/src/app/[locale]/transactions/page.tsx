@@ -24,7 +24,10 @@ import {
   ArrowUpRight,
   LineChart as LineChartIcon,
   TrendingUp,
-  Clock
+  Clock,
+  Download,
+  Printer,
+  Barcode as BarcodeIcon
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -333,6 +336,31 @@ export default function TransactionsPage() {
     return date.toLocaleString('en-US', { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   };
 
+  const exportToCSV = () => {
+    if (filteredTransactions.length === 0) return;
+    const headers = ["Ref Code", "Type", "Product", "SKU", "Quantity", "Unit Price", "Total Price", "Location", "Date", "Notes"];
+    const rows = filteredTransactions.map(t => [
+      t.ref_code,
+      t.type,
+      `"${t.product?.name || ''}"`,
+      t.product?.sku || '',
+      t.quantity,
+      t.unit_price,
+      t.total_price,
+      t.location || '',
+      format(parseISO(t.created_at), 'yyyy-MM-dd HH:mm'),
+      `"${t.notes || ''}"`
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `transactions_${format(new Date(), 'yyyyMMdd_HHmm')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 items-center justify-center font-sans">
@@ -379,15 +407,26 @@ export default function TransactionsPage() {
               All time
             </button>
           </div>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="group relative overflow-hidden bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 h-11 rounded-2xl font-medium shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 flex items-center justify-center shrink-0 w-full sm:w-auto"
-          >
-            <div className="relative flex items-center gap-1.5">
-              <Plus className="h-4 w-4" />
-              <span className="text-[13px]">New Transaction</span>
-            </div>
-          </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={exportToCSV}
+              disabled={filteredTransactions.length === 0}
+              className="h-11 px-3.5 rounded-2xl text-[13px] font-semibold transition-all duration-200 border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900 shadow-sm flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+              title="Export filtered records to CSV"
+            >
+              <Download className="h-4 w-4 text-slate-500" />
+              <span>Export</span>
+            </button>
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="group relative overflow-hidden bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 h-11 rounded-2xl font-medium shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 flex items-center justify-center shrink-0 flex-1 sm:flex-none"
+            >
+              <div className="relative flex items-center gap-1.5">
+                <Plus className="h-4 w-4" />
+                <span className="text-[13px]">New Transaction</span>
+              </div>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -717,9 +756,41 @@ export default function TransactionsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 text-medium">Product <span className="text-red-500">*</span></label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-semibold text-gray-700 text-medium">
+                  Product <span className="text-red-500">*</span>
+                </label>
+                <div className="flex items-center gap-1 text-[11px] font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
+                  <BarcodeIcon className="w-3 h-3" />
+                  <span>Scanner Ready</span>
+                </div>
+              </div>
+
+              {/* Barcode Quick Scan / SKU Input */}
+              <div className="relative mb-2">
+                <input
+                  type="text"
+                  placeholder="Scan barcode with handheld gun or type SKU..."
+                  className="w-full pl-8 pr-3 py-2 text-xs border border-indigo-200 rounded-lg bg-indigo-50/30 hover:bg-white focus:bg-white focus:ring-2 focus:ring-indigo-500 font-mono text-slate-800 transition-all placeholder:text-slate-400"
+                  onChange={(e) => {
+                    const val = e.target.value.trim().toLowerCase();
+                    if (!val) return;
+                    const matched = products.find(p => 
+                      p.sku?.toLowerCase() === val || 
+                      (p as any).barcode?.toLowerCase() === val
+                    );
+                    if (matched) {
+                      setFormData(prev => ({ ...prev, product_id: matched.id.toString() }));
+                    }
+                  }}
+                />
+                <BarcodeIcon className="w-3.5 h-3.5 text-indigo-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+
               <Select value={formData.product_id} onValueChange={(val) => setFormData({ ...formData, product_id: val })}>
-                <SelectTrigger className="w-full h-11 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"><SelectValue placeholder="Select a product..." /></SelectTrigger>   
+                <SelectTrigger className="w-full h-11 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500">
+                  <SelectValue placeholder="Or select product from list..." />
+                </SelectTrigger>   
                 <SelectContent>{products.map((product) => (<SelectItem key={product.id} value={product.id.toString()}>{product.name} ({product.sku})</SelectItem>))}</SelectContent>
               </Select>
             </div>

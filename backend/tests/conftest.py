@@ -13,13 +13,18 @@ from sqlalchemy.pool import StaticPool
 
 from main import app as fastapi_app
 from app.core.database import Base, get_db
+from app.core.limiter import limiter
 from app.core.security import get_password_hash
 
-# นำเข้าโมเดลทั้งหมดก่อนสร้างเครื่องยนต์เพื่อให้แน่ใจว่าได้ลงทะเบียนแล้ว
+# Disable rate limiting for the entire test suite
+limiter.enabled = False
+
+# Import all models to ensure registration on metadata
 from app.models.user import User, UserRole
 from app.models.product import Product
 from app.models.inventory import Inventory, InventoryStatus
 from app.models.transaction import Transaction, TransactionType, TransactionStatus
+from app.models.location import Location
 
 # URL ฐานข้อมูลทดสอบ - ใช้ SQLite 
 # ใช้ check_same_thread=False เพื่อให้ SQLite ทำงานแบบ async ได้
@@ -92,7 +97,7 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
 @pytest_asyncio.fixture
 async def admin_user(db_session: AsyncSession) -> User:
-    """Create and return a test admin user."""
+    """Create and return a test admin user with a default warehouse location."""
     user = User(
         email="admin@test.com",
         password_hash=get_password_hash("admin123"),
@@ -104,6 +109,17 @@ async def admin_user(db_session: AsyncSession) -> User:
     db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)
+
+    # Seed default location for transactions/inventory in tests
+    location = Location(
+        name="A-01",
+        description="Default Test Location",
+        capacity=10000,
+        owner_id=user.id
+    )
+    db_session.add(location)
+    await db_session.commit()
+
     return user
 
 
@@ -119,9 +135,10 @@ async def admin_token(client: AsyncClient, admin_user: User) -> str:
 
 
 @pytest_asyncio.fixture
-async def sample_product(db_session: AsyncSession) -> Product:
+async def sample_product(db_session: AsyncSession, admin_user: User) -> Product:
     """Create and return a sample product."""
     product = Product(
+        owner_id=admin_user.id,
         sku="TEST-001",
         name="Test Product",
         category="Electronics",

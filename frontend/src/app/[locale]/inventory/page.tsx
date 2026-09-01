@@ -7,8 +7,9 @@
 
 import { useTranslations } from '@/lib/translations';
 import { useState, useEffect } from 'react';
-import { Package, Search, Filter, TrendingDown, Box, DollarSign, ArrowUpRight, ArrowDownRight, Tag, Trash2, MapPin, Settings2, Save } from 'lucide-react';
+import { Package, Search, Filter, TrendingDown, Box, DollarSign, ArrowUpRight, ArrowDownRight, Tag, Trash2, MapPin, Settings2, Save, Warehouse } from 'lucide-react';
 import { api } from '@/lib/api';
+import { cn } from '@/lib/utils';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import {
   Select,
@@ -486,6 +487,62 @@ export default function InventoryPage() {
           gradient="from-violet-500 to-purple-500"
         />
       </div>
+
+      {/* Visual Rack & Location Capacity Meters */}
+      {managedLocations.length > 0 && (
+        <div className="mb-6 bg-white/70 backdrop-blur border border-slate-200/80 rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Warehouse className="w-4 h-4 text-blue-600" />
+              <h2 className="text-sm font-bold text-slate-800">Warehouse Location Utilization</h2>
+            </div>
+            <span className="text-xs text-slate-500">Click a zone to filter inventory</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {managedLocations.map((loc) => {
+              const isSelected = selectedLocation === loc.name;
+              const used = inventory
+                .filter(i => i.location === loc.name)
+                .reduce((sum, i) => sum + (i.quantity || 0), 0);
+              const cap = parseInt(loc.capacity, 10) || 0;
+              const pct = cap > 0 ? Math.min(100, Math.round((used / cap) * 100)) : 0;
+              const tone = pct > 90 ? 'rose' : pct > 75 ? 'amber' : 'emerald';
+              return (
+                <div
+                  key={loc.id}
+                  onClick={() => setSelectedLocation(isSelected ? 'ALL' : loc.name)}
+                  className={cn(
+                    "p-3 rounded-xl border cursor-pointer transition-all duration-200 select-none",
+                    isSelected 
+                      ? "border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/40 shadow-sm" 
+                      : "border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/80"
+                  )}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold text-slate-800 truncate">{loc.name}</span>
+                    <span className={cn(
+                      "text-[10px] font-bold px-1.5 py-0.5 rounded font-mono",
+                      tone === 'rose' ? "bg-rose-100 text-rose-700" : tone === 'amber' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+                    )}>
+                      {pct}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mb-1.5">
+                    <div
+                      className={cn("h-full rounded-full transition-all duration-500", tone === 'rose' ? "bg-rose-500" : tone === 'amber' ? "bg-amber-500" : "bg-emerald-500")}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-slate-500">
+                    <span>{used.toLocaleString()} units</span>
+                    <span>Cap {cap.toLocaleString()}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ค้นหาและตัวกรอง */}
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-3 sm:gap-4">

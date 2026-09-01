@@ -11,6 +11,7 @@ from sqlalchemy import select
 from app.models.product import Product
 from app.models.inventory import Inventory, InventoryStatus
 from app.models.transaction import Transaction, TransactionType
+from app.models.user import User
 
 
 class TestInboundTransactions:
@@ -80,11 +81,13 @@ class TestInboundTransactions:
         self,
         client: AsyncClient,
         admin_token: str,
+        admin_user: User,
         db_session: AsyncSession
     ):
         """Test that inbound transaction updates stock status from LOW_STOCK to IN_STOCK."""
         # สร้างสินค้าที่มีสต็อกต่ำ
         product = Product(
+            owner_id=admin_user.id,
             sku="LOW-001",
             name="Low Stock Product",
             category="Test",

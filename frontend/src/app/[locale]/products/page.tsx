@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Package, ArrowUpRight, ArrowDownRight, Filter, PlusCircle, X } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Package, ArrowUpRight, ArrowDownRight, Filter, PlusCircle, X, Barcode as BarcodeIcon } from 'lucide-react';
 import { api } from '@/lib/api';
-import { Modal, ConfirmModal, NotificationModal } from '@/components/modals';
+import { Modal, ConfirmModal, NotificationModal, BarcodeModal } from '@/components/modals';
 import { useLocationStore } from '@/store/useLocationStore';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { SUPPORTED_CURRENCIES, type SupportedCurrency } from '@/lib/currency';
@@ -74,6 +74,8 @@ export default function ProductsPage() {
     title: '',
     message: ''
   });
+  const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
+  const [selectedBarcodeProduct, setSelectedBarcodeProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     sku: '',
     name: '',
@@ -517,6 +519,16 @@ export default function ProductsPage() {
                     <td className="px-6 py-4 text-sm">
                       <div className="flex gap-2">
                         <button
+                          onClick={() => {
+                            setSelectedBarcodeProduct(product);
+                            setIsBarcodeModalOpen(true);
+                          }}
+                          className="group p-2 text-indigo-600 hover:bg-gradient-to-r hover:from-indigo-500 hover:to-purple-500 hover:text-white rounded-lg transition-all duration-200 hover:scale-110 shadow-sm hover:shadow-md"
+                          title="Print Barcode Label"
+                        >
+                          <BarcodeIcon className="h-4 w-4" />
+                        </button>
+                        <button
                           onClick={() => handleEdit(product)}
                           className="group p-2 text-blue-600 hover:bg-gradient-to-r hover:from-blue-500 hover:to-cyan-500 hover:text-white rounded-lg transition-all duration-200 hover:scale-110 shadow-sm hover:shadow-md"
                           title="Edit product"
@@ -849,6 +861,16 @@ export default function ProductsPage() {
         type="danger"
         confirmText="Delete Category"
         cancelText="Cancel"
+      />
+
+      {/* Barcode Label Modal */}
+      <BarcodeModal
+        isOpen={isBarcodeModalOpen}
+        onClose={() => {
+          setIsBarcodeModalOpen(false);
+          setSelectedBarcodeProduct(null);
+        }}
+        product={selectedBarcodeProduct}
       />
     </div>
   );

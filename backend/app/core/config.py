@@ -29,7 +29,11 @@ class Settings(BaseSettings):
     SQL_ECHO: bool = False
     INIT_DB_ON_STARTUP: bool = False
 
-    SECRET_KEY: str = Field(..., min_length=1)
+    SECRET_KEY: str = Field(
+        default="optitrack-dev-secret-key-32-chars-minimum-safe",
+        min_length=1,
+        description="Secret key for JWT token encryption"
+    )
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
 

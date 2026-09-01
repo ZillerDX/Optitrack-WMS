@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { AIChatWidget } from '@/components/AIChatWidget';
 import { PageTransition } from '@/components/PageTransition';
+import { DesktopTitleBar } from '@/components/layout/DesktopTitleBar';
+import { CommandMenu } from '@/components/ui/CommandMenu';
 import { Menu, Package } from 'lucide-react';
 import { useUIStore } from '@/store/useUIStore';
 import { cn } from '@/lib/utils';
@@ -20,7 +22,21 @@ export default function ClientLayout({
   const router = useRouter();
   const [userRole, setUserRole] = useState<'ADMIN'>('ADMIN');
   const [user, setUser] = useState<any>(null);
+  const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
   const { toggleMobileMenu } = useUIStore();
+
+    // Global Ctrl+K / Cmd+K listener
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          setIsCommandMenuOpen((prev) => !prev);
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
   // หน้าที่ไม่ควรแสดงแถบด้านข้าง
   const isLoginPage = pathname?.includes('/login') || pathname?.includes('/signup');
@@ -80,46 +96,54 @@ export default function ClientLayout({
   };
 
   return (
-    <div className="flex h-screen bg-slate-900 overflow-hidden">
-      <Sidebar userRole={userRole} user={user} />
+    <div className="flex flex-col h-screen bg-slate-950 overflow-hidden">
+      <DesktopTitleBar onOpenCommandMenu={() => setIsCommandMenuOpen(true)} />
       
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile Header */}
-        <header className="lg:hidden flex items-center justify-between h-16 px-4 bg-slate-900 text-white shadow-md z-30 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={toggleMobileMenu}
-              className="p-2 -ml-2 hover:bg-slate-800 rounded-lg transition-colors"
-              aria-label="Toggle menu"
-            >
-              <Menu className="h-6 w-6" />
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="bg-gradient-to-r from-blue-500 to-indigo-500 p-1 rounded-md">
-                <Package className="h-4 w-4 text-white" />
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        <Sidebar userRole={userRole} user={user} />
+        
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-900">
+          {/* Mobile Header */}
+          <header className="lg:hidden flex items-center justify-between h-16 px-4 bg-slate-900 text-white shadow-md z-30 flex-shrink-0 border-b border-slate-800">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={toggleMobileMenu}
+                className="p-2 -ml-2 hover:bg-slate-800 rounded-lg transition-colors"
+                aria-label="Toggle menu"
+              >
+                <Menu className="h-6 w-6" />
+              </button>
+              <div className="flex items-center gap-2">
+                <div className="bg-gradient-to-r from-blue-500 to-indigo-500 p-1 rounded-md">
+                  <Package className="h-4 w-4 text-white" />
+                </div>
+                <span className="font-bold tracking-tight">{getPageTitle()}</span>
               </div>
-              <span className="font-bold tracking-tight">{getPageTitle()}</span>
             </div>
-          </div>
-          {user?.image_url && (
-            <img
-              src={user.image_url.startsWith('http') ? user.image_url : `http://localhost:8000${user.image_url}`}
-              alt="User"
-              className="w-8 h-8 rounded-full object-cover border-2 border-slate-700"
-            />
-          )}
-        </header>
+            {user?.image_url && (
+              <img
+                src={user.image_url.startsWith('http') ? user.image_url : `http://localhost:8000${user.image_url}`}
+                alt="User"
+                className="w-8 h-8 rounded-full object-cover border-2 border-slate-700"
+              />
+            )}
+          </header>
 
-        <main className="flex-1 overflow-auto bg-slate-900 p-0 sm:p-0">
-          <div className="w-full min-h-full">
-            <PageTransition>
-              {children}
-            </PageTransition>
-          </div>
-        </main>
+          <main className="flex-1 overflow-auto bg-slate-900 p-0 sm:p-0">
+            <div className="w-full min-h-full">
+              <PageTransition>
+                {children}
+              </PageTransition>
+            </div>
+          </main>
+        </div>
+        
+        <AIChatWidget />
+        <CommandMenu 
+          isOpen={isCommandMenuOpen} 
+          onClose={() => setIsCommandMenuOpen(false)} 
+        />
       </div>
-      
-      <AIChatWidget />
     </div>
   );
 }
