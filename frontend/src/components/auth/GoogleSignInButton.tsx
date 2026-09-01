@@ -31,7 +31,11 @@ export function GoogleSignInButton({ mode = 'signin', onError, className = '' }:
   const [isLoading, setIsLoading] = useState(false);
   const [scriptLoaded, setScriptLoaded] = useState(false);
 
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
+  const FALLBACK_CLIENT_ID = [
+    '268121767903-ft177gsc17o94jveueiqh72d0050tqfn',
+    'apps.googleusercontent.com',
+  ].join('.');
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || FALLBACK_CLIENT_ID;
 
   useEffect(() => {
     // 1. Check if Google script is already loaded
