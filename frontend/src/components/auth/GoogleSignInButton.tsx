@@ -30,6 +30,13 @@ export function GoogleSignInButton({ mode = 'signin', onError, className = '' }:
   const buttonRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [scriptLoaded, setScriptLoaded] = useState(false);
+  const [currentOrigin, setCurrentOrigin] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setCurrentOrigin(window.location.origin);
+    }
+  }, []);
 
   const FALLBACK_CLIENT_ID = [
     '268121767903-ft177gsc17o94jveueiqh72d0050tqfn',
@@ -127,6 +134,11 @@ export function GoogleSignInButton({ mode = 'signin', onError, className = '' }:
         ref={buttonRef} 
         className="min-h-[44px] flex items-center justify-center transition-all hover:opacity-95" 
       />
+      {currentOrigin && (
+        <p className="mt-2 text-[11px] text-slate-500 font-medium">
+          Origin: <span className="font-mono text-blue-500 font-semibold select-all">{currentOrigin}</span>
+        </p>
+      )}
     </div>
   );
 }
