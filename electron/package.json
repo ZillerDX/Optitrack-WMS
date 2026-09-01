@@ -19,6 +19,13 @@
     "directories": {
       "output": "dist"
     },
+    "extraResources": [
+      {
+        "from": "../frontend/.next/standalone",
+        "to": "standalone",
+        "filter": ["**/*"]
+      }
+    ],
     "win": {
       "target": [
         "nsis",

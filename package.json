@@ -6,8 +6,9 @@
   "scripts": {
     "frontend:dev": "npm run dev --prefix frontend",
     "frontend:build": "npm run build --prefix frontend",
+    "desktop:prepare": "node scripts/prepare-standalone.js",
     "desktop:start": "npm start --prefix electron",
-    "desktop:build": "npm run build:win --prefix electron",
+    "desktop:build": "node scripts/prepare-standalone.js && npm run build:win --prefix electron",
     "backend:test": "cd backend && uv run --with-requirements requirements.txt pytest tests/"
   }
 }
