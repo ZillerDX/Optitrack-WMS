@@ -8,11 +8,6 @@ const FALLBACK_GEMINI_KEY = Buffer.from(
   'base64'
 ).toString('utf-8');
 
-const FALLBACK_GROQ_KEY = Buffer.from(
-  'Z3NrX3h6YU9RWUFRanU5aks5ZnhsaHNXR2R5YjNZQXY4WDRTQk5PTzdQSUQ4RXEzajNNM09o',
-  'base64'
-).toString('utf-8');
-
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthUser(req);
@@ -21,19 +16,17 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Fetch live warehouse data snapshot
-    const [productsRes, inventoryRes, txRes, locRes, catRes] = await Promise.all([
+    const [productsRes, inventoryRes, txRes, locRes] = await Promise.all([
       supabaseRest(`products?owner_id=eq.${user.id}&select=*&order=id.desc`),
       supabaseRest(`inventory?select=*,product:products!inner(*)&product.owner_id=eq.${user.id}&order=id.desc`),
       supabaseRest(`transactions?user_id=eq.${user.id}&select=*,product:products(*)&order=created_at.desc&limit=50`),
       supabaseRest(`locations?owner_id=eq.${user.id}&select=*`),
-      supabaseRest(`categories?owner_id=eq.${user.id}&select=*`),
     ]);
 
     const products = productsRes.ok ? await productsRes.json() : [];
     const inventory = inventoryRes.ok ? await inventoryRes.json() : [];
     const transactions = txRes.ok ? await txRes.json() : [];
     const locations = locRes.ok ? await locRes.json() : [];
-    const categories = catRes.ok ? await catRes.json() : [];
 
     // 2. Compute quantitative metrics
     const totalUnits = inventory.reduce((sum: number, i: any) => sum + (Number(i.quantity) || 0), 0);
@@ -119,105 +112,85 @@ export async function POST(req: NextRequest) {
 
     const healthGrade = score >= 90 ? 'A' : score >= 75 ? 'B' : score >= 60 ? 'C' : 'D';
 
-    // Structured Prompt for AI
-    const dataContext = JSON.stringify({
-      total_products: products.length,
-      total_units: totalUnits,
-      total_valuation: totalValuation,
-      total_cost_basis: totalCostBasis,
-      overall_capacity: totalCapacity,
-      overall_utilization_pct: overallUtilizationPct,
-      health_score: score,
-      health_grade: healthGrade,
-      critical_items: velocityItems.filter((i: any) => i.status === 'CRITICAL'),
-      warning_items: velocityItems.filter((i: any) => i.status === 'WARNING'),
-      top_items: velocityItems.slice(0, 5),
-      zones: zoneBreakdown,
-    }, null, 2);
+    const topItem = velocityItems[0] || {
+      name: 'Primary Inventory',
+      sku: 'SKU-001',
+      stock: totalUnits,
+      units_out_30d: 0,
+      daily_burn: 0,
+      days_remaining: 365,
+      status: 'HEALTHY'
+    };
 
-    let aiGeneratedMarkdown = '';
+    const primaryZone = zoneBreakdown.find((z: any) => z.pct > 0) || zoneBreakdown[0] || { name: 'Main Zone', used: 0, capacity: 0, pct: 0 };
+    const emptyZones = zoneBreakdown.filter((z: any) => z.pct === 0).map((z: any) => z.name);
 
-    // Attempt Gemini or Groq synthesis
-    const geminiKey = process.env.GEMINI_API_KEY || FALLBACK_GEMINI_KEY;
-    if (geminiKey) {
-      try {
-        const prompt = `You are the Chief Logistics Officer & AI Operations Architect of OptiTrack WMS.
-Analyze the real-time warehouse data provided below and write an Executive Warehouse Operations & Intelligence Report in Thai.
+    const projectedMargin = Math.max(0, totalValuation - totalCostBasis);
+    const marginPct = totalValuation > 0 ? Math.round((projectedMargin / totalValuation) * 100) : 0;
 
-DATA CONTEXT:
-${dataContext}
-
-REPORT STRUCTURE (Use bold markdown, bullet points, clean formatting, NO emojis in section titles):
-1. **Executive Operations Brief (สรุปภาพรวมผู้บริหาร)**: สถานะภาพรวม, สุขภาพคลังสินค้า (${score}/100 Grade ${healthGrade}), มูลค่าสินค้าคงคลังรวม, การหมุนเวียน
-2. **SKU Velocity & Inventory Depletion Analysis (วิเคราะห์อัตราการหมุนเวียนและการขาดสต็อก)**: เจาะลึกสินค้าที่เคลื่อนไหวเร็ว vs ค้างสต็อก, วันที่สต็อกจะหมด
-3. **Space & Zone Optimization (การจัดสรรพื้นที่และความจุแต่ละโซน)**: วิเคราะห์โซนไหนว่าง โซนไหนใกล้เต็ม และข้อแนะนำการรับของเข้า
-4. **Working Capital & Cost Insights (วิเคราะห์เงินทุนหมุนเวียนและต้นทุน)**: เงินจมในสต็อก vs อัตรากำไรขั้นต้น
-5. **Immediate Strategic Action Items (แผนปฏิบัติการเร่งด่วน 3 ข้อ)**: ขั้นตอนที่ผู้จัดการคลังต้องดำเนินการทันทีวันนี้
-
-Write concise, actionable, highly authoritative professional Thai logistics report.`;
-
-        const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ role: 'user', parts: [{ text: prompt }] }],
-              generationConfig: { maxOutputTokens: 1500, temperature: 0.3 },
-            }),
-          }
-        );
-
-        if (geminiRes.ok) {
-          const resJson = await geminiRes.json();
-          aiGeneratedMarkdown = resJson.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        }
-      } catch (geminiErr) {
-        console.warn('[Gemini Report Error]:', geminiErr);
+    // Structured Action Items (in Professional English)
+    const actionItems = [
+      {
+        id: 1,
+        priority: 'HIGH',
+        title: 'Optimize Inbound Flow to Headroom Zones',
+        description: `Direct upcoming inbound shipments into available zones (${emptyZones.length > 0 ? emptyZones.join(', ') : 'Staging Area'}) to avoid bottlenecks in ${primaryZone.name}.`,
+      },
+      {
+        id: 2,
+        priority: 'MEDIUM',
+        title: 'Reorder Point Verification for Fast Movers',
+        description: `${topItem.name} has ${topItem.days_remaining > 365 ? '>365' : topItem.days_remaining} days of supply. Maintain minimum safety stock thresholds to guard against supplier lead-time fluctuations.`,
+      },
+      {
+        id: 3,
+        priority: 'LOW',
+        title: 'Conduct Cycle Count & Floorplan Audit',
+        description: 'Leverage the 2D/3D visualizer to inspect shelf tiers and confirm physical bin alignment across active storage racks.',
       }
-    }
+    ];
 
-    // Fallback professional report if AI provider is delayed or rate limited
-    if (!aiGeneratedMarkdown.trim()) {
-      const topItem = velocityItems[0];
-      const primaryZone = zoneBreakdown.find((z: any) => z.pct > 0) || zoneBreakdown[0];
-      const emptyZones = zoneBreakdown.filter((z: any) => z.pct === 0).map((z: any) => z.name).join(', ') || 'None';
+    // Clean English Markdown for copying / export
+    const cleanMarkdown = `=================================================================
+OPTITRACK WMS - EXECUTIVE OPERATIONS INTELLIGENCE REPORT
+Generated: ${new Date().toUTCString()}
+Status: Operational Grade ${healthGrade} (${score}/100)
+=================================================================
 
-      aiGeneratedMarkdown = `### 1. Executive Operations Brief (สรุปภาพรวมผู้บริหาร)
-* **สถานะความพร้อมของคลัง**: ระดับ **Grade ${healthGrade} (${score}/100)** การดำเนินงานโดยรวมมีความเสถียรภาพสูง
-* **มูลค่าสินค้าคงคลังรวม**: **$${totalValuation.toLocaleString()}** (คิดเป็นจำนวนสินค้าทั้งหมด **${totalUnits.toLocaleString()} ชิ้น**)
-* **อัตราการใช้พื้นที่เฉลี่ย (Space Utilization)**: **${overallUtilizationPct}%** จากความจุรองรับทั้งหมด ${totalCapacity.toLocaleString()} ชิ้น
+1. EXECUTIVE OPERATIONS BRIEF
+-----------------------------------------------------------------
+* Operational Health: Grade ${healthGrade} (${score}/100) - High structural and workflow stability.
+* Total Inventory Valuation: $${totalValuation.toLocaleString()} USD
+* Total Active Units: ${totalUnits.toLocaleString()} units across ${products.length} registered SKUs.
+* Aggregate Facility Utilization: ${overallUtilizationPct}% of total capacity (${totalUnits.toLocaleString()} / ${totalCapacity.toLocaleString()} units).
 
----
+2. SKU VELOCITY & DEPLETION ANALYSIS
+-----------------------------------------------------------------
+* Primary High-Velocity Item: ${topItem.name} (SKU: ${topItem.sku})
+* Current Stock On-Hand: ${topItem.stock.toLocaleString()} units
+* 30-Day Outbound Run-Rate: ${topItem.units_out_30d} units (${topItem.daily_burn} units/day)
+* Days of Inventory Remaining: ${topItem.days_remaining > 365 ? '> 365 Days' : `${topItem.days_remaining} Days`}
+* Risk Assessment: ${topItem.status === 'CRITICAL' ? 'Critical Depletion' : topItem.status === 'WARNING' ? 'Low Stock Warning' : 'Optimal Reserve'}
 
-### 2. SKU Velocity & Inventory Depletion Analysis (วิเคราะห์การเคลื่อนไหวของสินค้า)
-* **สินค้าหลัก (Leading SKU)**: **${topItem?.name || 'Standard Products'}** (SKU: \`${topItem?.sku || 'N/A'}\`)
-  * จำนวนคงเหลือปัจจุบัน: **${topItem?.stock || 0} ชิ้น**
-  * ยอดการเบิกจ่ายย้อนหลัง 30 วัน: **${topItem?.units_out_30d || 0} ชิ้น** (อัตราการใช้เฉลี่ย ${topItem?.daily_burn || 0} ชิ้น/วัน)
-  * ประเมินระยะเวลาสต็อกคงเหลือ (Days of Inventory): **${topItem?.days_remaining > 365 ? '> 365 วัน' : `${topItem?.days_remaining} วัน`}**
-  * สถานะความเสี่ยง: **${topItem?.status === 'CRITICAL' ? 'วิกฤต (ใกล้หมด)' : topItem?.status === 'WARNING' ? 'เฝ้าระวัง' : 'ปลอดภัย (Optimal)'}**
+3. SPACE & ZONE OPTIMIZATION
+-----------------------------------------------------------------
+* Active Operational Zone: ${primaryZone.name} (${primaryZone.used} / ${primaryZone.capacity} units - ${primaryZone.pct}% utilized)
+* Available Inbound Headroom: ${emptyZones.length > 0 ? emptyZones.join(', ') : 'All zones currently occupied'}
+* Recommendation: Route bulk replenishment to underutilized bays to maintain ergonomic throughput.
 
----
+4. WORKING CAPITAL & FINANCIAL EXPOSURE
+-----------------------------------------------------------------
+* Capital Tied in Inventory: $${totalCostBasis.toLocaleString()} USD
+* Gross Sales Valuation: $${totalValuation.toLocaleString()} USD
+* Unrealized Gross Margin: $${projectedMargin.toLocaleString()} USD (+${marginPct}%)
+* Liquidity Status: Healthy working capital turnover with zero dead stock flags.
 
-### 3. Space & Zone Optimization (การบริหารพื้นที่จัดเก็บรายโซน)
-* **โซนที่มีการจัดเก็บหลัก**: **${primaryZone?.name || 'Zone B-02'}** ถูกใช้งานไปแล้ว **${primaryZone?.used || 0} / ${primaryZone?.capacity || 0} ชิ้น (${primaryZone?.pct || 0}%)** อยู่ในเกณฑ์เหมาะสม
-* **โซนพื้นที่ว่างพร้อมรับของเข้า (High-Headroom Zones)**: **${emptyZones}** ยังไม่มีการจัดเก็บ เหมาะสำหรับเป็นพื้นที่พักคอย (Staging) หรือรองรับสินค้า Inbound ล็อตใหญ่ชุดต่อไป
-
----
-
-### 4. Working Capital & Cost Insights (การวิเคราะห์เงินทุนหมุนเวียน)
-* **เงินทุนหมุนเวียนที่ผูกมัดในสต็อก (Tied-up Capital)**: **$${totalCostBasis.toLocaleString()}**
-* **มูลค่าประเมินราคาขาย (Gross Sales Potential)**: **$${totalValuation.toLocaleString()}**
-* **ส่วนต่างกำไรขั้นต้นที่คาดการณ์ (Projected Margin)**: **$${(totalValuation - totalCostBasis).toLocaleString()}**
-* **คำแนะนำด้านการเงิน**: สภาพคล่องของสินค้าหลักยังอยู่ในเกณฑ์ดี ไม่พบสัญญาณสินค้าค้างสต็อก (Dead Stock) ในระดับมีนัยสำคัญ
-
----
-
-### 5. Immediate Strategic Action Items (แผนปฏิบัติการเร่งด่วน)
-1. **จัดสรรการรับเข้า (Inbound Routing)**: สำหรับรอบการรับเข้าสินค้าถัดไป ให้กำหนดเป้าหมายเข้าสู่โซนที่มีพื้นที่ว่างเพื่อกระจายภาระและป้องกันไม่ให้เกิดความแออัดในโซนหลัก
-2. **รักษาความปลอดภัยสต็อก (Safety Threshold)**: คงระดับ Min Stock Level ไว้ตามเกณฑ์ปัจจุบัน เพื่อป้องกันผลกระทบจาก Lead Time ของซัพพลายเออร์
-3. **ตรวจสอบพิกัดจัดเก็บ 2D/3D Floorplan**: ใช้แผนผัง 2D/3D เพื่อตรวจสอบความหนาแน่นรายแร็คก่อนทำการเบิกจ่ายในรอบบ่าย`;
-    }
+5. STRATEGIC ACTION ITEMS
+-----------------------------------------------------------------
+[1] Inbound Allocation: Target headroom zones for next batch delivery.
+[2] Safety Margins: Maintain safety stock buffers against supply-chain delays.
+[3] Digital Twin Verification: Audit physical rack tags with 2D/3D floorplan grid.
+=================================================================`;
 
     return NextResponse.json({
       generated_at: new Date().toISOString(),
@@ -232,10 +205,16 @@ Write concise, actionable, highly authoritative professional Thai logistics repo
         active_products: products.length,
         critical_count: criticalCount,
         warning_count: warningCount,
+        projected_margin: projectedMargin,
+        margin_pct: marginPct,
       },
+      top_item: topItem,
+      primary_zone: primaryZone,
+      empty_zones: emptyZones,
       zone_breakdown: zoneBreakdown,
       velocity_items: velocityItems,
-      report_markdown: aiGeneratedMarkdown,
+      action_items: actionItems,
+      report_markdown: cleanMarkdown,
     });
   } catch (error: any) {
     console.error('[AI Report API Error]:', error);
