@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Package, ArrowUpRight, ArrowDownRight, Filter, PlusCircle, X, Barcode as BarcodeIcon } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Package, ArrowUpRight, ArrowDownRight, Filter, PlusCircle, X, Barcode as BarcodeIcon, Check } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Modal, ConfirmModal, NotificationModal, BarcodeModal } from '@/components/modals';
@@ -60,6 +60,9 @@ export default function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [showInlineCategory, setShowInlineCategory] = useState(false);
+  const [inlineCategoryName, setInlineCategoryName] = useState('');
+  const [isCreatingInlineCategory, setIsCreatingInlineCategory] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{isOpen: boolean; product: Product | null}>({
     isOpen: false,
@@ -163,6 +166,26 @@ export default function ProductsPage() {
       showNotification('error', 'Error', errorMessage);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCreateInlineCategory = async () => {
+    const trimmed = inlineCategoryName.trim();
+    if (!trimmed) return;
+
+    setIsCreatingInlineCategory(true);
+    try {
+      await api.createCategory(trimmed);
+      showNotification('success', 'Category Created', `Category "${trimmed}" has been created and saved.`);
+      await fetchCategories();
+      setFormData(prev => ({ ...prev, category: trimmed }));
+      setInlineCategoryName('');
+      setShowInlineCategory(false);
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.detail || 'Failed to create category';
+      showNotification('error', 'Error', errorMessage);
+    } finally {
+      setIsCreatingInlineCategory(false);
     }
   };
 
@@ -348,6 +371,8 @@ export default function ProductsPage() {
       location: selectedLocation === 'ALL' ? '' : selectedLocation,
     });
     setEditingProduct(null);
+    setShowInlineCategory(false);
+    setInlineCategoryName('');
   };
 
   const safeProducts = Array.isArray(products) ? products : [];
@@ -645,25 +670,82 @@ export default function ProductsPage() {
             )}
 
             <div className={editingProduct ? "sm:col-span-1" : ""}>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
-                Category <span className="text-rose-400">*</span>
-              </label>
-              <Select
-                required
-                value={formData.category}
-                onValueChange={(val) => setFormData({ ...formData, category: val })}
-              >
-                <SelectTrigger className="w-full h-11 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 focus:ring-1 focus:ring-blue-500 text-xs sm:text-sm">
-                  <SelectValue placeholder="Select Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {categories.length === 0 && (
-                <p className="text-xs text-amber-400 mt-1">No categories yet. Add one first!</p>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300">
+                  Category <span className="text-rose-400">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowInlineCategory(!showInlineCategory);
+                    if (showInlineCategory) setInlineCategoryName('');
+                  }}
+                  className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
+                >
+                  <Plus className="h-3.5 w-3.5 shrink-0" />
+                  <span>{showInlineCategory ? "Choose Existing" : "Create New Category"}</span>
+                </button>
+              </div>
+
+              {showInlineCategory ? (
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      autoFocus
+                      value={inlineCategoryName}
+                      onChange={(e) => setInlineCategoryName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleCreateInlineCategory();
+                        }
+                      }}
+                      placeholder="Enter new category name..."
+                      className="flex-1 px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-xs sm:text-sm font-medium transition-all"
+                    />
+                    <button
+                      type="button"
+                      disabled={isCreatingInlineCategory || !inlineCategoryName.trim()}
+                      onClick={handleCreateInlineCategory}
+                      className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-blue-600/30 transition-all disabled:opacity-50 shrink-0 flex items-center gap-1.5"
+                    >
+                      <Check className="h-3.5 w-3.5 shrink-0" />
+                      <span>{isCreatingInlineCategory ? 'Saving...' : 'Save'}</span>
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-400">Creates and saves the new category directly to database.</p>
+                </div>
+              ) : (
+                <Select
+                  required
+                  value={formData.category}
+                  onValueChange={(val) => {
+                    if (val === '__CREATE_NEW__') {
+                      setShowInlineCategory(true);
+                    } else {
+                      setFormData({ ...formData, category: val });
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full h-11 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 focus:ring-1 focus:ring-blue-500 text-xs sm:text-sm">
+                    <SelectValue placeholder="Select Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__CREATE_NEW__" className="text-blue-400 font-semibold border-b border-slate-800 pb-2 mb-1 cursor-pointer">
+                      <div className="flex items-center gap-1.5">
+                        <Plus className="h-3.5 w-3.5 shrink-0 text-blue-400" />
+                        <span>+ Create new category...</span>
+                      </div>
+                    </SelectItem>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {categories.length === 0 && !showInlineCategory && (
+                <p className="text-xs text-amber-400 mt-1">No categories yet. Click Create New Category above!</p>
               )}
             </div>
 
