@@ -55,21 +55,23 @@ export async function POST(req: NextRequest) {
     const created = await res.json();
     const newProduct = created[0] || payload;
 
-    // Auto-create initial 0-quantity inventory record in the user's primary location if exists
-    if (newProduct.id) {
-      const locRes = await supabaseRest(`locations?owner_id=eq.${user.id}&limit=1`);
-      if (locRes.ok) {
-        const locs = await locRes.json();
-        const primaryLoc = locs[0]?.name || 'Zone A-01';
-        await supabaseRest('inventory', {
-          method: 'POST',
-          body: JSON.stringify({
-            product_id: newProduct.id,
-            location: primaryLoc,
-            quantity: 0,
-            status: 'OUT_OF_STOCK',
-          }),
-        });
+    // Create initial 0-quantity inventory record ONLY at the user-specified location from the Create Product form
+    const chosenLocation = body.location && body.location !== 'ALL' ? String(body.location).trim() : null;
+    if (newProduct.id && chosenLocation) {
+      const checkRes = await supabaseRest(`inventory?product_id=eq.${newProduct.id}&location=eq.${encodeURIComponent(chosenLocation)}`);
+      if (checkRes.ok) {
+        const existing = await checkRes.json();
+        if (!Array.isArray(existing) || existing.length === 0) {
+          await supabaseRest('inventory', {
+            method: 'POST',
+            body: JSON.stringify({
+              product_id: newProduct.id,
+              location: chosenLocation,
+              quantity: 0,
+              status: 'OUT_OF_STOCK',
+            }),
+          });
+        }
       }
     }
 

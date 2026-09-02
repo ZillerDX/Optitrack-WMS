@@ -296,6 +296,7 @@ export default function ProductsPage() {
       const { location, cost_currency, sell_currency, ...restFormData } = formData;
       const productData = {
         ...restFormData,
+        location: location && location !== 'ALL' ? location : undefined,
         cost_price: convertCurrencyInputToUsd(formData.cost_price, cost_currency),
         sell_price: convertCurrencyInputToUsd(formData.sell_price, sell_currency),
         min_stock_level: parseInt(formData.min_stock_level),
@@ -305,23 +306,7 @@ export default function ProductsPage() {
         await api.updateProduct(editingProduct.id, productData);
         showNotification('success', 'Success!', `Product "${formData.name}" has been updated successfully.`);
       } else {
-        const newProduct = await api.createProduct(productData);
-        
-        // Create initial inventory record at the specified location
-        if (location && location !== 'ALL') {
-          try {
-            await api.createInventory({
-              product_id: newProduct.id,
-              location: location,
-              quantity: 0,
-              status: 'OUT_OF_STOCK'
-            });
-          } catch (invError) {
-            console.error('Failed to create initial inventory:', invError);
-            // Non-fatal, product is created
-          }
-        }
-        
+        await api.createProduct(productData);
         showNotification('success', 'Success!', `Product "${formData.name}" has been created successfully.`);
       }
 
@@ -329,6 +314,7 @@ export default function ProductsPage() {
       resetForm();
       setIsModalOpen(false);
       fetchProducts();
+      fetchInventoryItems();
     } catch (error: any) {
       console.error('Failed to save product:', error);
       const errorMessage = error.response?.data?.detail || 'Failed to save product. Please try again.';
@@ -349,6 +335,7 @@ export default function ProductsPage() {
       await api.deleteProduct(deleteConfirm.product.id);
       showNotification('success', 'Deleted!', `Product "${deleteConfirm.product.name}" has been deleted successfully.`);
       fetchProducts();
+      fetchInventoryItems();
     } catch (error) {
       console.error('Failed to delete product:', error);
       showNotification('error', 'Error', 'Failed to delete product. It may have associated inventory records.');
@@ -368,7 +355,7 @@ export default function ProductsPage() {
       sell_currency: currency,
       min_stock_level: '',
       unit: 'pcs',
-      location: selectedLocation === 'ALL' ? '' : selectedLocation,
+      location: '',
     });
     setEditingProduct(null);
     setShowInlineCategory(false);

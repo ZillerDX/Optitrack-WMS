@@ -70,6 +70,7 @@ export default function InventoryPage() {
   const { formatCurrency } = useCurrencyFormatter();
   const { selectedLocation, fetchLocations, setSelectedLocation } = useLocationStore();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [allInventory, setAllInventory] = useState<InventoryItem[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,22 +106,24 @@ export default function InventoryPage() {
   });
 
   useEffect(() => {
+    fetchLocations();
     loadInventory();
     loadCategories();
     loadProducts();
-    fetchLocations(); // Ensure locations are loaded
+    loadLocationDetails().then(setManagedLocations);
 
-    // รีเฟรชอัตโนมัติทุก 5 วินาที
+    // รีเฟรชอัตโนมัติทุก 30 วินาที
     const intervalId = setInterval(() => {
       loadInventory();
-    }, 5000);
+    }, 30000);
 
     // รีเฟรชเมื่อหน้าต่างได้รับโฟกัส
     const handleFocus = () => {
+      fetchLocations();
       loadInventory();
       loadCategories();
       loadProducts();
-      fetchLocations();
+      loadLocationDetails().then(setManagedLocations);
     };
     window.addEventListener('focus', handleFocus);
 
@@ -133,8 +136,13 @@ export default function InventoryPage() {
 
   const loadInventory = async () => {
     try {
-      const data = await api.getInventory(selectedLocation);
-      setInventory(Array.isArray(data) ? data : []);
+      const [allData, filteredData] = await Promise.all([
+        api.getInventory('ALL'),
+        selectedLocation === 'ALL' ? Promise.resolve(null) : api.getInventory(selectedLocation)
+      ]);
+      const safeAll = Array.isArray(allData) ? allData : [];
+      setAllInventory(safeAll);
+      setInventory(selectedLocation === 'ALL' ? safeAll : (Array.isArray(filteredData) ? filteredData : []));
       setLoading(false);
     } catch (error) {
       console.error('Failed to load inventory:', error);
@@ -502,7 +510,7 @@ export default function InventoryPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {managedLocations.map((loc) => {
               const isSelected = selectedLocation === loc.name;
-              const used = inventory
+              const used = (allInventory.length > 0 ? allInventory : inventory)
                 .filter(i => i.location === loc.name)
                 .reduce((sum, i) => sum + (i.quantity || 0), 0);
               const cap = parseInt(loc.capacity, 10) || 0;
