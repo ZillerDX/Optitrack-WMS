@@ -298,6 +298,11 @@ export const api = {
     return response.data;
   },
 
+  generateAIAnalyseReport: async () => {
+    const response = await apiClient.post('/api/ai/report');
+    return response.data;
+  },
+
   // Health check with latency measurement
   checkHealth: async (customUrl?: string): Promise<{ status: string; latency: number }> => {
     const target = (customUrl || getStoredApiUrl()).replace(/\/+$/, '');

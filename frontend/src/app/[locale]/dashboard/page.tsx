@@ -20,8 +20,10 @@ import {
   BarChart3,
   Warehouse,
   ShieldAlert,
-  ArrowRight
+  ArrowRight,
+  Sparkles
 } from 'lucide-react';
+import { AIAnalyseReportModal } from '@/components/AIAnalyseReportModal';
 import { 
   BarChart, 
   Bar, 
@@ -109,6 +111,8 @@ export default function DashboardPage() {
     warehouse_capacity_pct: number;
     warehouse_capacity_label: string;
   } | null>(null);
+
+  const [isAIReportModalOpen, setIsAIReportModalOpen] = useState(false);
 
   // State for Chart Popup
   const [activeChart, setActiveChart] = useState<{
@@ -385,6 +389,17 @@ export default function DashboardPage() {
               <span>Zone: {selectedLocation}</span>
             </div>
           )}
+
+          {/* 1-Click AI Analyse Report Button */}
+          <button
+            type="button"
+            onClick={() => setIsAIReportModalOpen(true)}
+            className="flex items-center gap-2 h-10 px-4 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.02] shrink-0"
+          >
+            <Sparkles className="size-4 text-indigo-200" />
+            <span>AI Analyse Report</span>
+          </button>
+
           <div className="flex items-center gap-2.5">
             <DateRangePicker
               dateRange={dateRange || {start: '', end: ''}}
@@ -757,6 +772,12 @@ export default function DashboardPage() {
         </div>,
         document.body
       )}
+
+      {/* AI Operations Intelligence Report Modal */}
+      <AIAnalyseReportModal
+        isOpen={isAIReportModalOpen}
+        onClose={() => setIsAIReportModalOpen(false)}
+      />
     </div>
   );
 }

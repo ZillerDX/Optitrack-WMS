@@ -625,14 +625,7 @@ export function PredictiveReorderAgentModal({ isOpen, onClose, onPOApproved }: P
             <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
             <span>AI Predictive Engine connected to real-time warehouse transaction stream</span>
           </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white transition-all"
-          >
-            Close
-          </button>
+          <span className="text-[11px] font-mono text-slate-500">Press ESC or click &times; to close</span>
         </div>
 
       </div>

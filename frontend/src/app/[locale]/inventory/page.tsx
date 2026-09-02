@@ -41,7 +41,6 @@ import {
 import { Modal, NotificationModal, ConfirmModal } from '@/components/modals';
 import { useLocationStore } from '@/store/useLocationStore';
 import { WarehouseLayoutVisualizer } from '@/components/WarehouseLayoutVisualizer';
-import { PredictiveReorderAgentModal } from '@/components/PredictiveReorderAgentModal';
 
 interface Product {
   id: number;
@@ -100,7 +99,6 @@ export default function InventoryPage() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [inventoryViewMode, setInventoryViewMode] = useState<'table' | 'layout'>('table');
-  const [isPredictiveModalOpen, setIsPredictiveModalOpen] = useState(false);
   
   const router = useRouter();
   const params = useParams();
@@ -480,13 +478,6 @@ export default function InventoryPage() {
             </div>
           )}
           <button
-            onClick={() => setIsPredictiveModalOpen(true)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/25 transition-all hover:scale-[1.02]"
-          >
-            <Sparkles className="h-4 w-4 shrink-0 text-indigo-200" />
-            <span>AI Reorder Agent</span>
-          </button>
-          <button
             onClick={openManageLocationsModal}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 text-xs font-semibold shadow-sm transition-all"
           >
@@ -561,15 +552,6 @@ export default function InventoryPage() {
             </button>
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={() => setIsPredictiveModalOpen(true)}
-          className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-bold transition-all"
-        >
-          <Sparkles className="size-3.5 text-indigo-400" />
-          <span>Demand Forecast &amp; Draft POs</span>
-        </button>
       </div>
 
       {/* 2D/3D Interactive Warehouse Layout */}
@@ -953,15 +935,6 @@ export default function InventoryPage() {
         isLoading={isLocationActionSubmitting}
       />
 
-      {/* AI Predictive Inventory & Reorder Agent Modal */}
-      <PredictiveReorderAgentModal
-        isOpen={isPredictiveModalOpen}
-        onClose={() => setIsPredictiveModalOpen(false)}
-        onPOApproved={() => {
-          loadInventory();
-          fetchLocations();
-        }}
-      />
     </div>
   );
 }
