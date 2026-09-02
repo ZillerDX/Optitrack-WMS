@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Sparkles,
   TrendingDown,
@@ -127,6 +128,35 @@ export function PredictiveReorderAgentModal({ isOpen, onClose, onPOApproved }: P
     }
   }, [isOpen, loadPredictiveData]);
 
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Close modal on Escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
+  // Lock body scroll when open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
   const handleApprovePO = async (po: DraftPO) => {
     setApprovingId(po.id);
     try {
@@ -165,10 +195,10 @@ export function PredictiveReorderAgentModal({ isOpen, onClose, onPOApproved }: P
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-200">
       {/* Backdrop */}
       <div 
         onClick={onClose}
@@ -176,7 +206,7 @@ export function PredictiveReorderAgentModal({ isOpen, onClose, onPOApproved }: P
       />
 
       {/* Modal Dialog */}
-      <div className="relative w-full max-w-5xl rounded-3xl bg-slate-900 border border-slate-800/90 shadow-2xl shadow-blue-950/40 z-10 flex flex-col max-h-[92vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative my-auto w-full max-w-5xl rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl shadow-black/80 z-10 flex flex-col max-h-[90vh] overflow-hidden backdrop-blur-xl animate-in zoom-in-95 duration-200">
         
         {/* Header */}
         <div className="p-5 sm:p-6 border-b border-slate-800 bg-slate-950/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -606,6 +636,7 @@ export function PredictiveReorderAgentModal({ isOpen, onClose, onPOApproved }: P
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -92,7 +92,7 @@ export function NotificationModal({
       />
 
       {/* Notification Card */}
-      <div className={`relative bg-slate-900/95 border ${config.borderColor} rounded-2xl shadow-2xl ${config.glowColor} max-w-md w-full overflow-hidden transform transition-all animate-in zoom-in-95 duration-150 backdrop-blur-xl ring-1 ring-white/5`}>
+      <div className={`relative my-auto bg-slate-900/95 border ${config.borderColor} rounded-2xl shadow-2xl ${config.glowColor} max-w-md w-full overflow-hidden transform transition-all animate-in zoom-in-95 duration-150 backdrop-blur-xl ring-1 ring-white/5`}>
         <div className="p-5 sm:p-6">
           <div className="flex items-start gap-4">
             {/* Icon */}

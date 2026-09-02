@@ -71,7 +71,7 @@ export function ConfirmModal({
       />
 
       {/* Modal Card */}
-      <div className="relative bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all backdrop-blur-xl text-slate-100 ring-1 ring-white/5 animate-in zoom-in-95 duration-150">
+      <div className="relative my-auto bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all backdrop-blur-xl text-slate-100 ring-1 ring-white/5 animate-in zoom-in-95 duration-150">
         <div className="flex flex-col items-center text-center">
           {/* Icon Badge */}
           <div className={`${config.iconBg} p-3.5 rounded-2xl mb-4 shadow-sm`}>
