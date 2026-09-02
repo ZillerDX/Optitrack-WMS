@@ -113,7 +113,7 @@ function TransactionsContent() {
   const productIdParam = searchParams.get('product_id');
   const locationParam = searchParams.get('location');
 
-  const { selectedLocation, setSelectedLocation, locations } = useLocationStore();
+  const { selectedLocation, locations } = useLocationStore();
   const { formatCurrency } = useCurrencyFormatter();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -163,19 +163,12 @@ function TransactionsContent() {
     if (actionParam === 'inbound' && productIdParam && products.length > 0) {
       const targetProd = products.find(p => p.id.toString() === productIdParam);
       if (targetProd) {
-        if (locationParam && locationParam !== 'ALL') {
-          setSelectedLocation(locationParam);
-        } else {
-          const invItem = inventory.find(i => i.product_id === targetProd.id);
-          if (invItem?.location) {
-            setSelectedLocation(invItem.location);
-          } else if (locations.length > 0 && locations[0] !== 'ALL') {
-            setSelectedLocation(locations[0]);
-          }
-        }
+        const invItem = inventory.find(i => i.product_id === targetProd.id);
+        const targetLoc = locationParam && locationParam !== 'ALL'
+          ? locationParam
+          : invItem?.location || (locations.length > 0 && locations[0] !== 'ALL' ? locations[0] : 'Zone A-01');
 
-        const invForLoc = inventory.find(i => i.product_id === targetProd.id);
-        const currentQty = invForLoc ? invForLoc.quantity : 0;
+        const currentQty = invItem ? invItem.quantity : 0;
         const minLevel = targetProd.min_stock_level || 5;
         const restockSuggested = Math.max(1, minLevel * 2 - currentQty);
 
@@ -184,14 +177,14 @@ function TransactionsContent() {
           type: 'INBOUND',
           product_id: productIdParam,
           quantity: String(restockSuggested),
-          location: locationParam || invForLoc?.location || prev.location,
+          location: targetLoc,
           notes: `Inbound Restock (Current: ${currentQty}, Min: ${minLevel})`,
           date: format(new Date(), 'yyyy-MM-dd')
         }));
         setIsModalOpen(true);
       }
     }
-  }, [actionParam, productIdParam, locationParam, products, inventory, locations, setSelectedLocation]);
+  }, [actionParam, productIdParam, locationParam, products, inventory, locations]);
 
   useEffect(() => {
     loadData();
@@ -232,12 +225,16 @@ function TransactionsContent() {
     return products.find(product => product.id === productId) || null;
   }, [products, formData.product_id]);
 
+  const effectiveTargetLocation = useMemo(() => {
+    return formData.location || (selectedLocation !== 'ALL' ? selectedLocation : locations.find(l => l !== 'ALL') || 'Zone A-01');
+  }, [formData.location, selectedLocation, locations]);
+
   const selectedLocationStock = useMemo(() => {
-    if (!formData.product_id || selectedLocation === 'ALL') return 0;
+    if (!formData.product_id) return 0;
     const productId = Number.parseInt(formData.product_id, 10);
-    const inv = inventory.find(item => item.product_id === productId && item.location === selectedLocation);
+    const inv = inventory.find(item => item.product_id === productId && item.location === effectiveTargetLocation);
     return inv ? inv.quantity : 0;
-  }, [inventory, formData.product_id, selectedLocation]);
+  }, [inventory, formData.product_id, effectiveTargetLocation]);
 
   const requestedQuantity = Number.parseInt(formData.quantity, 10) || 0;
   const stockAfterTransaction = formData.type === 'INBOUND'
@@ -252,9 +249,7 @@ function TransactionsContent() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const targetLocation = selectedLocation !== 'ALL' 
-        ? selectedLocation 
-        : (formData.location || locations.find(l => l !== 'ALL') || 'Zone A-01');
+      const targetLocation = effectiveTargetLocation;
 
       if (!targetLocation || targetLocation === 'ALL') {
         showNotification('warning', 'Location Required', 'Please select a specific warehouse zone.');
@@ -269,10 +264,17 @@ function TransactionsContent() {
         return;
       }
 
+      const cost = Number(selectedProduct?.cost_price) || 0;
+      const sell = Number(selectedProduct?.sell_price) || 0;
+      const unitPrice = formData.type === 'INBOUND' ? (cost > 0 ? cost : sell) : (sell > 0 ? sell : cost);
+      const totalPrice = unitPrice * quantity;
+
       await api.createTransaction({
         type: formData.type,
         product_id: parseInt(formData.product_id),
         quantity: quantity,
+        unit_price: unitPrice,
+        total_price: totalPrice,
         location: targetLocation,
         notes: formData.notes,
         created_at: formData.date ? new Date(formData.date).toISOString() : undefined
@@ -801,7 +803,7 @@ function TransactionsContent() {
             date: format(new Date(), 'yyyy-MM-dd')
           });
         }}
-        title={`New Transaction (${selectedLocation !== 'ALL' ? selectedLocation : (formData.location || 'Select Location')})`}
+        title={`New Transaction (${effectiveTargetLocation})`}
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -837,9 +839,6 @@ function TransactionsContent() {
                           location: shortItem.location || prev.location,
                           notes: `Restock below safety threshold (${currentQty}/${minLevel})`,
                         }));
-                        if (shortItem.location && shortItem.location !== 'ALL') {
-                          setSelectedLocation(shortItem.location);
-                        }
                       }}
                       className={cn(
                         "px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border flex items-center gap-2",
@@ -862,30 +861,27 @@ function TransactionsContent() {
             </div>
           )}
 
-          {/* Location Selector if All Locations is selected in sidebar */}
-          {selectedLocation === 'ALL' && (
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
-                Target Warehouse Zone <span className="text-rose-400">*</span>
-              </label>
-              <Select 
-                value={formData.location || locations.find(l => l !== 'ALL') || 'Zone A-01'} 
-                onValueChange={(val) => {
-                  setFormData(prev => ({ ...prev, location: val }));
-                  setSelectedLocation(val);
-                }}
-              >
-                <SelectTrigger className="w-full h-11 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 focus:ring-1 focus:ring-blue-500 text-xs sm:text-sm">
-                  <SelectValue placeholder="Select warehouse zone..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {locations.filter(l => l !== 'ALL').map((loc) => (
-                    <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          {/* Target Warehouse Zone */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+              Target Warehouse Zone <span className="text-rose-400">*</span>
+            </label>
+            <Select 
+              value={effectiveTargetLocation} 
+              onValueChange={(val) => {
+                setFormData(prev => ({ ...prev, location: val }));
+              }}
+            >
+              <SelectTrigger className="w-full h-11 bg-slate-950/80 border border-slate-800 rounded-xl text-slate-100 focus:ring-1 focus:ring-blue-500 text-xs sm:text-sm">
+                <SelectValue placeholder="Select warehouse zone..." />
+              </SelectTrigger>
+              <SelectContent>
+                {locations.filter(l => l !== 'ALL').map((loc) => (
+                  <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2.5">

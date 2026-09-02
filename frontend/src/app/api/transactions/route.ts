@@ -37,20 +37,51 @@ export async function POST(req: NextRequest) {
     const prodId = Number(body.product_id);
     const loc = body.location || 'Zone A-01';
 
+    let unitPrice = Number(body.unit_price) || 0;
+    let totalPrice = Number(body.total_price) || 0;
+    let minStockLevel = 5;
+
+    // Fetch product details for accurate pricing and threshold
+    try {
+      const prodRes = await supabaseRest(`products?id=eq.${prodId}&select=cost_price,sell_price,min_stock_level`);
+      if (prodRes.ok) {
+        const prods = await prodRes.json();
+        if (Array.isArray(prods) && prods[0]) {
+          const prod = prods[0];
+          minStockLevel = Number(prod.min_stock_level) || 5;
+          const cost = Number(prod.cost_price) || 0;
+          const sell = Number(prod.sell_price) || 0;
+          if (unitPrice === 0) {
+            unitPrice = body.type === 'INBOUND' ? (cost > 0 ? cost : sell) : (sell > 0 ? sell : cost);
+          }
+          if (totalPrice === 0) {
+            totalPrice = unitPrice * qty;
+          }
+        }
+      }
+    } catch (pErr) {
+      console.warn('[Fetch Product Price Error]:', pErr);
+    }
+
+    const txPayload: any = {
+      ref_code,
+      type: body.type,
+      quantity: qty,
+      unit_price: unitPrice,
+      total_price: totalPrice,
+      status: body.status || 'COMPLETED',
+      location: loc,
+      notes: body.notes || null,
+      user_id: user.id,
+      product_id: prodId,
+    };
+    if (body.created_at) {
+      txPayload.created_at = body.created_at;
+    }
+
     const res = await supabaseRest('transactions', {
       method: 'POST',
-      body: JSON.stringify({
-        ref_code,
-        type: body.type,
-        quantity: qty,
-        unit_price: Number(body.unit_price) || 0,
-        total_price: Number(body.total_price) || 0,
-        status: body.status || 'COMPLETED',
-        location: loc,
-        notes: body.notes || null,
-        user_id: user.id,
-        product_id: prodId,
-      }),
+      body: JSON.stringify(txPayload),
     });
 
     if (!res.ok) {
@@ -65,20 +96,26 @@ export async function POST(req: NextRequest) {
         const invList = await invRes.json();
         if (Array.isArray(invList) && invList.length > 0) {
           const invItem = invList[0];
-          const newQty = body.type === 'INBOUND' ? invItem.quantity + qty : Math.max(0, invItem.quantity - qty);
-          const newStatus = newQty <= 0 ? 'OUT_OF_STOCK' : newQty <= 5 ? 'LOW_STOCK' : 'IN_STOCK';
+          const newQty = body.type === 'INBOUND' 
+            ? invItem.quantity + qty 
+            : body.type === 'OUTBOUND'
+              ? Math.max(0, invItem.quantity - qty)
+              : qty;
+          const newStatus = newQty <= 0 ? 'OUT_OF_STOCK' : newQty <= minStockLevel ? 'LOW_STOCK' : 'IN_STOCK';
           await supabaseRest(`inventory?id=eq.${invItem.id}`, {
             method: 'PATCH',
             body: JSON.stringify({ quantity: newQty, status: newStatus }),
           });
-        } else if (body.type === 'INBOUND') {
-          const newStatus = qty <= 5 ? 'LOW_STOCK' : 'IN_STOCK';
+        } else {
+          // If inventory record does not exist yet in this location, create it
+          const newQty = body.type === 'INBOUND' ? qty : 0;
+          const newStatus = newQty <= 0 ? 'OUT_OF_STOCK' : newQty <= minStockLevel ? 'LOW_STOCK' : 'IN_STOCK';
           await supabaseRest('inventory', {
             method: 'POST',
             body: JSON.stringify({
               product_id: prodId,
               location: loc,
-              quantity: qty,
+              quantity: newQty,
               status: newStatus,
             }),
           });

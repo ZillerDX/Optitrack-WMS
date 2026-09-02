@@ -11,9 +11,20 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    const { searchParams } = new URL(req.url);
+    const location = searchParams.get('location');
+
+    let invPath = `inventory?select=quantity,product:products!inner(owner_id)&product.owner_id=eq.${user.id}`;
+    let locPath = `locations?owner_id=eq.${user.id}&select=capacity`;
+
+    if (location && location !== 'ALL') {
+      invPath += `&location=eq.${encodeURIComponent(location)}`;
+      locPath += `&name=eq.${encodeURIComponent(location)}`;
+    }
+
     const [invRes, locRes] = await Promise.all([
-      supabaseRest(`inventory?select=quantity,product:products!inner(owner_id)&product.owner_id=eq.${user.id}`),
-      supabaseRest(`locations?owner_id=eq.${user.id}&select=capacity`),
+      supabaseRest(invPath),
+      supabaseRest(locPath),
     ]);
 
     let totalQty = 0;

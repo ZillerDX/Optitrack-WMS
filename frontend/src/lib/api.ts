@@ -237,6 +237,8 @@ export const api = {
     quantity: number;
     product_id: number;
     location: string;
+    unit_price?: number;
+    total_price?: number;
     notes?: string;
     created_at?: string;
   }) => {
