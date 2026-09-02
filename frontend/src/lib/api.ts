@@ -276,6 +276,28 @@ export const api = {
     return response.data;
   },
 
+  // ===================== Predictive AI & Purchase Orders =====================
+  getPredictiveAnalytics: async () => {
+    const response = await apiClient.get('/api/ai/predictive');
+    return response.data;
+  },
+
+  approvePurchaseOrder: async (poData: {
+    po_number: string;
+    product_id: number;
+    product_name: string;
+    sku: string;
+    supplier?: string;
+    reorder_qty: number;
+    unit_cost: number;
+    total_amount: number;
+    target_location?: string;
+    notes?: string;
+  }) => {
+    const response = await apiClient.post('/api/ai/reorder/approve', poData);
+    return response.data;
+  },
+
   // Health check with latency measurement
   checkHealth: async (customUrl?: string): Promise<{ status: string; latency: number }> => {
     const target = (customUrl || getStoredApiUrl()).replace(/\/+$/, '');
@@ -284,7 +306,6 @@ export const api = {
     const latency = Date.now() - start;
     return { status: response.data.status, latency };
   },
-
 };
 
 export default apiClient;

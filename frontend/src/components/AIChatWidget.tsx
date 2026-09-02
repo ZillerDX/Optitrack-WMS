@@ -19,11 +19,13 @@ import {
   BarChart3,
   Package,
   TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { PredictiveReorderAgentModal } from './PredictiveReorderAgentModal';
 
 interface Message {
   id: string;
@@ -42,6 +44,7 @@ interface ChatUser {
 export function AIChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [isPredictiveOpen, setIsPredictiveOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -161,6 +164,12 @@ export function AIChatWidget() {
     const messageToSend = text || inputMessage;
     if (!messageToSend.trim() || isLoading) return;
 
+    // Special trigger for predictive agent modal
+    if (text?.includes("ร่างใบสั่งซื้อ")) {
+      setIsPredictiveOpen(true);
+      return;
+    }
+
     const userMessage: Message = {
       id: Date.now().toString(),
       content: messageToSend,
@@ -213,8 +222,24 @@ export function AIChatWidget() {
     }
   };
 
-  // English prompts for AI regardless of UI language
+  // English/Thai prompts for AI
   const quickQuestions = [
+    {
+      label: 'Predictive Stock Velocity & Draft POs',
+      value: "วิเคราะห์อัตราการหมุนเวียนสินค้า (Stock Velocity) สินค้าไหนใกล้หมด คำนวณวันคงเหลือ (Days of Inventory) และร่างใบสั่งซื้อ (Draft PO) ให้ด้วยครับ",
+      icon: Sparkles,
+      gradient: "from-indigo-600 to-purple-600",
+      bg: "bg-indigo-500/10",
+      ring: "ring-indigo-500/20",
+    },
+    {
+      label: '7-Day Stockout Risk',
+      value: "พยากรณ์สินค้าที่มีความเสี่ยงจะหมดสต็อกภายใน 7 วันข้างหน้า โดยอิงจากอัตราการเบิกจ่ายสินค้าล่าสุด",
+      icon: TrendingDown,
+      gradient: "from-rose-500 to-amber-500",
+      bg: "bg-rose-500/10",
+      ring: "ring-rose-500/20",
+    },
     {
       label: 'Inventory Levels',
       value: "What items are currently low in stock and need reordering? Show me the most urgent items.",
@@ -231,18 +256,15 @@ export function AIChatWidget() {
       bg: "bg-emerald-500/10",
       ring: "ring-emerald-500/20",
     },
-    {
-      label: 'Recent Activity',
-      value: "Show me recent transactions and sales analytics. What are the top selling products?",
-      icon: TrendingUp,
-      gradient: "from-violet-500 to-purple-500",
-      bg: "bg-violet-500/10",
-      ring: "ring-violet-500/20",
-    },
   ];
 
   return (
     <>
+      <PredictiveReorderAgentModal 
+        isOpen={isPredictiveOpen} 
+        onClose={() => setIsPredictiveOpen(false)} 
+      />
+
       {/* Floating Launch Button */}
       {!isOpen && (
         <button
@@ -304,7 +326,16 @@ export function AIChatWidget() {
               </div>
             </div>
 
-            <div className="relative flex items-center gap-0.5">
+            <div className="relative flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setIsPredictiveOpen(true)}
+                className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 hover:from-indigo-500/30 hover:to-purple-500/30 border border-indigo-400/30 text-indigo-200 text-xs font-bold flex items-center gap-1.5 transition-all duration-200 shadow-sm hover:scale-105"
+                title="Open Autonomous Predictive Reorder Agent"
+              >
+                <Sparkles className="size-3.5 text-indigo-300" />
+                <span className="text-[11px] font-semibold">Reorder Agent</span>
+              </button>
               <button
                 onClick={clearChat}
                 className="p-2 text-slate-500 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200 hover:scale-105"

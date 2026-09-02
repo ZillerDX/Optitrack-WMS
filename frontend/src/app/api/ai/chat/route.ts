@@ -119,6 +119,51 @@ export async function POST(req: NextRequest) {
     const potentialProfit = totalMarketValue - totalCostBasis;
     const profitMarginPct = totalCostBasis > 0 ? ((potentialProfit / totalCostBasis) * 100).toFixed(1) : '0.0';
 
+    // Compute 30-day velocity & burn rate from outbound transactions
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const velocityMap: Record<number, number> = {};
+
+    if (Array.isArray(transactions)) {
+      for (const t of transactions) {
+        if (t.type === 'OUTBOUND') {
+          const tDate = t.created_at ? new Date(t.created_at) : now;
+          if (tDate >= thirtyDaysAgo) {
+            const pId = t.product_id;
+            velocityMap[pId] = (velocityMap[pId] || 0) + Math.abs(Number(t.quantity) || 0);
+          }
+        }
+      }
+    }
+
+    const velocityAndForecasting = Array.isArray(products)
+      ? products.map((p: any) => {
+          const pId = p.id;
+          const invItem = Array.isArray(inventory) ? inventory.find((i: any) => i.product_id === pId) : null;
+          const currentStock = invItem ? Number(invItem.quantity) || 0 : 0;
+          const unitsSold30d = velocityMap[pId] || 0;
+          const dailyVelocity = Number((unitsSold30d / 30).toFixed(2));
+          const minStock = Number(p.min_stock_level) || 5;
+          const daysLeft = currentStock <= 0 ? 0 : dailyVelocity > 0 ? Math.round(currentStock / dailyVelocity) : 999;
+          const suggestedReorder = Math.max(1, Math.max(minStock * 2 - currentStock, Math.ceil(dailyVelocity * 14)));
+
+          return {
+            sku: p.sku,
+            name: p.name,
+            current_stock: currentStock,
+            min_stock_level: minStock,
+            supplier: p.supplier || 'Primary Vendor',
+            cost_price: Number(p.cost_price) || 0,
+            units_sold_30d: unitsSold30d,
+            daily_burn_rate: `${dailyVelocity} units/day`,
+            days_of_inventory_left: daysLeft === 999 ? 'Stable (No recent sales)' : `${daysLeft} days`,
+            status: currentStock <= 0 ? 'CRITICAL_DEPLETED' : daysLeft <= 7 ? 'URGENT_REORDER' : 'HEALTHY',
+            suggested_reorder_qty: suggestedReorder,
+            draft_po_estimate: Number((suggestedReorder * (Number(p.cost_price) || 0)).toFixed(2)),
+          };
+        })
+      : [];
+
     // Recent transactions summary
     const recentTxSummary = Array.isArray(transactions)
       ? transactions.slice(0, 10).map((t: any) => ({
@@ -146,6 +191,7 @@ export async function POST(req: NextRequest) {
         total_zones: Array.isArray(locations) ? locations.length : 0,
         total_categories: Array.isArray(categories) ? categories.length : 0,
       },
+      predictive_velocity_and_forecasting: velocityAndForecasting,
       low_stock_shortages: lowStockItems,
       zones: locationMap,
       categories: categoryMap,
@@ -154,12 +200,12 @@ export async function POST(req: NextRequest) {
 
     // 4. Construct System Prompt with STRICT Language Mirroring Rules
     const expectedLanguage = isThaiQuery ? 'THAI' : 'ENGLISH';
-    const systemPrompt = `You are OptiTrack AI, the intelligent warehouse operations copilot for OptiTrack WMS.
-You have direct, real-time access to the user's live warehouse database snapshot provided below.
+    const systemPrompt = `You are OptiTrack Autonomous AI, the advanced Predictive Inventory & Reorder Agent for OptiTrack WMS.
+You have real-time access to the user's live warehouse data, Stock Velocity (burn rate), and Demand Forecasting snapshot below:
 
-=== LIVE WAREHOUSE SNAPSHOT ===
+=== LIVE WAREHOUSE & PREDICTIVE SNAPSHOT ===
 ${JSON.stringify(warehouseSnapshot, null, 2)}
-================================
+============================================
 
 STRICT LANGUAGE REQUIREMENT (CRITICAL):
 - The user's input language is: ${expectedLanguage}.
@@ -168,13 +214,16 @@ STRICT LANGUAGE REQUIREMENT (CRITICAL):
 - If the user asks in Thai -> Respond 100% in Thai. Do NOT use English unless for technical terms or SKUs.
 - NEVER mix languages. Your entire output must strictly match the language of the user's message.
 
-OPERATIONAL GUIDELINES:
-1. ALWAYS reference actual data from the live snapshot above. Never invent fake SKUs, prices, or inventory quantities.
-2. FORMATTING IS CRITICAL:
-   - When presenting lists of products, inventory, shortages, categories, or transactions, ALWAYS format them as clean Markdown tables with clear column headers.
-   - Highlight key actionable metrics (e.g. suggested reorder quantity, critical urgency, profit margins).
-   - Keep answers clear, structured, and pleasant to read.
-3. If there are 0 items or no data recorded yet in the warehouse, clearly state this in ${expectedLanguage} and politely guide the user to add their first product or log an inbound shipment.`;
+AUTONOMOUS AGENT CAPABILITIES:
+1. STOCK VELOCITY & DEMAND FORECASTING:
+   - When asked about stock rate, consumption, or upcoming shortages, analyze 'predictive_velocity_and_forecasting'.
+   - Report Daily Burn Rate, Days of Inventory Left (DOI), and Run-out dates clearly in Markdown tables.
+2. DRAFT PURCHASE ORDER (PO) RECOMMENDATIONS:
+   - When items need replenishment, format a clear Draft PO box containing: PO Number, Supplier, SKU, Name, Suggested Reorder Qty, Unit Cost, and Total Budget.
+   - Remind the manager that they can approve the Draft PO with 1 click in the Predictive Agent Tab!
+3. FORMATTING:
+   - Always format inventory, velocity, and PO summaries as clean Markdown tables with bold column headers.
+   - Highlight urgent items with clear risk levels: [CRITICAL], [WARNING], [HEALTHY].`;
 
     // 5. Multi-Engine Failover Execution
     let aiResponseText = '';

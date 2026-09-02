@@ -7,7 +7,27 @@
 
 import { useTranslations } from '@/lib/translations';
 import { useState, useEffect } from 'react';
-import { Package, Search, Filter, TrendingDown, Box, DollarSign, ArrowUpRight, ArrowDownRight, Tag, Trash2, MapPin, Settings2, Save, Warehouse, Plus } from 'lucide-react';
+import { useRouter, useParams } from 'next/navigation';
+import {
+  Package,
+  Search,
+  Filter,
+  TrendingDown,
+  Box,
+  DollarSign,
+  ArrowUpRight,
+  ArrowDownRight,
+  Tag,
+  Trash2,
+  MapPin,
+  Settings2,
+  Save,
+  Warehouse,
+  Plus,
+  Sparkles,
+  Layers,
+  Table2,
+} from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
@@ -20,6 +40,8 @@ import {
 } from "@/components/ui/select"
 import { Modal, NotificationModal, ConfirmModal } from '@/components/modals';
 import { useLocationStore } from '@/store/useLocationStore';
+import { WarehouseLayoutVisualizer } from '@/components/WarehouseLayoutVisualizer';
+import { PredictiveReorderAgentModal } from '@/components/PredictiveReorderAgentModal';
 
 interface Product {
   id: number;
@@ -77,6 +99,12 @@ export default function InventoryPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+  const [inventoryViewMode, setInventoryViewMode] = useState<'table' | 'layout'>('table');
+  const [isPredictiveModalOpen, setIsPredictiveModalOpen] = useState(false);
+  
+  const router = useRouter();
+  const params = useParams();
+  const locale = (params?.locale as string) || 'en';
   
   // Modals
   const [isCreateLocationModalOpen, setIsCreateLocationModalOpen] = useState(false);
@@ -452,6 +480,13 @@ export default function InventoryPage() {
             </div>
           )}
           <button
+            onClick={() => setIsPredictiveModalOpen(true)}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/25 transition-all hover:scale-[1.02]"
+          >
+            <Sparkles className="h-4 w-4 shrink-0 text-indigo-200" />
+            <span>AI Reorder Agent</span>
+          </button>
+          <button
             onClick={openManageLocationsModal}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 text-xs font-semibold shadow-sm transition-all"
           >
@@ -496,6 +531,59 @@ export default function InventoryPage() {
           accentColor="violet"
         />
       </div>
+
+      {/* View Switcher Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl bg-slate-900/60 border border-slate-800">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-slate-400 pl-2">Display Mode:</span>
+          <div className="flex items-center p-1 rounded-xl bg-slate-950 border border-slate-800">
+            <button
+              type="button"
+              onClick={() => setInventoryViewMode('table')}
+              className={cn(
+                "flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all",
+                inventoryViewMode === 'table' ? "bg-blue-600 text-white shadow-sm" : "text-slate-400 hover:text-white"
+              )}
+            >
+              <Table2 className="size-3.5" />
+              <span>Inventory Table</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setInventoryViewMode('layout')}
+              className={cn(
+                "flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all",
+                inventoryViewMode === 'layout' ? "bg-blue-600 text-white shadow-sm" : "text-slate-400 hover:text-white"
+              )}
+            >
+              <Layers className="size-3.5" />
+              <span>2D/3D Interactive Floorplan</span>
+            </button>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsPredictiveModalOpen(true)}
+          className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-bold transition-all"
+        >
+          <Sparkles className="size-3.5 text-indigo-400" />
+          <span>Demand Forecast &amp; Draft POs</span>
+        </button>
+      </div>
+
+      {/* 2D/3D Interactive Warehouse Layout */}
+      {inventoryViewMode === 'layout' && (
+        <WarehouseLayoutVisualizer
+          locations={managedLocations}
+          inventory={allInventory.length > 0 ? allInventory : inventory}
+          selectedZone={selectedLocation}
+          onSelectZone={(z) => setSelectedLocation(z)}
+          onQuickInbound={(loc, pId) => {
+            router.push(`/${locale}/transactions?action=inbound&location=${encodeURIComponent(loc)}${pId ? `&product_id=${pId}` : ''}`);
+          }}
+        />
+      )}
 
       {/* Visual Rack & Location Capacity Meters */}
       {managedLocations.length > 0 && (
@@ -863,6 +951,16 @@ export default function InventoryPage() {
         type="danger"
         confirmText="Delete Location"
         isLoading={isLocationActionSubmitting}
+      />
+
+      {/* AI Predictive Inventory & Reorder Agent Modal */}
+      <PredictiveReorderAgentModal
+        isOpen={isPredictiveModalOpen}
+        onClose={() => setIsPredictiveModalOpen(false)}
+        onPOApproved={() => {
+          loadInventory();
+          fetchLocations();
+        }}
       />
     </div>
   );
