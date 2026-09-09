@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Edit, Trash2, Package, ArrowUpRight, ArrowDownRight, Filter, PlusCircle, X, Barcode as BarcodeIcon, Check } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -93,6 +93,38 @@ export default function ProductsPage() {
     location: '',
   });
 
+  const fetchProducts = useCallback(async () => {
+    try {
+      const data = await api.getProducts();
+      setProducts(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
+      setProducts([]);
+      showNotification('error', 'Error', 'Failed to load products');
+    }
+  }, []);
+
+  const fetchInventoryItems = useCallback(async () => {
+    try {
+      const data = await api.getInventory(selectedLocation);
+      setInventoryItems(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to fetch inventory:', error);
+      setInventoryItems([]);
+      showNotification('error', 'Error', 'Failed to load inventory');
+    }
+  }, [selectedLocation]);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const data = await api.getCategories();
+      setCategories(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to load categories:', error);
+      setCategories([]);
+    }
+  }, []);
+
   // ดึงข้อมูลสินค้าและหมวดหมู่เมื่อเมานต์ + รีเฟรชอัตโนมัติ
   useEffect(() => {
     fetchLocations();
@@ -117,39 +149,7 @@ export default function ProductsPage() {
       clearInterval(intervalId);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [selectedLocation]);
-
-  const fetchProducts = async () => {
-    try {
-      const data = await api.getProducts();
-      setProducts(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Failed to fetch products:', error);
-      setProducts([]);
-      showNotification('error', 'Error', 'Failed to load products');
-    }
-  };
-
-  const fetchInventoryItems = async () => {
-    try {
-      const data = await api.getInventory(selectedLocation);
-      setInventoryItems(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Failed to fetch inventory:', error);
-      setInventoryItems([]);
-      showNotification('error', 'Error', 'Failed to load inventory');
-    }
-  };
-
-  const fetchCategories = async () => {
-    try {
-      const data = await api.getCategories();
-      setCategories(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Failed to fetch categories:', error);
-      setCategories([]);
-    }
-  };
+  }, [selectedLocation, fetchLocations, fetchProducts, fetchInventoryItems, fetchCategories]);
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) return;

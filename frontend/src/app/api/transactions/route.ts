@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const user = await getAuthUser(req);
@@ -96,10 +98,11 @@ export async function POST(req: NextRequest) {
         const invList = await invRes.json();
         if (Array.isArray(invList) && invList.length > 0) {
           const invItem = invList[0];
+          const currentQty = Number(invItem.quantity) || 0;
           const newQty = body.type === 'INBOUND' 
-            ? invItem.quantity + qty 
+            ? currentQty + qty 
             : body.type === 'OUTBOUND'
-              ? Math.max(0, invItem.quantity - qty)
+              ? Math.max(0, currentQty - qty)
               : qty;
           const newStatus = newQty <= 0 ? 'OUT_OF_STOCK' : newQty <= minStockLevel ? 'LOW_STOCK' : 'IN_STOCK';
           await supabaseRest(`inventory?id=eq.${invItem.id}`, {

@@ -5,7 +5,7 @@
  * Featuring advanced filtering, sorting, and modern E-Document detail popups.
  */
 
-import { Suspense, useState, useEffect, useMemo } from 'react';
+import { Suspense, useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import {
@@ -186,13 +186,7 @@ function TransactionsContent() {
     }
   }, [actionParam, productIdParam, locationParam, products, inventory, locations]);
 
-  useEffect(() => {
-    loadData();
-    const intervalId = setInterval(loadData, 30000);
-    return () => clearInterval(intervalId);     
-  }, [selectedLocation]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [transactionsData, productsData, inventoryData] = await Promise.all([
         api.getTransactions(selectedLocation),  
@@ -207,7 +201,13 @@ function TransactionsContent() {
       console.error('Failed to load data:', error);
       setLoading(false);
     }
-  };
+  }, [selectedLocation]);
+
+  useEffect(() => {
+    loadData();
+    const intervalId = setInterval(loadData, 30000);
+    return () => clearInterval(intervalId);     
+  }, [loadData]);
 
   const showNotification = (type: NotificationState['type'], title: string, message: string) => {
     setNotification({ isOpen: true, type, title, message });

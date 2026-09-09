@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
@@ -129,17 +129,7 @@ export default function DashboardPage() {
 
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
-  useEffect(() => {
-    fetchBaseData();
-  }, [selectedLocation, locations]);
-
-  useEffect(() => {
-    if (allTransactions.length > 0 || allProducts.length > 0 || locationDetails.length > 0) {
-      processData();
-    }
-  }, [dateRange, allTransactions, allInventory, allProducts, locationDetails]);
-
-  const fetchBaseData = async () => {
+  const fetchBaseData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [products, transactions, inventory, locations] = await Promise.all([
@@ -165,10 +155,11 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedLocation]);
 
-  const processData = () => {
-    let start, end;
+  const processData = useCallback(() => {
+    let start: Date;
+    let end: Date;
     if (dateRange) {
       start = startOfDay(parseISO(dateRange.start));
       end = endOfDay(parseISO(dateRange.end));  
@@ -207,15 +198,35 @@ export default function DashboardPage() {
 
     try {
       const daysInterval = eachDayOfInterval({ start, end });
+      // Single-pass O(N) hash aggregation
+      const dayAggMap = new Map<string, { inbound: number; outbound: number; value: number }>();
+      for (const t of filteredTransactions) {
+        const dateKey = format(parseISO(t.created_at), 'yyyy-MM-dd');
+        const existing = dayAggMap.get(dateKey) || { inbound: 0, outbound: 0, value: 0 };
+        const qty = Number(t.quantity) || 0;
+        if (t.type === 'INBOUND') {
+          existing.inbound += qty;
+        } else if (t.type === 'OUTBOUND') {
+          existing.outbound += qty;
+        }
+        existing.value += Number(t.total_price) || 0;
+        dayAggMap.set(dateKey, existing);
+      }
+
       const newChartData = daysInterval.map(day => {
-        const dayTransactions = filteredTransactions.filter(t => isSameDay(parseISO(t.created_at), day));
-        const inbound = dayTransactions.filter(t => t.type === 'INBOUND').reduce((sum, t) => sum + t.quantity, 0);
-        const outbound = dayTransactions.filter(t => t.type === 'OUTBOUND').reduce((sum, t) => sum + t.quantity, 0);
-        const value = dayTransactions.reduce((sum, t) => sum + (Number(t.total_price) || 0), 0);
-        return { name: format(day, 'MMM dd'), inbound, outbound, total: inbound + outbound, value, date: day };
+        const dateKey = format(day, 'yyyy-MM-dd');
+        const agg = dayAggMap.get(dateKey) || { inbound: 0, outbound: 0, value: 0 };
+        return {
+          name: format(day, 'MMM dd'),
+          inbound: agg.inbound,
+          outbound: agg.outbound,
+          total: agg.inbound + agg.outbound,
+          value: agg.value,
+          date: day,
+        };
       });
       setChartData(newChartData);
-    } catch (e) {
+    } catch {
       setChartData([]);
     }
 
@@ -276,7 +287,17 @@ export default function DashboardPage() {
     setTopProductsData(Object.values(productMovement).sort((a, b) => b.quantity - a.quantity).slice(0, 5));
 
     setRecentTransactions([...filteredTransactions].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 10));
-  };
+  }, [dateRange, allTransactions, allInventory, allProducts, locationDetails, selectedLocation]);
+
+  useEffect(() => {
+    fetchBaseData();
+  }, [fetchBaseData]);
+
+  useEffect(() => {
+    if (allTransactions.length > 0 || allProducts.length > 0 || locationDetails.length > 0) {
+      processData();
+    }
+  }, [processData, allTransactions.length, allProducts.length, locationDetails.length]);
 
   const renderProductDistributionTooltip = ({
     active,

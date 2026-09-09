@@ -13,6 +13,11 @@ export function PageTransition({ children }: PageTransitionProps) {
   const [displayChildren, setDisplayChildren] = useState(children);
   const isFirstRender = useRef(true);
 
+  const latestChildren = useRef(children);
+  useEffect(() => {
+    latestChildren.current = children;
+  }, [children]);
+
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
@@ -28,7 +33,7 @@ export function PageTransition({ children }: PageTransitionProps) {
 
     // After exit, swap content and enter
     const exitTimer = setTimeout(() => {
-      setDisplayChildren(children);
+      setDisplayChildren(latestChildren.current);
       setTransitionStage('enter');
 
       // Settle to idle

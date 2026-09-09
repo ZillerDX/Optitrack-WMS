@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -198,9 +199,12 @@ export default function ProfilePage() {
               <div className="relative mb-4">
                 <div className="group relative h-28 w-28 overflow-hidden rounded-2xl border-4 border-slate-900 bg-slate-800 shadow-2xl ring-1 ring-slate-800">
                   {profileImageUrl ? (
-                    <img
+                    <Image
                       src={profileImageUrl}
                       alt={fullName}
+                      width={112}
+                      height={112}
+                      unoptimized
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   ) : (

@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { Sidebar } from '@/components/Sidebar';
 import { AIChatWidget } from '@/components/AIChatWidget';
 import { PageTransition } from '@/components/PageTransition';
@@ -75,7 +76,7 @@ export default function ClientLayout({
         console.error('Failed to parse user:', e);
       }
     }
-  }, [pathname, router, isLoginPage]);
+  }, [pathname, router, isLoginPage, isRootPage]);
 
   if (isStandalonePage) {
     return (
@@ -118,9 +119,12 @@ export default function ClientLayout({
               </div>
             </div>
             {user?.image_url && (
-              <img
-                src={user.image_url.startsWith('http') ? user.image_url : `http://localhost:8000${user.image_url}`}
+              <Image
+                src={user.image_url.startsWith('http') ? user.image_url : `${process.env.NEXT_PUBLIC_API_URL || ''}${user.image_url}`}
                 alt="User"
+                width={32}
+                height={32}
+                unoptimized
                 className="w-8 h-8 rounded-full object-cover border-2 border-slate-700"
               />
             )}

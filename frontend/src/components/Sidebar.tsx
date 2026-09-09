@@ -6,6 +6,7 @@
  */
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import {
@@ -259,9 +260,12 @@ export function Sidebar({ userRole, user }: SidebarProps) {
           <div className="flex items-center gap-2 lg:gap-3">
             <div className="relative">
               {user?.image_url ? (
-                <img
+                <Image
                   src={getImageUrl(user.image_url) || ''}
                   alt={displayName}
+                  width={40}
+                  height={40}
+                  unoptimized
                   className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl object-cover"
                 />
               ) : (

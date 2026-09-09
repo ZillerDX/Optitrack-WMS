@@ -6,7 +6,7 @@
  */
 
 import { useTranslations } from '@/lib/translations';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
   Package,
@@ -131,6 +131,62 @@ export default function InventoryPage() {
     message: ''
   });
 
+  const loadInventory = useCallback(async () => {
+    try {
+      const allData = await api.getInventory('ALL');
+      const safeAll = Array.isArray(allData) ? allData : [];
+      setAllInventory(safeAll);
+      setInventory(
+        selectedLocation === 'ALL'
+          ? safeAll
+          : safeAll.filter((i: any) => i.location === selectedLocation)
+      );
+      setLoading(false);
+    } catch (error) {
+      console.error('Failed to load inventory:', error);
+      setInventory([]);
+      setLoading(false);
+    }
+  }, [selectedLocation]);
+
+  const loadCategories = useCallback(async () => {
+    try {
+      const data = await api.getCategories();
+      setCategories(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to load categories:', error);
+      setCategories([]);
+    }
+  }, []);
+
+  const loadProducts = useCallback(async () => {
+    try {
+      const data = await api.getProducts();
+      setProducts(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to load products:', error);
+      setProducts([]);
+    }
+  }, []);
+
+  const loadLocationDetails = useCallback(async () => {
+    try {
+      const data = await api.getLocationDetails();
+      const safeData = Array.isArray(data) ? data : [];
+      return safeData.map((location: any) => ({
+        id: location.id,
+        originalName: location.name,
+        name: location.name,
+        description: location.description || '',
+        capacity: (location.capacity ?? 0).toString(),
+      }));
+    } catch (error) {
+      console.error('Failed to load location details:', error);
+      showNotification('error', 'Error', 'Failed to load location details.');
+      return [];
+    }
+  }, []);
+
   useEffect(() => {
     fetchLocations();
     loadInventory();
@@ -153,67 +209,11 @@ export default function InventoryPage() {
     };
     window.addEventListener('focus', handleFocus);
 
-    // การทำความสะอาด
     return () => {
       clearInterval(intervalId);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [selectedLocation, fetchLocations]);
-
-  const loadInventory = async () => {
-    try {
-      const [allData, filteredData] = await Promise.all([
-        api.getInventory('ALL'),
-        selectedLocation === 'ALL' ? Promise.resolve(null) : api.getInventory(selectedLocation)
-      ]);
-      const safeAll = Array.isArray(allData) ? allData : [];
-      setAllInventory(safeAll);
-      setInventory(selectedLocation === 'ALL' ? safeAll : (Array.isArray(filteredData) ? filteredData : []));
-      setLoading(false);
-    } catch (error) {
-      console.error('Failed to load inventory:', error);
-      setInventory([]);
-      setLoading(false);
-    }
-  };
-
-  const loadCategories = async () => {
-    try {
-      const data = await api.getCategories();
-      setCategories(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Failed to load categories:', error);
-      setCategories([]);
-    }
-  };
-
-  const loadProducts = async () => {
-    try {
-      const data = await api.getProducts();
-      setProducts(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Failed to load products:', error);
-      setProducts([]);
-    }
-  };
-
-  const loadLocationDetails = async () => {
-    try {
-      const data = await api.getLocationDetails();
-      const safeData = Array.isArray(data) ? data : [];
-      return safeData.map((location: any) => ({
-        id: location.id,
-        originalName: location.name,
-        name: location.name,
-        description: location.description || '',
-        capacity: (location.capacity ?? 0).toString(),
-      }));
-    } catch (error) {
-      console.error('Failed to load location details:', error);
-      showNotification('error', 'Error', 'Failed to load location details.');
-      return [];
-    }
-  };
+  }, [selectedLocation, fetchLocations, loadInventory, loadCategories, loadProducts, loadLocationDetails]);
 
   const openManageLocationsModal = async () => {
     const locationData = await loadLocationDetails();

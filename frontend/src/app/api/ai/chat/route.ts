@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 // High-availability fallback chain for Gemini
 const GEMINI_MODELS = ['gemini-3.1-flash-lite', 'gemini-3.6-flash'];
 

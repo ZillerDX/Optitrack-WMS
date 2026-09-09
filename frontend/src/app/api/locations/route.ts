@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 const DEFAULT_ZONES = [
   { name: 'Zone A-01', description: 'Main Storage - High Velocity Racks', capacity: 500 },
   { name: 'Zone B-02', description: 'Secondary Storage - Heavy Equipment', capacity: 300 },

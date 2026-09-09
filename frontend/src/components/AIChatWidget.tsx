@@ -7,6 +7,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import {
   Send,
   Loader2,
@@ -440,9 +441,12 @@ export function AIChatWidget() {
                         {message.isBot ? (
                           <Bot size={14} />
                         ) : userImageUrl ? (
-                          <img
+                          <Image
                             src={userImageUrl}
                             alt={userDisplayName}
+                            width={28}
+                            height={28}
+                            unoptimized
                             className="h-full w-full object-cover"
                           />
                         ) : (

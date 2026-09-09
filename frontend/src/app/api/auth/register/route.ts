@@ -1,6 +1,8 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { supabaseRest } from '@/lib/supabase';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,6 +16,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     if (password.length < 6) {
       return NextResponse.json(
         { detail: 'Password must be at least 6 characters long.' },
@@ -22,7 +26,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Check if email already registered in Supabase
-    const checkRes = await supabaseRest(`users?email=eq.${encodeURIComponent(email)}&select=id`);
+    const checkRes = await supabaseRest(`users?email=eq.${encodeURIComponent(normalizedEmail)}&select=id`);
     if (checkRes.ok) {
       const existing = await checkRes.json();
       if (Array.isArray(existing) && existing.length > 0) {

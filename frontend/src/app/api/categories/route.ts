@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 const DEFAULT_CATEGORIES = ['Electronics', 'Machinery', 'Raw Materials', 'Apparel', 'Food & Beverage'];
 
 export async function GET(req: NextRequest) {
