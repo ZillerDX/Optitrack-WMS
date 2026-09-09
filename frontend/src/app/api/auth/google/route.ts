@@ -59,6 +59,12 @@ export async function POST(req: NextRequest) {
       if (Array.isArray(existing) && existing.length > 0) {
         user = existing[0];
       }
+    } else {
+      console.error('[Supabase Google User Query Error]:', await userRes.text());
+      return NextResponse.json(
+        { detail: 'Database service is temporarily unavailable. Please try again in a few moments.' },
+        { status: 503 }
+      );
     }
 
     if (user) {
@@ -128,8 +134,12 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error('[Google API Error]:', error);
+    let detail = error?.message || 'Internal server error during Google login.';
+    if (detail === 'fetch failed' || detail.includes('ENOTFOUND') || detail.includes('ECONNREFUSED')) {
+      detail = 'Database connection error: Service temporarily unreachable. Please try again shortly.';
+    }
     return NextResponse.json(
-      { detail: error.message || 'Internal server error during Google login.' },
+      { detail },
       { status: 500 }
     );
   }

@@ -76,8 +76,12 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error('[Register API Error]:', error);
+    let detail = error?.message || 'Internal server error during registration.';
+    if (detail === 'fetch failed' || detail.includes('ENOTFOUND') || detail.includes('ECONNREFUSED')) {
+      detail = 'Database connection error: Service temporarily unreachable. Please try again shortly.';
+    }
     return NextResponse.json(
-      { detail: error.message || 'Internal server error during registration.' },
+      { detail },
       { status: 500 }
     );
   }
