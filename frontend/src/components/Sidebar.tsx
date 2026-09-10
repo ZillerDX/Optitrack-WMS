@@ -50,7 +50,7 @@ export function Sidebar({ userRole, user }: SidebarProps) {
   const { selectedLocation, setSelectedLocation, locations, fetchLocations } = useLocationStore();
   const { currency, setCurrency, fetchRates } = useCurrencyStore();
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
   const displayName = user ? `${user.first_name} ${user.last_name}` : 'Administrator';
   const displayEmail = user ? user.email : 'ADMIN Access';
@@ -59,8 +59,8 @@ export function Sidebar({ userRole, user }: SidebarProps) {
   // Resolve image URL
   const getImageUrl = (path?: string) => {
     if (!path) return null;
-    if (path.startsWith('http')) return path;
-    return `${API_BASE_URL}${path}`;
+    if (path.startsWith('http') || path.startsWith('data:')) return path;
+    return API_BASE_URL ? `${API_BASE_URL}${path}` : path;
   };
 
   // ปิดเมนูบนมือถือเมื่อมีการเปลี่ยนเส้นทาง

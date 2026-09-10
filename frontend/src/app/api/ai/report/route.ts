@@ -3,11 +3,6 @@ import { supabaseRest, getAuthUser } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
-const FALLBACK_GEMINI_KEY = Buffer.from(
-  'QVEuQWI4Uk42SWxPeW9LZGN0ak1VVkRHd25FQi1NN0tZOWhGdU1SNUg4am5tX3R5b09ERkE=',
-  'base64'
-).toString('utf-8');
-
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthUser(req);

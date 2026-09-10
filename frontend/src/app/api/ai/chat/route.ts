@@ -4,18 +4,7 @@ import { supabaseRest, getAuthUser } from '@/lib/supabase';
 export const dynamic = 'force-dynamic';
 
 // High-availability fallback chain for Gemini
-const GEMINI_MODELS = ['gemini-3.1-flash-lite', 'gemini-3.6-flash'];
-
-// Base64-obfuscated server-side fallback keys (ensures instant availability on Vercel)
-const FALLBACK_GEMINI_KEY = Buffer.from(
-  'QVEuQWI4Uk42SWxPeW9LZGN0ak1VVkRHd25FQi1NN0tZOWhGdU1SNUg4am5tX3R5b09ERkE=',
-  'base64'
-).toString('utf-8');
-
-const FALLBACK_GROQ_KEY = Buffer.from(
-  'Z3NrX3h6YU9RWUFRanU5aks5ZnhsaHNXR2R5YjNZQXY4WDRTQk5PTzdQSUQ4RXEzajNNM09o',
-  'base64'
-).toString('utf-8');
+const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -229,8 +218,8 @@ AUTONOMOUS AGENT CAPABILITIES:
 
     // 5. Multi-Engine Failover Execution
     let aiResponseText = '';
-    const geminiKey = process.env.GEMINI_API_KEY || FALLBACK_GEMINI_KEY;
-    const groqKey = process.env.GROQ_API_KEY || FALLBACK_GROQ_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY;
+    const groqKey = process.env.GROQ_API_KEY;
 
     // Step A: Primary Engine - Google Gemini (Fast & Reliable Flash-Lite / Flash)
     if (geminiKey) {
@@ -308,9 +297,15 @@ AUTONOMOUS AGENT CAPABILITIES:
 
     // Language-consistent fallback error message
     if (!aiResponseText) {
-      aiResponseText = isThaiQuery
-        ? 'ขออภัยครับ ขณะนี้ระบบปัญญาประดิษฐ์กำลังประมวลผลคำขอปริมาณมาก กรุณาลองใหม่อีกครั้งในอีกสักครู่ครับ'
-        : 'I apologize, but the AI intelligence service is currently experiencing high demand. Please try again in a moment.';
+      if (!geminiKey && !groqKey) {
+        aiResponseText = isThaiQuery
+          ? 'ระบบ AI ยังไม่ได้ตั้งค่า GEMINI_API_KEY หรือ GROQ_API_KEY ใน Environment Variables ของเซิร์ฟเวอร์ กรุณาตั้งค่าเพื่อเปิดใช้งาน'
+          : 'AI service is not configured. Please configure GEMINI_API_KEY or GROQ_API_KEY in server environment variables.';
+      } else {
+        aiResponseText = isThaiQuery
+          ? 'ขออภัยครับ ขณะนี้ระบบปัญญาประดิษฐ์กำลังประมวลผลคำขอปริมาณมาก กรุณาลองใหม่อีกครั้งในอีกสักครู่ครับ'
+          : 'I apologize, but the AI intelligence service is currently experiencing high demand. Please try again in a moment.';
+      }
     }
 
     return NextResponse.json({ response: aiResponseText });

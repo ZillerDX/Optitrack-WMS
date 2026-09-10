@@ -52,7 +52,7 @@ export function AIChatWidget() {
   const [user, setUser] = useState<ChatUser | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
   const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
 
@@ -63,8 +63,8 @@ export function AIChatWidget() {
 
   const getImageUrl = (path?: string) => {
     if (!path) return null;
-    if (path.startsWith('http')) return path;
-    return `${API_BASE_URL}${path}`;
+    if (path.startsWith('http') || path.startsWith('data:')) return path;
+    return API_BASE_URL ? `${API_BASE_URL}${path}` : path;
   };
 
   const userImageUrl = getImageUrl(user?.image_url);

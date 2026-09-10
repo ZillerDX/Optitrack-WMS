@@ -36,6 +36,17 @@ export function ConfirmModal({
     setMounted(true);
   }, []);
 
+  // Close modal on Escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen && !isLoading) {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, isLoading, onClose]);
+
   if (!isOpen || !mounted) return null;
 
   const typeConfig = {

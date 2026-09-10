@@ -32,6 +32,17 @@ export function NotificationModal({
     setMounted(true);
   }, []);
 
+  // Close modal on Escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
   // Auto-close after delay
   useEffect(() => {
     if (isOpen && autoClose) {
@@ -109,19 +120,10 @@ export function NotificationModal({
             {/* Close button */}
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors flex-shrink-0"
+              className="text-slate-400 hover:text-white size-8 flex items-center justify-center rounded-lg hover:bg-slate-800 transition-colors flex-shrink-0"
+              aria-label="Close notification"
             >
               <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Action button */}
-          <div className="mt-5 flex justify-end">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition-all border border-slate-700/60"
-            >
-              Dismiss
             </button>
           </div>
         </div>

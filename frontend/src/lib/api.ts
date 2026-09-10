@@ -9,10 +9,7 @@ export const getStoredApiUrl = (): string => {
   if (typeof window !== 'undefined') {
     const custom = localStorage.getItem('optitrack_api_url');
     if (custom) return custom;
-    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-      return '';
-    }
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    return process.env.NEXT_PUBLIC_API_URL || '';
   }
   return process.env.NEXT_PUBLIC_API_URL || '';
 };
@@ -42,7 +39,9 @@ apiClient.interceptors.request.use(
       const customUrl = localStorage.getItem('optitrack_api_url');
       if (customUrl) {
         config.baseURL = customUrl.replace(/\/+$/, '');
-      } else if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      } else if (process.env.NEXT_PUBLIC_API_URL) {
+        config.baseURL = process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '');
+      } else {
         config.baseURL = '';
       }
       const token = localStorage.getItem('token');
@@ -91,11 +90,6 @@ export const api = {
 
   forgotPassword: async (email: string) => {
     const response = await apiClient.post('/api/auth/forgot-password', { email });
-    return response.data;
-  },
-
-  changePassword: async (data: any) => {
-    const response = await apiClient.post('/api/auth/change-password', data);
     return response.data;
   },
 
@@ -301,15 +295,6 @@ export const api = {
   generateAIAnalyseReport: async () => {
     const response = await apiClient.post('/api/ai/report');
     return response.data;
-  },
-
-  // Health check with latency measurement
-  checkHealth: async (customUrl?: string): Promise<{ status: string; latency: number }> => {
-    const target = (customUrl || getStoredApiUrl()).replace(/\/+$/, '');
-    const start = Date.now();
-    const response = await axios.get(`${target}/livez`, { timeout: 4000 });
-    const latency = Date.now() - start;
-    return { status: response.data.status, latency };
   },
 };
 

@@ -58,11 +58,9 @@ export default function SignUpPage() {
   ];
 
   return (
-    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
-    <div style={{ transform: 'scale(0.82)', transformOrigin: 'top left', width: '122vw', height: '122vh' }}>
-    <div className="flex h-full overflow-hidden bg-slate-50 font-sans">
+    <div className="min-h-screen w-full flex bg-slate-50 font-sans">
       {/* Left Side - Brand & Features */}
-      <div className="hidden lg:flex lg:w-3/5 relative overflow-hidden bg-[#0F172A]">
+      <div className="hidden lg:flex lg:w-1/2 xl:w-7/12 relative overflow-hidden bg-[#0F172A] flex-col justify-between p-10 xl:p-14">
         {/* Layered Background */}
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/20 via-transparent to-blue-600/20" />
@@ -73,23 +71,23 @@ export default function SignUpPage() {
         {/* Dot Grid */}
         <div className="absolute inset-0 opacity-[0.15]" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
 
-        <div className="relative z-10 flex flex-col justify-between p-16 w-full">
+        <div className="relative z-10 flex flex-col justify-between h-full w-full">
           {/* Logo */}
-          <div className="flex items-center gap-4 group cursor-default">
-            <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 group-hover:bg-white/20 transition-all duration-500">
-              <Package className="h-8 w-8 text-indigo-400" />
+          <div className="flex items-center gap-3 group cursor-default">
+            <div className="p-2.5 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 group-hover:bg-white/20 transition-all duration-300">
+              <Package className="h-7 w-7 text-indigo-400" />
             </div>
             <div className="flex flex-col">
-              <span className="text-3xl font-extrabold tracking-tight text-white">
+              <span className="text-2xl font-extrabold tracking-tight text-white">
                 OptiTrack
               </span>
-              <span className="text-xs font-medium text-indigo-400 tracking-[0.2em] uppercase">Warehouse OS</span>
+              <span className="text-[10px] font-medium text-indigo-400 tracking-[0.2em] uppercase">Warehouse OS</span>
             </div>
           </div>
 
           {/* Main Slogan */}
-          <div className="max-w-2xl">
-            <h2 className="text-6xl font-black text-white leading-[1.1] tracking-tight mb-8">
+          <div className="max-w-xl my-auto py-8">
+            <h2 className="text-4xl xl:text-5xl font-black text-white leading-[1.15] tracking-tight mb-4">
               Join the
               <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-blue-400">
@@ -98,29 +96,29 @@ export default function SignUpPage() {
               <br />
               of Warehousing
             </h2>
-            <p className="text-slate-400 text-xl leading-relaxed mb-12 max-w-lg">
+            <p className="text-slate-400 text-sm xl:text-base leading-relaxed mb-8 max-w-md">
               Start managing your warehouse professionally with the most advanced technology.
             </p>
 
             {/* Feature Cards */}
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 gap-4">
               {features.map((feature, idx) => (
                 <div
                   key={idx}
-                  className="p-6 bg-white/5 backdrop-blur-sm border border-white/10 rounded-[2rem] hover:bg-white/10 transition-all duration-500 hover:translate-y-[-4px]"
+                  className="p-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl hover:bg-white/10 transition-all duration-300 hover:translate-y-[-2px]"
                 >
-                  <div className="p-3 bg-indigo-500/10 rounded-xl w-fit mb-4">
-                    <feature.icon className="h-6 w-6 text-indigo-400" />
+                  <div className="p-2.5 bg-indigo-500/10 rounded-xl w-fit mb-3">
+                    <feature.icon className="h-5 w-5 text-indigo-400" />
                   </div>
-                  <h3 className="font-bold text-white mb-1">{feature.title}</h3>
-                  <p className="text-slate-400 text-sm leading-relaxed">{feature.desc}</p>
+                  <h3 className="font-bold text-white text-sm mb-1">{feature.title}</h3>
+                  <p className="text-slate-400 text-xs leading-relaxed">{feature.desc}</p>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Footer Brand */}
-          <div className="flex items-center gap-6 text-slate-500 text-sm">
+          <div className="flex items-center gap-4 text-slate-500 text-xs">
             <span>© 2026 OptiTrack Inc.</span>
             <div className="w-1 h-1 rounded-full bg-slate-700" />
             <span>Terms of Service</span>
@@ -129,7 +127,7 @@ export default function SignUpPage() {
       </div>
 
       {/* Right Side - Sign Up Form */}
-      <div className="flex-1 h-full overflow-y-auto flex items-center justify-center p-8 bg-white relative">
+      <div className="flex-1 min-h-screen overflow-y-auto flex items-center justify-center p-6 sm:p-10 bg-white relative">
         <div className="w-full max-w-md">
           {/* Sign Up Header */}
           <div className="mb-10">
@@ -278,8 +276,6 @@ export default function SignUpPage() {
           </div>
         </div>
       </div>
-    </div>
-    </div>
     </div>
   );
 }
