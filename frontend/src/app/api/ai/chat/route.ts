@@ -4,7 +4,7 @@ import { supabaseRest, getAuthUser } from '@/lib/supabase';
 export const dynamic = 'force-dynamic';
 
 // High-availability fallback chain for Gemini
-const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+const GEMINI_MODELS = ['gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-2.5-flash'];
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
