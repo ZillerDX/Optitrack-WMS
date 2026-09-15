@@ -3,7 +3,8 @@
 /**
  * OptiTrack AI Warehouse Intelligence Core
  * High-tech glassmorphic command center widget with real-time stock velocity,
- * predictive reordering, and dark cybernetic aesthetics.
+ * predictive reordering, custom API key configuration, and dark cybernetic aesthetics.
+ * STRICTLY 100% ENGLISH.
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -20,6 +21,10 @@ import {
   Package,
   TrendingDown,
   Cpu,
+  Key,
+  Eye,
+  EyeOff,
+  Check,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -45,6 +50,12 @@ export function AIChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [isPredictiveOpen, setIsPredictiveOpen] = useState(false);
+  const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [hasCustomKey, setHasCustomKey] = useState(false);
+  const [keySavedStatus, setKeySavedStatus] = useState<string | null>(null);
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -94,6 +105,45 @@ export function AIChatWidget() {
       window.removeEventListener('focus', loadUser);
     };
   }, []);
+
+  // Sync custom API key state
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('optitrack_gemini_key') || '';
+      setHasCustomKey(!!stored);
+      setApiKeyInput(stored);
+    }
+  }, [isOpen]);
+
+  const saveCustomApiKey = () => {
+    if (typeof window === 'undefined') return;
+    const cleanKey = apiKeyInput.trim();
+    if (cleanKey) {
+      localStorage.setItem('optitrack_gemini_key', cleanKey);
+      setHasCustomKey(true);
+      setKeySavedStatus('Key saved successfully!');
+    } else {
+      localStorage.removeItem('optitrack_gemini_key');
+      setHasCustomKey(false);
+      setKeySavedStatus('Key removed.');
+    }
+    setTimeout(() => {
+      setKeySavedStatus(null);
+      setIsKeyModalOpen(false);
+    }, 1200);
+  };
+
+  const clearCustomApiKey = () => {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem('optitrack_gemini_key');
+    setApiKeyInput('');
+    setHasCustomKey(false);
+    setKeySavedStatus('Key cleared.');
+    setTimeout(() => {
+      setKeySavedStatus(null);
+      setIsKeyModalOpen(false);
+    }, 1000);
+  };
 
   // Load chat history from localStorage whenever active user is resolved
   useEffect(() => {
@@ -216,13 +266,13 @@ export function AIChatWidget() {
     }
   };
 
-  // Quick Bento Actions for Warehouse Operations
+  // Quick Bento Actions for Warehouse Operations (STRICTLY 100% ENGLISH)
   const quickQuestions = [
     {
       badge: 'AUTOMATION',
       label: 'Stock Velocity & Draft POs',
-      desc: 'คำนวณอัตราเบิกจ่าย, วันคงเหลือ (DOI) และร่างใบสั่งซื้อ PO อัตโนมัติ',
-      value: 'วิเคราะห์อัตราการหมุนเวียนสินค้า (Stock Velocity) สินค้าไหนใกล้หมด คำนวณวันคงเหลือ (Days of Inventory) และร่างใบสั่งซื้อ (Draft PO) ให้ด้วยครับ',
+      desc: 'Analyze burn rate, Days of Inventory (DOI), and prepare draft POs',
+      value: 'Analyze stock velocity and consumption rates across all warehouse items. Calculate Days of Inventory (DOI), identify critical low stock, and prepare a draft Purchase Order (PO) with suggested quantities.',
       icon: Sparkles,
       iconBg: 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400',
       badgeClass: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
@@ -232,8 +282,8 @@ export function AIChatWidget() {
     {
       badge: 'RISK ALERT',
       label: '7-Day Stockout Risk',
-      desc: 'พยากรณ์สินค้าที่มีความเสี่ยงของขาดสต็อกภายใน 7 วันข้างหน้า',
-      value: 'พยากรณ์สินค้าที่มีความเสี่ยงจะหมดสต็อกภายใน 7 วันข้างหน้า โดยอิงจากอัตราการเบิกจ่ายสินค้าล่าสุด',
+      desc: 'Forecast items at critical risk of stockout within the next 7 days',
+      value: 'Forecast products at critical risk of stockout within the next 7 days based on recent outbound sales and burn rate.',
       icon: TrendingDown,
       iconBg: 'bg-rose-500/20 border-rose-500/40 text-rose-400',
       badgeClass: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
@@ -243,8 +293,8 @@ export function AIChatWidget() {
     {
       badge: 'INVENTORY',
       label: 'Urgent Low Stock Levels',
-      desc: 'ตรวจเช็คสต็อกต่ำกว่าเกณฑ์ความปลอดภัยพร้อมคำนวณจำนวนสั่งเติม',
-      value: 'What items are currently low in stock and need reordering? Show me the most urgent items with suggested quantities.',
+      desc: 'Identify items below safety threshold and calculate replenishment',
+      value: 'What items are currently low in stock and need reordering? Show me the most urgent items with suggested replenishment quantities.',
       icon: Package,
       iconBg: 'bg-amber-500/20 border-amber-500/40 text-amber-400',
       badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
@@ -254,7 +304,7 @@ export function AIChatWidget() {
     {
       badge: 'FINANCIALS',
       label: 'Valuation & Category Margins',
-      desc: 'สรุปมูลค่ารวมต้นทุน ราคาขายในคลัง และอัตรากำไรแยกตามหมวดหมู่',
+      desc: 'Total cost basis, market valuation, and category margin analysis',
       value: 'What is the total inventory value? Show me a breakdown by category with profit margins.',
       icon: BarChart3,
       iconBg: 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400',
@@ -293,6 +343,90 @@ export function AIChatWidget() {
             <div className="absolute top-full right-5 -mt-1 w-2 h-2 bg-slate-900 border-r border-b border-slate-800 rotate-45" />
           </div>
         </button>
+      )}
+
+      {/* Key Settings Modal */}
+      {isKeyModalOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-5 overflow-hidden">
+            <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-blue-500/15 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400">
+                  <Key size={18} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-white">Gemini API Key</h4>
+                  <p className="text-[11px] text-slate-400">Direct Browser Session Config</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsKeyModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed mb-3">
+              Configure your Google Gemini API Key below. It will be stored securely in your browser&apos;s local storage and used directly for real-time AI requests.
+            </p>
+
+            <div className="relative mb-3">
+              <input
+                type={showApiKey ? "text" : "password"}
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                placeholder="Paste Gemini API Key (AQ.Ab8RN...)"
+                className="w-full px-3 py-2.5 pr-10 rounded-xl bg-slate-950 border border-slate-700 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-mono"
+              />
+              <button
+                type="button"
+                onClick={() => setShowApiKey(!showApiKey)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+              >
+                {showApiKey ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
+
+            {keySavedStatus && (
+              <div className="mb-3 px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
+                <Check size={14} />
+                <span>{keySavedStatus}</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-2 pt-1">
+              {hasCustomKey ? (
+                <button
+                  type="button"
+                  onClick={clearCustomApiKey}
+                  className="px-3 py-1.5 text-xs font-semibold text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors"
+                >
+                  Clear Key
+                </button>
+              ) : <div />}
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsKeyModalOpen(false)}
+                  className="px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={saveCustomApiKey}
+                  className="px-4 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl shadow-lg shadow-blue-500/25 transition-all"
+                >
+                  Save Key
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Chat Window */}
@@ -352,6 +486,20 @@ export function AIChatWidget() {
               >
                 <Sparkles className="size-3.5 text-indigo-300" />
                 <span className="text-[11px]">Reorder Agent</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsKeyModalOpen(true)}
+                className={cn(
+                  "p-2 rounded-xl transition-all border",
+                  hasCustomKey
+                    ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20"
+                    : "text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 border-slate-700/60"
+                )}
+                title={hasCustomKey ? "Gemini Key Configured" : "Configure Gemini API Key"}
+              >
+                <Key size={15} />
               </button>
               
               <button
@@ -549,6 +697,20 @@ export function AIChatWidget() {
                             >
                               {message.content}
                             </ReactMarkdown>
+
+                            {/* Actionable Button if API Key is not configured */}
+                            {message.content.includes("AI service is not configured") && (
+                              <div className="mt-3 pt-2.5 border-t border-slate-800">
+                                <button
+                                  type="button"
+                                  onClick={() => setIsKeyModalOpen(true)}
+                                  className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-lg shadow-blue-500/25 transition-all hover:scale-105 active:scale-95"
+                                >
+                                  <Key size={13} />
+                                  Configure Gemini API Key
+                                </button>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <p className="text-[13px] whitespace-pre-wrap leading-relaxed">{message.content}</p>

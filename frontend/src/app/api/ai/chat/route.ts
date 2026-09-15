@@ -195,8 +195,7 @@ export async function POST(req: NextRequest) {
       recent_movements: recentTxSummary,
     };
 
-    // 4. Construct System Prompt with STRICT Language Mirroring Rules
-    const expectedLanguage = isThaiQuery ? 'THAI' : 'ENGLISH';
+    // 4. Construct System Prompt (Strictly 100% English)
     const systemPrompt = `You are OptiTrack Autonomous AI, the advanced Predictive Inventory & Reorder Agent for OptiTrack WMS.
 You have real-time access to the user's live warehouse data, Stock Velocity (burn rate), and Demand Forecasting snapshot below:
 
@@ -205,11 +204,9 @@ ${JSON.stringify(warehouseSnapshot, null, 2)}
 ============================================
 
 STRICT LANGUAGE REQUIREMENT (CRITICAL):
-- The user's input language is: ${expectedLanguage}.
-- You MUST respond ONLY in ${expectedLanguage}.
-- If the user asks in English -> Respond 100% in English. Do NOT include any Thai text.
-- If the user asks in Thai -> Respond 100% in Thai. Do NOT use English unless for technical terms or SKUs.
-- NEVER mix languages. Your entire output must strictly match the language of the user's message.
+- You MUST ALWAYS respond 100% in English.
+- Never output Thai or any other non-English language under any circumstances.
+- All executive summaries, stock tables, bullet points, numbers, and recommendations must be strictly in English.
 
 AUTONOMOUS AGENT CAPABILITIES:
 1. STOCK VELOCITY & DEMAND FORECASTING:
@@ -224,8 +221,10 @@ AUTONOMOUS AGENT CAPABILITIES:
 
     // 5. Multi-Engine Failover Execution
     let aiResponseText = '';
-    const geminiKey = process.env.GEMINI_API_KEY;
-    const groqKey = process.env.GROQ_API_KEY;
+    const clientGeminiKey = req.headers.get('x-gemini-key')?.trim();
+    const clientGroqKey = req.headers.get('x-groq-key')?.trim();
+    const geminiKey = process.env.GEMINI_API_KEY || clientGeminiKey;
+    const groqKey = process.env.GROQ_API_KEY || clientGroqKey;
 
     // Step A: Primary Engine - Google Gemini (Fast & Reliable Flash-Lite / Flash)
     if (geminiKey) {
@@ -301,16 +300,12 @@ AUTONOMOUS AGENT CAPABILITIES:
       }
     }
 
-    // Language-consistent fallback error message
+    // Fallback error message (Strictly 100% English)
     if (!aiResponseText) {
       if (!geminiKey && !groqKey) {
-        aiResponseText = isThaiQuery
-          ? 'ระบบ AI ยังไม่ได้ตั้งค่า GEMINI_API_KEY หรือ GROQ_API_KEY ใน Environment Variables ของเซิร์ฟเวอร์ กรุณาตั้งค่าเพื่อเปิดใช้งาน'
-          : 'AI service is not configured. Please configure GEMINI_API_KEY or GROQ_API_KEY in server environment variables.';
+        aiResponseText = 'AI service is not configured. Please configure GEMINI_API_KEY in Vercel project environment variables, or click the Key Settings icon in the AI Assistant header to provide your API key directly.';
       } else {
-        aiResponseText = isThaiQuery
-          ? 'ขออภัยครับ ขณะนี้ระบบปัญญาประดิษฐ์กำลังประมวลผลคำขอปริมาณมาก กรุณาลองใหม่อีกครั้งในอีกสักครู่ครับ'
-          : 'I apologize, but the AI intelligence service is currently experiencing high demand. Please try again in a moment.';
+        aiResponseText = 'I apologize, but the AI intelligence service is currently experiencing high demand. Please try again in a moment.';
       }
     }
 

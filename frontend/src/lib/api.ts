@@ -48,6 +48,10 @@ apiClient.interceptors.request.use(
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+      const customGeminiKey = localStorage.getItem('optitrack_gemini_key')?.trim();
+      if (customGeminiKey && config.headers) {
+        config.headers['x-gemini-key'] = customGeminiKey;
+      }
     }
 
     return config;
