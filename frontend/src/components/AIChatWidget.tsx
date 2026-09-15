@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * Enchanted AI Chat Widget
- * Premium glassmorphism design with animated gradients,
- * floating orbs, and refined micro-interactions.
+ * OptiTrack AI Warehouse Intelligence Core
+ * High-tech glassmorphic command center widget with real-time stock velocity,
+ * predictive reordering, and dark cybernetic aesthetics.
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -13,14 +13,13 @@ import {
   Loader2,
   Sparkles,
   Trash2,
-  Minus,
+  X,
   Bot,
   ChevronRight,
-  Zap,
   BarChart3,
   Package,
-  TrendingUp,
   TrendingDown,
+  Cpu,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -149,7 +148,7 @@ export function AIChatWidget() {
   // Focus input when chat opens
   useEffect(() => {
     if (isOpen && inputRef.current) {
-      setTimeout(() => inputRef.current?.focus(), 400);
+      setTimeout(() => inputRef.current?.focus(), 300);
     }
   }, [isOpen]);
 
@@ -158,18 +157,12 @@ export function AIChatWidget() {
     setTimeout(() => {
       setIsOpen(false);
       setIsClosing(false);
-    }, 300);
+    }, 250);
   }, []);
 
   const sendMessage = async (text?: string) => {
     const messageToSend = text || inputMessage;
     if (!messageToSend.trim() || isLoading) return;
-
-    // Special trigger for predictive agent modal
-    if (text?.includes("ร่างใบสั่งซื้อ")) {
-      setIsPredictiveOpen(true);
-      return;
-    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -198,7 +191,7 @@ export function AIChatWidget() {
     } catch {
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: 'I encountered an error connecting to the intelligence core. Please try again.',
+        content: 'I encountered an error connecting to the intelligence core. Please try again in a moment.',
         isBot: true,
         timestamp: new Date(),
       };
@@ -223,39 +216,51 @@ export function AIChatWidget() {
     }
   };
 
-  // English/Thai prompts for AI
+  // Quick Bento Actions for Warehouse Operations
   const quickQuestions = [
     {
-      label: 'Predictive Stock Velocity & Draft POs',
-      value: "วิเคราะห์อัตราการหมุนเวียนสินค้า (Stock Velocity) สินค้าไหนใกล้หมด คำนวณวันคงเหลือ (Days of Inventory) และร่างใบสั่งซื้อ (Draft PO) ให้ด้วยครับ",
+      badge: 'AUTOMATION',
+      label: 'Stock Velocity & Draft POs',
+      desc: 'คำนวณอัตราเบิกจ่าย, วันคงเหลือ (DOI) และร่างใบสั่งซื้อ PO อัตโนมัติ',
+      value: 'วิเคราะห์อัตราการหมุนเวียนสินค้า (Stock Velocity) สินค้าไหนใกล้หมด คำนวณวันคงเหลือ (Days of Inventory) และร่างใบสั่งซื้อ (Draft PO) ให้ด้วยครับ',
       icon: Sparkles,
-      gradient: "from-indigo-600 to-purple-600",
-      bg: "bg-indigo-500/10",
-      ring: "ring-indigo-500/20",
+      iconBg: 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400',
+      badgeClass: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
+      glow: 'from-indigo-600/15 to-transparent',
+      hoverBorder: 'hover:border-indigo-500/60',
     },
     {
+      badge: 'RISK ALERT',
       label: '7-Day Stockout Risk',
-      value: "พยากรณ์สินค้าที่มีความเสี่ยงจะหมดสต็อกภายใน 7 วันข้างหน้า โดยอิงจากอัตราการเบิกจ่ายสินค้าล่าสุด",
+      desc: 'พยากรณ์สินค้าที่มีความเสี่ยงของขาดสต็อกภายใน 7 วันข้างหน้า',
+      value: 'พยากรณ์สินค้าที่มีความเสี่ยงจะหมดสต็อกภายใน 7 วันข้างหน้า โดยอิงจากอัตราการเบิกจ่ายสินค้าล่าสุด',
       icon: TrendingDown,
-      gradient: "from-rose-500 to-amber-500",
-      bg: "bg-rose-500/10",
-      ring: "ring-rose-500/20",
+      iconBg: 'bg-rose-500/20 border-rose-500/40 text-rose-400',
+      badgeClass: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+      glow: 'from-rose-600/15 to-transparent',
+      hoverBorder: 'hover:border-rose-500/60',
     },
     {
-      label: 'Inventory Levels',
-      value: "What items are currently low in stock and need reordering? Show me the most urgent items.",
+      badge: 'INVENTORY',
+      label: 'Urgent Low Stock Levels',
+      desc: 'ตรวจเช็คสต็อกต่ำกว่าเกณฑ์ความปลอดภัยพร้อมคำนวณจำนวนสั่งเติม',
+      value: 'What items are currently low in stock and need reordering? Show me the most urgent items with suggested quantities.',
       icon: Package,
-      gradient: "from-amber-500 to-orange-500",
-      bg: "bg-amber-500/10",
-      ring: "ring-amber-500/20",
+      iconBg: 'bg-amber-500/20 border-amber-500/40 text-amber-400',
+      badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+      glow: 'from-amber-600/15 to-transparent',
+      hoverBorder: 'hover:border-amber-500/60',
     },
     {
-      label: 'Total Value',
-      value: "What is the total inventory value? Show me a breakdown by category with profit margins.",
+      badge: 'FINANCIALS',
+      label: 'Valuation & Category Margins',
+      desc: 'สรุปมูลค่ารวมต้นทุน ราคาขายในคลัง และอัตรากำไรแยกตามหมวดหมู่',
+      value: 'What is the total inventory value? Show me a breakdown by category with profit margins.',
       icon: BarChart3,
-      gradient: "from-emerald-500 to-teal-500",
-      bg: "bg-emerald-500/10",
-      ring: "ring-emerald-500/20",
+      iconBg: 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400',
+      badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+      glow: 'from-emerald-600/15 to-transparent',
+      hoverBorder: 'hover:border-emerald-500/60',
     },
   ];
 
@@ -270,17 +275,22 @@ export function AIChatWidget() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 group"
+          className="fixed bottom-6 right-6 z-50 group focus:outline-none"
+          aria-label="Open AI Assistant"
         >
-          {/* Animated gradient ring */}
-          <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl blur-md opacity-60 group-hover:opacity-100 transition-opacity duration-500 animate-pulse" />
-          <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white shadow-2xl shadow-blue-500/25 transition-all duration-300 hover:scale-110 hover:shadow-blue-500/40 active:scale-95">
-            <Sparkles className="h-6 w-6 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />
+          {/* Animated gradient aura */}
+          <div className="absolute -inset-1.5 bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 rounded-3xl blur-md opacity-70 group-hover:opacity-100 transition-all duration-500 animate-pulse" />
+          <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-900 border border-slate-700/80 text-white shadow-2xl shadow-blue-500/30 transition-all duration-300 group-hover:scale-105 group-hover:border-blue-500/60 active:scale-95">
+            <Sparkles className="h-6 w-6 text-blue-400 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />
+            <span className="absolute top-1 right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 border-slate-900" />
+            </span>
           </div>
-          {/* Tooltip */}
-          <div className="absolute bottom-full right-0 mb-3 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:-translate-y-1 pointer-events-none whitespace-nowrap shadow-xl">
-            AI Assistant
-            <div className="absolute top-full right-5 -mt-1 w-2 h-2 bg-slate-900 rotate-45" />
+          {/* Floating Tooltip */}
+          <div className="absolute bottom-full right-0 mb-3 px-3 py-1.5 bg-slate-900/95 border border-slate-800 text-slate-200 text-xs font-semibold rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:-translate-y-1 pointer-events-none whitespace-nowrap shadow-2xl backdrop-blur-md">
+            OptiTrack AI Core
+            <div className="absolute top-full right-5 -mt-1 w-2 h-2 bg-slate-900 border-r border-b border-slate-800 rotate-45" />
           </div>
         </button>
       )}
@@ -290,131 +300,167 @@ export function AIChatWidget() {
         <div
           className={cn(
             "fixed z-50 flex flex-col overflow-hidden transition-all duration-300",
-            "inset-0 sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[calc(100vh-3rem)] sm:max-h-[680px] sm:w-[440px] sm:max-w-[calc(100vw-3rem)] lg:w-[520px] xl:w-[560px] sm:rounded-3xl",
-            "bg-white/95 backdrop-blur-xl shadow-2xl shadow-slate-900/20 border border-white/80",
+            "inset-0 sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[calc(100vh-3rem)] sm:max-h-[700px] sm:w-[460px] sm:max-w-[calc(100vw-2.5rem)] lg:w-[540px] xl:w-[580px] sm:rounded-3xl",
+            "bg-slate-950/95 backdrop-blur-2xl shadow-2xl shadow-black/90 border border-slate-800/90 ring-1 ring-white/10",
             isClosing
               ? "opacity-0 scale-95 translate-y-4"
-              : "opacity-100 scale-100 translate-y-0 animate-in slide-in-from-bottom-4 zoom-in-95 duration-400"
+              : "opacity-100 scale-100 translate-y-0 animate-in slide-in-from-bottom-4 zoom-in-95 duration-300"
           )}
         >
           {/* Header */}
-          <div className="relative flex items-center justify-between px-5 py-4 flex-shrink-0 overflow-hidden">
-            {/* Animated gradient background */}
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900" />
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-600/15 via-purple-600/10 to-indigo-600/15 animate-gradient-shift" />
-            {/* Subtle bottom glow */}
-            <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent" />
+          <div className="relative flex items-center justify-between px-5 py-3.5 flex-shrink-0 border-b border-slate-800/80 bg-slate-900/90">
+            {/* Ambient header glow */}
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-indigo-600/5 to-purple-600/10 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/40 to-transparent" />
 
+            {/* Left Brand Identity */}
             <div className="relative flex items-center gap-3">
               <div className="relative">
-                {/* Avatar glow */}
-                <div className="absolute -inset-1 bg-gradient-to-tr from-blue-500 to-indigo-500 rounded-xl blur opacity-40" />
-                <div className="relative h-10 w-10 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center shadow-lg ring-1 ring-white/10">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20 ring-1 ring-white/20">
                   <Bot className="h-5 w-5 text-white" />
                 </div>
-                <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-400 border-2 border-slate-900 shadow-lg shadow-emerald-500/50" />
+                <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-slate-950 shadow-md shadow-emerald-500/50" />
               </div>
               <div>
-                <h3 className="font-bold text-sm text-white tracking-tight leading-none mb-1">
-                  OptiTrack AI
-                </h3>
-                <div className="flex items-center gap-1.5">
-                  <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400/50" />
-                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
-                    Online
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-sm text-white tracking-tight leading-none">
+                    OptiTrack AI
+                  </h3>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/15 border border-blue-500/30 text-blue-400 font-bold uppercase tracking-wider">
+                    v2.4
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                  </span>
+                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+                    Live Warehouse Core
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="relative flex items-center gap-1">
+            {/* Right Action Controls */}
+            <div className="relative flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setIsPredictiveOpen(true)}
-                className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 hover:from-indigo-500/30 hover:to-purple-500/30 border border-indigo-400/30 text-indigo-200 text-xs font-bold flex items-center gap-1.5 transition-all duration-200 shadow-sm hover:scale-105"
-                title="Open Autonomous Predictive Reorder Agent"
+                className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 hover:from-indigo-500/30 hover:to-purple-500/30 border border-indigo-400/30 text-indigo-300 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm hover:scale-105 active:scale-95"
+                title="Launch Predictive Reorder Agent"
               >
                 <Sparkles className="size-3.5 text-indigo-300" />
-                <span className="text-[11px] font-semibold">Reorder Agent</span>
+                <span className="text-[11px]">Reorder Agent</span>
               </button>
+              
               <button
                 onClick={clearChat}
-                className="p-2 text-slate-500 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200 hover:scale-105"
-                title="Clear chat"
+                className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all"
+                title="Clear Chat History"
               >
                 <Trash2 size={15} />
               </button>
               <button
                 onClick={handleClose}
-                className="p-2 text-slate-500 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200 hover:scale-105"
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all"
+                title="Minimize Chat"
               >
-                <Minus size={18} />
+                <X size={17} />
               </button>
             </div>
           </div>
 
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5 bg-gradient-to-b from-slate-50/80 to-white/50 scrollbar-hide">
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-gradient-to-b from-slate-950 via-slate-900/90 to-slate-950 scrollbar-thin scrollbar-thumb-slate-800">
             {messages.length === 0 ? (
-              <div className="min-h-full flex flex-col items-center justify-start text-center px-2 pt-6 pb-6">
-                {/* Animated orb */}
-                <div className="relative mb-5 animate-in fade-in zoom-in-50 duration-700 delay-300">
-                  <div className="absolute -inset-4 bg-gradient-to-r from-blue-500/20 via-indigo-500/20 to-purple-500/20 rounded-full blur-xl animate-pulse" />
-                  <div className="relative p-5 rounded-full bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 ring-1 ring-blue-200/50">
-                    <Zap size={28} className="text-blue-600" />
+              <div className="min-h-full flex flex-col items-center justify-start text-center px-1 pt-4 pb-2">
+                {/* Glowing Core Visual */}
+                <div className="relative mb-4 animate-in fade-in zoom-in-75 duration-500">
+                  <div className="absolute -inset-4 bg-gradient-to-r from-blue-600/30 via-indigo-600/30 to-purple-600/30 rounded-full blur-2xl animate-pulse" />
+                  <div className="relative p-4 rounded-2xl bg-slate-900/90 border border-slate-800 ring-1 ring-blue-500/30 shadow-2xl">
+                    <Cpu size={32} className="text-blue-400" />
                   </div>
                 </div>
 
-                <h4 className="text-base font-bold text-slate-900 mb-1.5 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-400">
-                  Warehouse Intelligence
+                <h4 className="text-base font-extrabold bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent mb-1 animate-in fade-in duration-500">
+                  Autonomous Warehouse Core
                 </h4>
-                <p className="text-xs text-slate-500 max-w-[250px] mb-7 leading-relaxed animate-in fade-in slide-in-from-bottom-2 duration-500 delay-500">
-                  Analyze stock levels, track values, and discover trends across your warehouse in real-time.
+                <p className="text-xs text-slate-400 max-w-[320px] mb-5 leading-relaxed animate-in fade-in duration-500">
+                  Real-time stock velocity, burn-rate forecasting, and instant draft purchase orders powered by OptiTrack AI.
                 </p>
 
-                {/* Quick question cards */}
-                <div className="w-full space-y-2.5">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-3">
-                    Quick actions
-                  </p>
+                {/* Quick Action Bento Grid */}
+                <div className="w-full space-y-2.5 text-left">
+                  <div className="flex items-center justify-between px-1 mb-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      Quick Operations
+                    </span>
+                    <span className="text-[10px] text-blue-400 font-mono">
+                      1-Click Analysis
+                    </span>
+                  </div>
+
                   {quickQuestions.map((q, index) => (
                     <button
                       key={index}
                       onClick={() => sendMessage(q.value)}
                       className={cn(
-                        "group flex items-center gap-3 w-full p-3.5 rounded-2xl text-left transition-all duration-300",
-                        "bg-white border border-slate-100/80 shadow-sm",
-                        "hover:shadow-lg hover:-translate-y-0.5 hover:border-slate-200",
-                        "animate-in fade-in slide-in-from-bottom-2 duration-500",
+                        "group relative flex items-start gap-3.5 w-full p-3.5 rounded-2xl text-left transition-all duration-300",
+                        "bg-slate-900/90 border border-slate-800/90 shadow-md shadow-black/40",
+                        "hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-500/5",
+                        q.hoverBorder,
+                        "overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-400"
                       )}
-                      style={{ animationDelay: `${500 + index * 100}ms` }}
+                      style={{ animationDelay: `${250 + index * 60}ms` }}
                     >
+                      {/* Ambient hover glow */}
+                      <div className={cn("absolute inset-0 bg-gradient-to-r opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none", q.glow)} />
+
+                      {/* Icon Container */}
                       <div className={cn(
-                        "flex-shrink-0 h-9 w-9 rounded-xl flex items-center justify-center transition-all duration-300 ring-1",
-                        q.bg, q.ring,
-                        "group-hover:scale-110 group-hover:shadow-md"
+                        "flex-shrink-0 h-10 w-10 rounded-xl border flex items-center justify-center transition-all duration-300 shadow-inner",
+                        q.iconBg,
+                        "group-hover:scale-105"
                       )}>
-                        <q.icon size={16} className={cn("bg-gradient-to-r bg-clip-text", q.gradient)} style={{ color: 'currentColor' }} />
+                        <q.icon size={18} />
                       </div>
-                      <span className="flex-1 text-sm font-semibold text-slate-700 group-hover:text-slate-900 transition-colors">
-                        {q.label}
-                      </span>
-                      <ChevronRight
-                        size={14}
-                        className="text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all duration-300"
-                      />
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-bold text-slate-100 group-hover:text-white transition-colors truncate">
+                            {q.label}
+                          </span>
+                          <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider", q.badgeClass)}>
+                            {q.badge}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 group-hover:text-slate-300 leading-snug line-clamp-1 transition-colors">
+                          {q.desc}
+                        </p>
+                      </div>
+
+                      {/* Chevron */}
+                      <div className="flex-shrink-0 self-center pl-1">
+                        <ChevronRight
+                          size={16}
+                          className="text-slate-600 group-hover:text-slate-300 group-hover:translate-x-0.5 transition-all duration-300"
+                        />
+                      </div>
                     </button>
                   ))}
                 </div>
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-center pt-0.5 pb-2">
-                  <span className="text-[10px] font-semibold text-slate-400 bg-slate-100/90 border border-slate-200/60 px-2.5 py-0.5 rounded-full shadow-2xs select-none">
-                    Conversation History
+                <div className="flex items-center justify-center pt-0.5 pb-1">
+                  <span className="text-[10px] font-semibold text-slate-400 bg-slate-900/80 border border-slate-800 px-3 py-0.5 rounded-full shadow-sm select-none">
+                    Real-time Intelligence Session
                   </span>
                 </div>
-                {messages.map((message, i) => (
+
+                {messages.map((message) => (
                   <div
                     key={message.id}
                     className={cn(
@@ -434,12 +480,12 @@ export function AIChatWidget() {
                         className={cn(
                           "h-7 w-7 rounded-lg flex-shrink-0 flex items-center justify-center mt-auto mb-1 overflow-hidden transition-all duration-300",
                           message.isBot
-                            ? "bg-white border border-slate-200/80 text-blue-600 shadow-sm"
+                            ? "bg-slate-900 border border-slate-800 text-blue-400 shadow-md ring-1 ring-blue-500/20"
                             : "bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20"
                         )}
                       >
                         {message.isBot ? (
-                          <Bot size={14} />
+                          <Bot size={15} />
                         ) : userImageUrl ? (
                           <Image
                             src={userImageUrl}
@@ -459,13 +505,48 @@ export function AIChatWidget() {
                         className={cn(
                           "min-w-0 rounded-2xl px-4 py-3 transition-all duration-200",
                           message.isBot
-                            ? "bg-white text-slate-800 rounded-bl-sm border border-slate-100/80 shadow-sm"
-                            : "bg-gradient-to-tr from-blue-600 via-blue-600 to-indigo-600 text-white rounded-br-sm shadow-lg shadow-blue-500/15"
+                            ? "bg-slate-900/95 text-slate-200 rounded-bl-sm border border-slate-800 shadow-xl shadow-black/40"
+                            : "bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white rounded-br-sm shadow-lg shadow-blue-500/20 border border-blue-400/20"
                         )}
                       >
                         {message.isBot ? (
-                          <div className="overflow-x-auto text-[13px] prose prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-slate-800 prose-pre:text-slate-100 prose-th:border-slate-200 prose-td:border-slate-200 prose-table:border-collapse prose-table:w-full prose-table:text-[11px] prose-th:text-left prose-th:p-1.5 prose-td:p-1.5 prose-th:align-top prose-td:align-top prose-a:text-blue-600">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          <div className="overflow-x-auto text-[13px] leading-relaxed">
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                table: ({ children }) => (
+                                  <div className="overflow-x-auto my-2.5 rounded-xl border border-slate-800 bg-slate-950/70 shadow-inner">
+                                    <table className="w-full text-left text-xs border-collapse">{children}</table>
+                                  </div>
+                                ),
+                                thead: ({ children }) => (
+                                  <thead className="bg-slate-800/90 text-blue-300 font-bold border-b border-slate-700/80 text-[10px] uppercase tracking-wider">
+                                    {children}
+                                  </thead>
+                                ),
+                                th: ({ children }) => (
+                                  <th className="p-2.5 font-bold text-blue-300">{children}</th>
+                                ),
+                                td: ({ children }) => (
+                                  <td className="p-2 border-t border-slate-800 text-slate-300 font-mono text-[11px]">{children}</td>
+                                ),
+                                p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed text-slate-200">{children}</p>,
+                                ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1 text-slate-300">{children}</ul>,
+                                ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1 text-slate-300">{children}</ol>,
+                                li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                                strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
+                                code: ({ inline, children, ...props }: any) =>
+                                  inline ? (
+                                    <code className="px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 font-mono text-[11px] border border-slate-700" {...props}>
+                                      {children}
+                                    </code>
+                                  ) : (
+                                    <pre className="p-2.5 my-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 overflow-x-auto font-mono text-xs">
+                                      <code>{children}</code>
+                                    </pre>
+                                  ),
+                              }}
+                            >
                               {message.content}
                             </ReactMarkdown>
                           </div>
@@ -475,7 +556,7 @@ export function AIChatWidget() {
                         <p
                           className={cn(
                             "text-[9px] mt-1.5 font-medium",
-                            message.isBot ? "text-slate-300" : "text-blue-200"
+                            message.isBot ? "text-slate-400" : "text-blue-200"
                           )}
                         >
                           {new Intl.DateTimeFormat('default', {
@@ -493,15 +574,20 @@ export function AIChatWidget() {
             {/* Typing indicator */}
             {isLoading && (
               <div className="flex justify-start animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div className="flex gap-2.5 max-w-[80%] items-end">
-                  <div className="h-7 w-7 rounded-lg bg-white border border-slate-200/80 text-blue-600 shadow-sm flex items-center justify-center">
-                    <Bot size={14} />
+                <div className="flex gap-2.5 max-w-[85%] items-end">
+                  <div className="h-7 w-7 rounded-lg bg-slate-900 border border-slate-800 text-blue-400 shadow-md flex items-center justify-center">
+                    <Bot size={15} />
                   </div>
-                  <div className="bg-white rounded-2xl rounded-bl-sm px-4 py-3.5 border border-slate-100/80 shadow-sm">
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-2 w-2 rounded-full bg-blue-400/60 animate-bounce [animation-duration:1.2s]" />
-                      <div className="h-2 w-2 rounded-full bg-blue-400/60 animate-bounce [animation-duration:1.2s] [animation-delay:0.15s]" />
-                      <div className="h-2 w-2 rounded-full bg-blue-400/60 animate-bounce [animation-duration:1.2s] [animation-delay:0.3s]" />
+                  <div className="bg-slate-900/90 rounded-2xl rounded-bl-sm px-4 py-3 border border-slate-800 shadow-lg">
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <div className="h-2 w-2 rounded-full bg-blue-500 animate-bounce [animation-duration:1s]" />
+                        <div className="h-2 w-2 rounded-full bg-indigo-500 animate-bounce [animation-duration:1s] [animation-delay:0.15s]" />
+                        <div className="h-2 w-2 rounded-full bg-purple-500 animate-bounce [animation-duration:1s] [animation-delay:0.3s]" />
+                      </div>
+                      <span className="text-[11px] text-slate-400 font-medium pl-1">
+                        Analyzing warehouse data...
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -512,68 +598,57 @@ export function AIChatWidget() {
           </div>
 
           {/* Input Area */}
-          <div className="relative flex-shrink-0">
-            {/* Top shadow fade */}
-            <div className="absolute -top-6 left-0 right-0 h-6 bg-gradient-to-t from-white/90 to-transparent pointer-events-none" />
-
-            <div className="bg-white/90 backdrop-blur-sm px-4 pt-3 pb-4 pb-safe border-t border-slate-100/80">
-              <div
+          <div className="relative flex-shrink-0 bg-slate-950 px-4 pt-3 pb-4 border-t border-slate-800/80">
+            <div
+              className={cn(
+                "relative flex items-end gap-2 rounded-2xl border p-1.5 transition-all duration-300",
+                inputMessage.trim()
+                  ? "bg-slate-900/95 border-blue-500/80 ring-2 ring-blue-500/20 shadow-lg shadow-blue-500/5"
+                  : "bg-slate-900/80 border-slate-800"
+              )}
+            >
+              <textarea
+                ref={inputRef}
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyDown={handleKeyPress}
+                placeholder="Ask about inventory velocity, value, replenishment..."
+                disabled={isLoading}
+                rows={1}
+                className="flex-1 max-h-28 bg-transparent border-none focus:ring-0 focus:outline-none text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 p-2.5 resize-none scrollbar-hide leading-relaxed"
+              />
+              <button
+                onClick={() => sendMessage()}
+                disabled={isLoading || !inputMessage.trim()}
                 className={cn(
-                  "relative flex items-end gap-2 rounded-2xl border p-1.5 transition-all duration-300",
+                  "flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-300 flex-shrink-0",
                   inputMessage.trim()
-                    ? "bg-white border-blue-200 ring-4 ring-blue-500/5 shadow-sm"
-                    : "bg-slate-50/80 border-slate-200/80"
+                    ? "bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:scale-105 active:scale-95"
+                    : "bg-slate-800 text-slate-600 cursor-not-allowed"
                 )}
               >
-                <textarea
-                  ref={inputRef}
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyDown={handleKeyPress}
-                  placeholder="Ask about inventory, value, trends..."
-                  disabled={isLoading}
-                  rows={1}
-                  className="flex-1 max-h-28 bg-transparent border-none focus:ring-0 focus:outline-none text-sm text-slate-800 placeholder:text-slate-400 p-2.5 resize-none scrollbar-hide leading-relaxed"
-                />
-                <button
-                  onClick={() => sendMessage()}
-                  disabled={isLoading || !inputMessage.trim()}
-                  className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-300 flex-shrink-0",
-                    inputMessage.trim()
-                      ? "bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-105 active:scale-95"
-                      : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                  )}
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4 ml-0.5" />
-                  )}
-                </button>
-              </div>
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 ml-0.5" />
+                )}
+              </button>
+            </div>
 
-              <div className="flex items-center justify-center gap-1.5 mt-2.5">
-                <Sparkles size={9} className="text-slate-300" />
-                <p className="text-[9px] text-slate-400 font-medium tracking-wider">
-                  Powered by OptiTrack AI
+            <div className="flex items-center justify-between px-1 mt-2.5">
+              <div className="flex items-center gap-1.5">
+                <Sparkles size={11} className="text-blue-400" />
+                <p className="text-[10px] text-slate-400 font-medium">
+                  OptiTrack AI Engine
                 </p>
               </div>
+              <p className="text-[9px] text-slate-400 font-mono">
+                Real-time Sync Active
+              </p>
             </div>
           </div>
         </div>
       )}
-
-      {/* Global styles for gradient animation */}
-      <style jsx global>{`
-        @keyframes gradient-shift {
-          0%, 100% { opacity: 0.5; }
-          50% { opacity: 1; }
-        }
-        .animate-gradient-shift {
-          animation: gradient-shift 4s ease-in-out infinite;
-        }
-      `}</style>
     </>
   );
 }
