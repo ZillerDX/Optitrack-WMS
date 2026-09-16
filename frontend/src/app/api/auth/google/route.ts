@@ -76,11 +76,15 @@ export async function POST(req: NextRequest) {
       }
       // Update image if missing
       if (!user.image_url && picture) {
-        await supabaseRest(`users?id=eq.${user.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ image_url: picture }),
-        });
-        user.image_url = picture;
+        try {
+          await supabaseRest(`users?id=eq.${user.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ image_url: picture }),
+          });
+          user.image_url = picture;
+        } catch {
+          // Non-critical image update failure
+        }
       }
     } else {
       // Auto-register new user
@@ -101,15 +105,33 @@ export async function POST(req: NextRequest) {
       });
 
       if (!insertRes.ok) {
-        console.error('[Supabase Google User Create Error]:', await insertRes.text());
-        return NextResponse.json(
-          { detail: 'Failed to create user in database.' },
-          { status: 500 }
-        );
-      }
+        // Resilient fallback without image_url
+        const retryRes = await supabaseRest('users', {
+          method: 'POST',
+          body: JSON.stringify({
+            email,
+            password_hash,
+            first_name,
+            last_name,
+            role: 'ADMIN',
+            is_active: true,
+          }),
+        });
 
-      const created = await insertRes.json();
-      user = created[0];
+        if (retryRes.ok) {
+          const retryCreated = await retryRes.json();
+          user = Array.isArray(retryCreated) ? retryCreated[0] : retryCreated;
+        } else {
+          console.error('[Supabase Google User Create Error]:', await insertRes.text());
+          return NextResponse.json(
+            { detail: 'Failed to create user in database.' },
+            { status: 500 }
+          );
+        }
+      } else {
+        const created = await insertRes.json();
+        user = Array.isArray(created) ? created[0] : created;
+      }
     }
 
     // 3. Create Session Token
