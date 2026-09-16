@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Package, Lock, Mail, Boxes, TrendingUp, Zap, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2, Package, Lock, Mail, Boxes, TrendingUp, Shield, Zap, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/modals';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
