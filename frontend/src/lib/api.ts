@@ -68,11 +68,18 @@ apiClient.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      // ไม่ได้รับอนุญาต - เปลี่ยนเส้นทางไปยังหน้าเข้าสู่ระบบที่เหมาะสม
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      // ไม่ได้รับอนุญาต - เปลี่ยนเส้นทางไปยังหน้าเข้าสู่ระบบเฉพาะเมื่อไม่ได้อยู่ในหน้า Auth หรือ Endpoint Auth
+      const isAuthEndpoint = error.config?.url?.includes('/api/auth/login') || 
+                             error.config?.url?.includes('/api/auth/register') || 
+                             error.config?.url?.includes('/api/auth/google');
+      const isOnAuthPage = typeof window !== 'undefined' && 
+                           (window.location.pathname.includes('/login') || window.location.pathname.includes('/signup'));
 
-      window.location.href = '/login';
+      if (!isAuthEndpoint && !isOnAuthPage && typeof window !== 'undefined') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
     }
 
     return Promise.reject(error);

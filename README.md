@@ -7,15 +7,29 @@
 [![Next.js](https://img.shields.io/badge/Next.js-14_App_Router-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-RLS_Protected-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Python_3.11-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0_Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![ESLint](https://img.shields.io/badge/ESLint-Zero_Warnings-success?style=for-the-badge&logo=eslint)](https://eslint.org/)
 
 👉 **Production Live Application**: [https://optitrack-wms.vercel.app](https://optitrack-wms.vercel.app)
 
 ---
 
-## 📌 Executive Overview
+## 📑 Table of Contents
 
-**OptiTrack WMS** is an industrial-grade warehouse operating system engineered for real-time inventory visibility, spatial optimization, and autonomous inventory replenishment. It bridges physical warehouse floor operations with C-level analytics through high-fidelity SCADA digital twins, barcode intelligence, and resilient multi-provider AI agents.
+1. [Product Pillars (Who / Problem / Solution)](#-1-product-pillars-who--problem--solution)
+2. [Core Capabilities & Features](#-2-core-capabilities--features)
+3. [Enterprise System Architecture](#-3-enterprise-system-architecture)
+4. [Operational Swimlane Workflows](#-4-operational-swimlane-workflows)
+5. [Database Entity Relationship Diagram (ERD)](#-5-database-entity-relationship-diagram-erd)
+6. [Interactive API Specification](#-6-interactive-api-specification)
+7. [Security Hardening & 5 Quality Gates Audit](#-7-security-hardening--5-quality-gates-audit)
+8. [Technology Stack](#-8-technology-stack)
+9. [Annotated Project Structure](#-9-annotated-project-structure)
+10. [Local Development & Deployment](#-10-local-development--deployment)
+
+---
+
+## 🎯 1. Product Pillars (Who / Problem / Solution)
 
 ```
                   ┌──────────────────────────────────────────────────────────┐
@@ -28,32 +42,60 @@
      2D CAD & 3D Isometric          DOI Forecasting & 1-Click PO    Supabase RLS & Google GIS
 ```
 
-### Key Highlights & Capabilities
+### Who: Target Audience & Personas
+- **Warehouse Floor Operators**: Need rapid barcode scanning, instant bin destination routing, and mobile PWA responsiveness without UI lag.
+- **Inventory & Logistics Controllers**: Need real-time multi-location stock visibility, immutable transaction audit logs, and spatial rack density heatmaps.
+- **Procurement & Supply Chain Officers**: Need early warnings before stockout occurs, automated replenishment quantity calculations, and 1-click PO creation.
+- **Chief Operations Officers (COO) & Executives**: Need automated operational readiness evaluations (Grade A–D), tied-up capital analysis, and macro warehouse capacity metrics.
 
-- 🏢 **2D / 3D Interactive Warehouse Digital Twin**:
-  - Architectural **2D CAD Blueprint** and **3D Isometric Projection** perspectives.
-  - Multi-tier industrial pallet racks (Ground Heavy T1, Pick-Level T2, High-Bay T3) with dynamic volumetric density heatmaps (0% Empty to >90% Critical).
-  - Interactive rack inspection drawer, live SKU spotlighting, and spatial bin routing.
-- 🤖 **Autonomous AI Predictive Replenishment & Reorder Agent**:
-  - Real-time 30-day outbound velocity engine and Days of Inventory (DOI) run-out timelines.
-  - Automated Draft Purchase Orders (POs) generated proactively before stockout.
-  - **1-Click PO Approval Workflow**: Records POs in Supabase, atomically writes `INBOUND` transactions, and increments bin balances.
-- 📊 **1-Click AI Executive Operations Intelligence Report**:
-  - Instant executive diagnostics synthesizing operational health (Grade A–D), tied-up capital vs gross valuation, zone headroom, and prioritized action playbooks.
-- 🔑 **Google OAuth 2.0 & Enterprise Row-Level Security (RLS)**:
-  - Google Identity Services (GIS) with server-side tokeninfo verification and schema-resilient profile synchronization.
-  - Supabase PostgreSQL locked down with strict Row-Level Security (RLS); direct public client queries denied, and all mutations proxied safely through backend Edge APIs.
-- 📦 **End-to-End Inventory & Ledger Management**:
-  - Multi-location tracking across custom warehouse zones and bins.
-  - Immutable stock transaction ledger (`INBOUND`, `OUTBOUND`, `ADJUST`).
-  - Printable vector barcode label generator with SKU tags.
-  - Real-time multi-currency conversions (USD, THB, EUR, JPY) and bilingual support (EN / TH).
+### Problem: Real-World Inefficiencies & Technical Gaps
+1. **The Spatial Blindspot**: Traditional WMS platforms show tabular stock numbers but fail to visualize vertical high-bay rack density, causing pick-face bottlenecks and fragmented empty space.
+2. **Reactive Stockout Disasters**: Procurement teams discover depleted inventory *after* orders fail, because static safety thresholds cannot account for velocity spikes ($V = \sum \text{Outbound} / 30$).
+3. **Ledger Discrepancies & Concurrency Drift**: Legacy spreadsheets or unconstrained databases suffer race conditions, unverified public access, and string-coerced balance errors.
+4. **Scattered Multi-Tool Fatigue**: Disjointed software for barcode generation, currency conversions, analytics, and purchasing creates slow handoffs and human error.
+
+### Solution: The OptiTrack Advantage
+**OptiTrack WMS** delivers a unified, industrial-grade operational cockpit:
+- **Real-Time Digital Twin**: 2D CAD Blueprint and 3D Isometric SCADA perspectives with dynamic volumetric rack density ($0\%$ Empty to $>90\%$ Critical).
+- **Autonomous Predictive AI Agent**: Continuous 30-day burn-rate analysis and Days of Inventory (DOI) forecaster generating automated Draft POs with 1-click restock approval.
+- **Zero-Trust Enterprise Security**: Supabase PostgreSQL locked with Row-Level Security (RLS); direct public client queries denied, all mutations proxied through authenticated backend edge APIs.
+- **PWA & Multi-Currency Engine**: Offline-ready progressive web app with vector barcode generation and real-time USD, THB, EUR, and JPY valuations.
 
 ---
 
-## 🌊 System Architecture & Flow Swimlane
+## 🚀 2. Core Capabilities & Features
 
-### 1. High-Level Enterprise Architecture
+### 🏢 Interactive 2D / 3D SCADA Digital Twin
+- **Bimodal Floorplan Views**: Switch dynamically between architectural **2D CAD Blueprint** mode (overhead spatial bin layout) and **3D Isometric Projection** mode (industrial pallet racks).
+- **Multi-Tier Rack Inspection**: Inspect 3-tier industrial shelving:
+  - **T1**: Ground Heavy Pallet Level
+  - **T2**: Pick-Level Fast Movers
+  - **T3**: High-Bay Overstock Storage
+- **Live Volumetric Density Heatmaps**: Visual color-graded occupancy states with instant drill-down drawer showing SKU balances, expiration alerts, and direct inbound actions.
+
+### 🤖 Autonomous AI Predictive Restock & 1-Click PO
+- **Velocity Engine**: Computes daily run-rate ($V = \sum_{i=1}^{30} \text{Outbound}_i / 30$).
+- **Days of Inventory (DOI) Forecaster**: Flags critical SKUs running out within 7 days ($DOI = \text{Stock} / V$).
+- **1-Click Purchase Order Restock Workflow**:
+  - Automatically calculates optimal replenishment batch size.
+  - Operator reviews draft PO card and clicks **"Approve PO"**.
+  - Atomically writes PO ledger, records `INBOUND` stock transactions, and updates bin balances in one transaction.
+
+### 📊 1-Click AI Executive Operations Diagnostic Report
+- **5-Point Strategic Diagnostic Brief**: Synthesizes macro warehouse telemetry into a C-level briefing:
+  1. **Operational Readiness Score** (Grade A through D with percentage benchmark).
+  2. **Working Capital Exposure** (Tied-up inventory valuation vs gross liquidation value).
+  3. **Zone Capacity & Bottleneck Headroom** (High-bay vs pick-face congestion).
+  4. **Urgent Fast-Mover Replenishment Needs**.
+  5. **Prioritized Strategic Action Playbook**.
+
+### 🔑 Google OAuth 2.0 & Zero-Trust RLS Architecture
+- **Google Identity Services (GIS)**: One-tap authentication with server-side token validation and English UI enforcement (`?hl=en`).
+- **PostgreSQL Row-Level Security (RLS)**: Public `anon` role completely revoked; zero client-side direct database exposure. All mutations flow through signed JWT session guards.
+
+---
+
+## 🌊 3. Enterprise System Architecture
 
 The following diagram illustrates the complete topology across client interfaces, security edge routing, operational services, persistent storage, and the autonomous AI hub:
 
@@ -145,7 +187,7 @@ flowchart TB
 
 ---
 
-### 2. End-to-End Operational Workflows
+## 🔄 4. Operational Swimlane Workflows
 
 ```mermaid
 sequenceDiagram
@@ -158,13 +200,14 @@ sequenceDiagram
 
   Note over Op,DB: Workflow A: Zero-Trust Authentication (Google OAuth 2.0 GIS)
   Op->>UI: Click "Sign in with Google"
-  UI->>Edge: Send Google ID Credential
+  UI->>Edge: Send Google ID Credential Token
   Edge->>Edge: Verify Signature via Google Tokeninfo API
   Edge->>DB: Query User Profile (via Service Role)
   alt New User
-    Edge->>DB: Auto-provision User (Role: ADMIN)
+    Edge->>DB: Auto-provision User Account (Role: ADMIN)
   end
-  Edge-->>UI: Return Signed Session JWT (HS256)
+  Edge-->>UI: Return Signed Session JWT (jose HS256)
+  UI->>UI: Store Session & Redirect to Dashboard
 
   Note over Op,DB: Workflow B: Barcode Inbound & 3D Digital Twin Sync
   Op->>UI: Scan Barcode (SKU-1002, Qty: +50, Zone B-01)
@@ -182,7 +225,7 @@ sequenceDiagram
   Edge->>AI: Compute Daily Burn Rate & Stockout Horizon
   AI-->>Edge: Recommend Restock Qty (e.g. 120 Units)
   Edge-->>UI: Render Draft PO Card
-  Op->>UI: Click "Approve PO" (1-Click)
+  Op->>UI: Click "Approve PO" (1-Click Restock)
   UI->>Edge: POST /api/ai/reorder/approve
   Edge->>DB: Insert PO (Status: APPROVED)
   Edge->>DB: Auto-Credit Stock Ledger (Type: INBOUND)
@@ -191,31 +234,131 @@ sequenceDiagram
 
 ---
 
-## ⚡ Performance Optimizations & Security Hardening
+## 🗄️ 5. Database Entity Relationship Diagram (ERD)
 
-Following audits under `AGENTS.md` and `ponytail` engineering standards:
+```mermaid
+erDiagram
+  users ||--o{ products : "manages"
+  users ||--o{ locations : "manages"
+  users ||--o{ transactions : "executes"
+  products ||--o{ inventory : "stocked_in"
+  locations ||--o{ inventory : "contains"
+  products ||--o{ transactions : "logged_in"
+  locations ||--o{ transactions : "routed_to"
+  products ||--o{ purchase_orders : "replenished_by"
 
-| Area | Architecture Challenge | Engineered Solution | Impact & Verification |
-|---|---|---|---|
+  users {
+    int id PK "Primary Key (Auto-increment)"
+    string email UK "Unique lowercase email address"
+    string password_hash "Bcrypt hashed credential"
+    string role "RBAC: ADMIN, STAFF, USER"
+    string first_name "User given name"
+    string last_name "User surname"
+    string image_url "Avatar URL"
+    boolean is_active "Account status flag"
+  }
+
+  products {
+    int id PK "Primary Key"
+    string sku UK "Unique stock keeping unit"
+    string name "Catalog item name"
+    string category "Product grouping"
+    float cost_price "Purchase unit price"
+    float sell_price "Wholesale unit price"
+    int min_stock "Safety replenishment threshold"
+    int owner_id FK "Relates to users.id"
+  }
+
+  locations {
+    int id PK "Primary Key"
+    string code UK "Zone-Bin identifier (e.g. A-01)"
+    string zone "Warehouse department / bay"
+    string rack_level "T1-Ground, T2-Pick, T3-HighBay"
+    int capacity_limit "Max pallet / volumetric units"
+    int owner_id FK "Relates to users.id"
+  }
+
+  inventory {
+    int id PK "Primary Key"
+    int product_id FK "Relates to products.id"
+    int location_id FK "Relates to locations.id"
+    int quantity "Current on-hand units"
+  }
+
+  transactions {
+    int id PK "Primary Key"
+    string ref_code UK "Immutable transaction hash"
+    string type "INBOUND, OUTBOUND, ADJUST"
+    int quantity "Movement delta"
+    int product_id FK "Relates to products.id"
+    int location_id FK "Relates to locations.id"
+    int user_id FK "Relates to users.id"
+    datetime created_at "Immutable timestamp"
+  }
+
+  purchase_orders {
+    int id PK "Primary Key"
+    string po_number UK "Auto-generated PO reference"
+    int product_id FK "Relates to products.id"
+    int recommended_qty "AI forecasted restock quantity"
+    float estimated_cost "Total restock cost"
+    string status "DRAFT, APPROVED, COMPLETED"
+    datetime created_at "PO generation timestamp"
+  }
+
+  categories {
+    int id PK "Primary Key"
+    string name "Category name"
+    string description "Category scope description"
+  }
+```
+
+---
+
+## 📡 6. Interactive API Specification
+
+| Method | Endpoint | Description | Auth Required | Runtime |
+|---|---|---|:---:|:---:|
+| `POST` | `/api/auth/login` | Authenticate user via email/password & issue JWT | No | `force-dynamic` |
+| `POST` | `/api/auth/google` | Verify Google GIS ID token & auto-provision user | No | `force-dynamic` |
+| `POST` | `/api/auth/register` | Register new organization admin account | No | `force-dynamic` |
+| `GET` | `/api/auth/me` | Fetch authenticated user profile | Bearer JWT | `force-dynamic` |
+| `GET` | `/api/dashboard/metrics` | Single-pass warehouse valuation & capacity metrics | Bearer JWT | `force-dynamic` |
+| `GET` | `/api/inventory` | Multi-bin stock balances with location joins | Bearer JWT | `force-dynamic` |
+| `POST` | `/api/transactions` | Submit atomic stock movement (`INBOUND`, `OUTBOUND`, `ADJUST`) | Bearer JWT | `force-dynamic` |
+| `GET` | `/api/ai/predictive` | Compute 30-day velocity, DOI horizons, and draft POs | Bearer JWT | `force-dynamic` |
+| `POST` | `/api/ai/reorder/approve` | 1-Click PO restock execution & stock balance update | Bearer JWT | `force-dynamic` |
+| `POST` | `/api/ai/report` | 1-Click Executive Strategic Diagnostic Report (Grade A–D) | Bearer JWT | `force-dynamic` |
+| `POST` | `/api/ai/chat` | Autonomous warehouse operations copilot assistant | Bearer JWT | `force-dynamic` |
+
+---
+
+## 🛡️ 7. Security Hardening & 5 Quality Gates Audit
+
+Following enterprise audits under `AGENT.md` and `ponytail` engineering standards:
+
+| Area | Architecture Challenge | Engineered Solution | Verification & Proof |
+|---|---|---|:---:|
 | **Database Security** | Supabase `rls_disabled_in_public` vulnerability | Enabled PostgreSQL Row-Level Security (RLS) on all tables; revoked direct public `anon` privileges | **Zero attack surface**; direct client scraping impossible; all mutations pass through authenticated backend proxy |
 | **Authentication** | Google OAuth token lifecycle & localization | Integrated Google Identity Services (GIS) with `?hl=en` English enforcement & schema-safe fallback | Clean, modern Google One-Tap sign-in with instant auto-provisioning |
-| **Dashboard Analytics** | O(N × M) nested loop across days × transactions | Implemented single-pass O(N) in-memory hash-map aggregation (`Map<string, Agg>`) | **50x faster** chart rendering; zero UI stutter during date range toggling |
+| **Dashboard Analytics** | $O(N \times M)$ nested loop across days $\times$ transactions | Implemented single-pass $O(N)$ in-memory hash-map aggregation (`Map<string, Agg>`) | **50x faster** chart rendering; zero UI stutter during date range toggling |
 | **Inventory Fetching** | Redundant duplicate requests (`getInventory('ALL')` + `getInventory(loc)`) | Unified into single fetch with in-memory client filtering | **50% reduction** in network roundtrips & Supabase DB query load |
 | **Data Integrity** | String coercion risk in transaction arithmetic (`invItem.quantity + qty`) | Enforced strict numeric coercion `(Number(invItem.quantity) || 0) + qty` | Completely eliminates ledger corruption and accidental string concatenation |
 | **Serverless Runtime** | Stale CDN caching on dynamic API routes | Applied explicit `export const dynamic = 'force-dynamic'` across all Serverless handlers | Guarantees 100% fresh, real-time inventory ledger state across all devices |
 | **Code Quality** | Unstable hook closures & image layout shift | Memoized callbacks with `useCallback` & integrated Next.js `<Image>` component | **100% Clean ESLint** (0 errors, 0 warnings); zero Cumulative Layout Shift (CLS) |
+| **CI / CD Security** | Elevated default GitHub token permissions | Restricted GitHub Actions runner token to `permissions: contents: read` | **Least-privilege CI**; zero token vulnerability |
 
 ---
 
-## 🛠️ Technology Stack
+## 🛠️ 8. Technology Stack
 
-| Layer | Technology | Purpose & Implementation |
+| Layer | Technology | Purpose & Implementation Rationale |
 |---|---|---|
-| **Frontend Framework** | [Next.js 14](https://nextjs.org/) (App Router) | React Server Components, Client Single-Page Architecture, API Routes |
-| **Language & Typings** | [TypeScript 5](https://www.typescriptlang.org/) | Strict type checking, zero runtime `any` violations |
-| **Styling & UI** | [Tailwind CSS 3.4](https://tailwindcss.com/) + Radix UI | Dark Glassmorphism, Industrial SCADA tokens, Lucide vector icons |
-| **State Management** | [Zustand](https://github.com/pmndrs/zustand) | Global currency, active location, and UI state stores |
-| **Data Visualization** | [Recharts](https://recharts.org/) | Responsive SVG operational charts, stock trends, and capacity gauges |
+| **Frontend Framework** | [Next.js 14](https://nextjs.org/) (App Router) | Server-rendered edge layouts, React Server Components, high-density client UI |
+| **Language & Typings** | [TypeScript 5](https://www.typescriptlang.org/) | Strict type checking, zero unchecked runtime errors |
+| **Styling & UI** | [Tailwind CSS 3.4](https://tailwindcss.com/) + Radix UI | Industrial Dark Glassmorphism, SCADA telemetry tokens, Lucide vector icons |
+| **State Management** | [Zustand](https://github.com/pmndrs/zustand) | Lightweight global stores for currency, location context, and modals |
+| **Data Visualization** | [Recharts](https://recharts.org/) | High-performance SVG operational charts, stock trends, and capacity gauges |
 | **Database & Auth** | [Supabase](https://supabase.com/) (PostgreSQL 15) | Row-Level Security (RLS), PostgREST APIs, Storage Buckets |
 | **Microservices Backend** | [FastAPI](https://fastapi.tiangolo.com/) (Python 3.11) | SQLAlchemy 2.0 Async ORM, Alembic migrations, Pydantic v2 schemas |
 | **AI Intelligence** | Google Gemini 2.5 & Groq LLaMA 3.3 | Multi-provider fallback, DOI run-rate forecasting, executive diagnostics |
@@ -223,12 +366,12 @@ Following audits under `AGENTS.md` and `ponytail` engineering standards:
 
 ---
 
-## 📂 Annotated Folder Tree
+## 📂 9. Annotated Project Structure
 
 ```text
 Optitrack-WMS/
 ├── .github/workflows/              # Automated CI/CD pipelines
-│   └── ci.yml                      # GitHub Actions: Backend Pytest & Frontend PWA Build
+│   └── ci.yml                      # GitHub Actions: Least-privilege CI, Pytest & Next.js PWA Build
 │
 ├── backend/                        # Python FastAPI microservice & PostgreSQL schemas
 │   ├── alembic/                    # Database schema migration versions
@@ -273,7 +416,7 @@ Optitrack-WMS/
 
 ---
 
-## ⚡ Commands & Getting Started
+## ⚡ 10. Local Development & Deployment
 
 ### 1. Web Application (Next.js Frontend)
 
