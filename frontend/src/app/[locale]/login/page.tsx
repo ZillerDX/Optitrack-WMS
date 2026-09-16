@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Package, Lock, Mail, Boxes, TrendingUp, Shield, Zap, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2, Package, Lock, Mail, Boxes, TrendingUp, Zap, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/modals';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
@@ -263,23 +263,6 @@ export default function LoginPage() {
                 Create new account
               </Link>
             </p>
-          </div>
-
-          {/* Demo Account */}
-          <div className="mt-12 p-6 bg-blue-50/50 border border-blue-100 rounded-[2rem]">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="p-1.5 bg-blue-100 rounded-lg text-blue-600">
-                <Shield className="h-4 w-4" />
-              </div>
-              <span className="text-sm font-bold text-slate-800">Demo Account</span>
-            </div>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center text-sm p-3 bg-white rounded-xl border border-blue-100 shadow-sm">
-                <span className="text-slate-500">Account:</span>
-                <code className="text-blue-600 font-bold">admin@optitrack.io</code>
-              </div>
-              <p className="text-[10px] text-center text-slate-400 font-medium uppercase tracking-wider">Password: <span className="text-blue-500">admin1234</span></p>
-            </div>
           </div>
         </div>
       </div>
