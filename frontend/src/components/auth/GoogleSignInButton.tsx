@@ -49,7 +49,7 @@ export function GoogleSignInButton({ mode = 'signin', onError, className = '' }:
     if (!existingScript) {
       const script = document.createElement('script');
       script.id = 'google-gsi-script';
-      script.src = 'https://accounts.google.com/gsi/client';
+      script.src = 'https://accounts.google.com/gsi/client?hl=en';
       script.async = true;
       script.defer = true;
       script.onload = () => setScriptLoaded(true);
