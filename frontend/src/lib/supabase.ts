@@ -7,6 +7,9 @@ const SUPABASE_ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkdmFsYXhhdWpqeXFjZWpoeXFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyNjYwODQsImV4cCI6MjEwMzg0MjA4NH0.JbTv5a-PwcLgVdie7wZej1hZFBXgLErHDun3kE_I7wg';
 
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_KEY = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY;
+
 const JWT_SECRET = new TextEncoder().encode(
   process.env.SECRET_KEY || 'optitrack-dev-secret-key-32-chars-minimum-safe'
 );
@@ -14,8 +17,8 @@ const JWT_SECRET = new TextEncoder().encode(
 export async function supabaseRest(path: string, options: RequestInit = {}) {
   const url = `${SUPABASE_URL}/rest/v1/${path}`;
   const headers = {
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    apikey: SUPABASE_KEY,
+    Authorization: `Bearer ${SUPABASE_KEY}`,
     'Content-Type': 'application/json',
     Prefer: 'return=representation',
     ...(options.headers || {}),
