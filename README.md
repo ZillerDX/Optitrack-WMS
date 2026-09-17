@@ -16,16 +16,47 @@
 
 ## 📑 Table of Contents
 
-1. [Product Pillars (Who / Problem / Solution)](#-1-product-pillars-who--problem--solution)
-2. [Core Capabilities & Features](#-2-core-capabilities--features)
-3. [Enterprise System Architecture](#-3-enterprise-system-architecture)
-4. [Operational Swimlane Workflows](#-4-operational-swimlane-workflows)
-5. [Database Entity Relationship Diagram (ERD)](#-5-database-entity-relationship-diagram-erd)
-6. [Interactive API Specification](#-6-interactive-api-specification)
-7. [Security Hardening & 5 Quality Gates Audit](#-7-security-hardening--5-quality-gates-audit)
-8. [Technology Stack](#-8-technology-stack)
-9. [Annotated Project Structure](#-9-annotated-project-structure)
-10. [Local Development & Deployment](#-10-local-development--deployment)
+1. [Visual Showcase & UI Tour](#-visual-showcase--ui-tour)
+2. [Product Pillars (Who / Problem / Solution)](#-1-product-pillars-who--problem--solution)
+3. [Core Capabilities & Features](#-2-core-capabilities--features)
+4. [Enterprise System Architecture](#-3-enterprise-system-architecture)
+5. [Operational Swimlane Workflows](#-4-operational-swimlane-workflows)
+6. [Database Entity Relationship Diagram (ERD)](#-5-database-entity-relationship-diagram-erd)
+7. [Interactive API Specification](#-6-interactive-api-specification)
+8. [Security Hardening & 5 Quality Gates Audit](#-7-security-hardening--5-quality-gates-audit)
+9. [Technology Stack](#-8-technology-stack)
+10. [Annotated Project Structure](#-9-annotated-project-structure)
+11. [Local Development & Deployment](#-10-local-development--deployment)
+
+---
+
+## 📸 Visual Showcase & UI Tour
+
+### 🏢 1. Interactive 2D / 3D SCADA Digital Twin & Density Heatmap
+> Real-time volumetric rack monitoring across multi-tier industrial shelving (T1 Ground Heavy, T2 Pick Face, T3 High-Bay) with dynamic color-graded heatmaps, SKU spotlighting, and spatial bin routing.
+
+![SCADA Digital Twin](docs/screenshots/digital_twin_showcase.png)
+
+---
+
+### 🤖 2. Autonomous Warehouse AI Copilot & Operations Hub
+> AI-driven 30-day velocity forecasting, Days of Inventory (DOI) run-out alerts, automated draft PO generation, and executive financial diagnostics powered by Gemini 2.5 & Groq LLaMA 3.3.
+
+![Autonomous AI Copilot](docs/screenshots/ai_copilot_showcase.png)
+
+---
+
+### 📊 3. Executive Warehouse Command Center
+> Real-time stock movement velocity trends, zone capacity distribution, high-risk inventory tracking, and macro valuation gauges.
+
+![Command Center Dashboard](docs/screenshots/dashboard_showcase.png)
+
+---
+
+### 🔒 4. Zero-Trust Access & Enterprise Sign-In
+> Clean dual-panel authentication with Google Identity Services (GIS), role-based access control (RBAC), and dark glassmorphic branding.
+
+![Enterprise Sign-In](docs/screenshots/login_showcase.png)
 
 ---
 
@@ -372,6 +403,12 @@ Following enterprise audits under `AGENT.md` and `ponytail` engineering standard
 Optitrack-WMS/
 ├── .github/workflows/              # Automated CI/CD pipelines
 │   └── ci.yml                      # GitHub Actions: Least-privilege CI, Pytest & Next.js PWA Build
+│
+├── docs/screenshots/               # High-fidelity visual showcase artifacts
+│   ├── digital_twin_showcase.png   # 2D/3D SCADA Digital Twin & Density Heatmap
+│   ├── ai_copilot_showcase.png     # Autonomous AI Copilot & Operations Hub
+│   ├── dashboard_showcase.png      # Executive Command Center Dashboard
+│   └── login_showcase.png          # Dual-panel Enterprise Sign-In
 │
 ├── backend/                        # Python FastAPI microservice & PostgreSQL schemas
 │   ├── alembic/                    # Database schema migration versions

@@ -9,6 +9,9 @@ export const getStoredApiUrl = (): string => {
   if (typeof window !== 'undefined') {
     const custom = localStorage.getItem('optitrack_api_url');
     if (custom) return custom;
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      return '';
+    }
     return process.env.NEXT_PUBLIC_API_URL || '';
   }
   return process.env.NEXT_PUBLIC_API_URL || '';
@@ -39,6 +42,8 @@ apiClient.interceptors.request.use(
       const customUrl = localStorage.getItem('optitrack_api_url');
       if (customUrl) {
         config.baseURL = customUrl.replace(/\/+$/, '');
+      } else if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        config.baseURL = '';
       } else if (process.env.NEXT_PUBLIC_API_URL) {
         config.baseURL = process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '');
       } else {
