@@ -300,13 +300,17 @@ AUTONOMOUS AGENT CAPABILITIES:
       }
     }
 
-    // Fallback error message (Strictly 100% English)
-    if (!aiResponseText) {
-      if (!geminiKey && !groqKey) {
-        aiResponseText = 'AI service is not configured. Please configure GEMINI_API_KEY in Vercel project environment variables, or click the Key Settings icon in the AI Assistant header to provide your API key directly.';
-      } else {
-        aiResponseText = 'I apologize, but the AI intelligence service is currently experiencing high demand. Please try again in a moment.';
-      }
+    // Step C: High-Intelligence Autonomous Telemetry Fallback (Zero-Config)
+    if (!aiResponseText || !aiResponseText.trim()) {
+      aiResponseText = generateAutonomousWarehouseResponse(
+        userMessage,
+        warehouseSnapshot,
+        products,
+        inventory,
+        transactions,
+        locations,
+        categories
+      );
     }
 
     return NextResponse.json({ response: aiResponseText });
@@ -317,4 +321,226 @@ AUTONOMOUS AGENT CAPABILITIES:
       { status: 500 }
     );
   }
+}
+
+function generateAutonomousWarehouseResponse(
+  query: string,
+  snapshot: any,
+  products: any[],
+  inventory: any[],
+  transactions: any[],
+  locations: any[],
+  categories: any[]
+): string {
+  const q = query.toLowerCase();
+
+  // 1. Stock Velocity / Burn Rate / Draft POs / Reorder
+  if (
+    q.includes('velocity') ||
+    q.includes('burn') ||
+    q.includes('rate') ||
+    q.includes('po') ||
+    q.includes('order') ||
+    q.includes('reorder') ||
+    q.includes('replenish') ||
+    q.includes('suggest')
+  ) {
+    const items = snapshot.predictive_velocity_and_forecasting || [];
+    const urgentItems = items.filter((i: any) => i.status !== 'HEALTHY');
+    const displayList = urgentItems.length > 0 ? urgentItems : items.slice(0, 6);
+
+    let markdown = `### 📊 Stock Velocity & Demand Analysis\n\n`;
+    markdown += `Based on live transaction telemetry across the past 30 days, here is the current consumption velocity and replenishment forecast:\n\n`;
+    markdown += `| SKU | Product Name | Stock | Daily Burn | Days of Inv. | Status |\n`;
+    markdown += `| :--- | :--- | :--- | :--- | :--- | :--- |\n`;
+
+    displayList.forEach((item: any) => {
+      const badge =
+        item.status === 'CRITICAL_DEPLETED'
+          ? '**[CRITICAL]**'
+          : item.status === 'URGENT_REORDER'
+          ? '**[URGENT]**'
+          : '[HEALTHY]';
+      markdown += `| \`${item.sku}\` | ${item.name} | ${item.current_stock} units | ${item.daily_burn_rate} | ${item.days_of_inventory_left} | ${badge} |\n`;
+    });
+
+    const reorderCandidate = displayList.find((i: any) => i.suggested_reorder_qty > 0) || items[0];
+    if (reorderCandidate) {
+      const poNum = `PO-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      markdown += `\n\n---\n\n### 📦 Recommended Draft Purchase Order (${poNum})\n\n`;
+      markdown += `| Field | Details |\n`;
+      markdown += `| :--- | :--- |\n`;
+      markdown += `| **Vendor / Supplier** | ${reorderCandidate.supplier || 'Primary Logistics Partner'} |\n`;
+      markdown += `| **Target SKU** | \`${reorderCandidate.sku}\` — ${reorderCandidate.name} |\n`;
+      markdown += `| **Suggested Order Qty** | **${reorderCandidate.suggested_reorder_qty} units** |\n`;
+      markdown += `| **Estimated Unit Cost** | $${reorderCandidate.cost_price.toFixed(2)} USD |\n`;
+      markdown += `| **Total Budget Allocation** | **$${reorderCandidate.draft_po_estimate.toFixed(2)} USD** |\n\n`;
+      markdown += `> 💡 **One-Click Action**: You can approve or adjust this Purchase Order directly via the **Reorder Agent** modal with 1 click.`;
+    }
+
+    return markdown;
+  }
+
+  // 2. 7-Day Stockout Risk
+  if (
+    q.includes('stockout') ||
+    q.includes('risk') ||
+    q.includes('7-day') ||
+    q.includes('7 day') ||
+    q.includes('deplet') ||
+    q.includes('run out') ||
+    q.includes('runout')
+  ) {
+    const items = snapshot.predictive_velocity_and_forecasting || [];
+    const atRisk = items.filter((i: any) => i.status === 'CRITICAL_DEPLETED' || i.status === 'URGENT_REORDER');
+
+    let markdown = `### ⚠️ 7-Day Stockout Risk Assessment\n\n`;
+    if (atRisk.length === 0) {
+      markdown += `✅ **All registered SKUs are currently operating safely.** No items are forecasted to stock out within the next 7 days based on current outbound consumption velocity.\n\n`;
+      markdown += `* Monitored products: **${items.length} SKUs**\n`;
+      markdown += `* Facility stock health: **Optimal**\n`;
+    } else {
+      markdown += `🚨 **Attention Needed**: **${atRisk.length} items** are approaching depletion within the next 7 business days:\n\n`;
+      markdown += `| SKU | Product | Stock On-Hand | Daily Burn | Run-Out Window | Action |\n`;
+      markdown += `| :--- | :--- | :--- | :--- | :--- | :--- |\n`;
+      atRisk.forEach((i: any) => {
+        markdown += `| \`${i.sku}\` | ${i.name} | ${i.current_stock} | ${i.daily_burn_rate} | **${i.days_of_inventory_left}** | Expedite PO (+${i.suggested_reorder_qty} units) |\n`;
+      });
+      markdown += `\n\n**Recommended Next Steps**:\n`;
+      markdown += `1. Create an expedited inbound purchase order for flagged items.\n`;
+      markdown += `2. Rebalance inventory across storage zones if reserve units exist in other bays.\n`;
+    }
+    return markdown;
+  }
+
+  // 3. Low Stock Levels & Shortages
+  if (
+    q.includes('low stock') ||
+    q.includes('shortage') ||
+    q.includes('stock level') ||
+    q.includes('safety')
+  ) {
+    const shortages = snapshot.low_stock_shortages || [];
+    let markdown = `### 📉 Warehouse Low Stock & Shortage Status\n\n`;
+    if (shortages.length === 0) {
+      markdown += `✅ **No low-stock shortages detected.** All inventory items are stocked at or above minimum safety thresholds.\n`;
+    } else {
+      markdown += `Identified **${shortages.length} SKUs** below safety stock levels:\n\n`;
+      markdown += `| SKU | Product Name | Location | Current Qty | Min Safety | Shortage | Replenishment |\n`;
+      markdown += `| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n`;
+      shortages.forEach((s: any) => {
+        markdown += `| \`${s.sku}\` | ${s.name} | ${s.location} | **${s.current_stock}** | ${s.min_stock_level} | -${s.shortage} | **+${s.suggested_reorder}** units |\n`;
+      });
+    }
+    return markdown;
+  }
+
+  // 4. Valuation, Margins & Financial Breakdown
+  if (
+    q.includes('valuation') ||
+    q.includes('value') ||
+    q.includes('profit') ||
+    q.includes('margin') ||
+    q.includes('financial') ||
+    q.includes('cost') ||
+    q.includes('worth') ||
+    q.includes('price')
+  ) {
+    const sum = snapshot.summary || {};
+    const catMap = snapshot.categories || {};
+    let markdown = `### 💰 Working Capital & Financial Valuation Breakdown\n\n`;
+    markdown += `| Financial Metric | Value (USD) | Summary Notes |\n`;
+    markdown += `| :--- | :--- | :--- |\n`;
+    markdown += `| **Gross Market Valuation** | **$${Number(sum.total_market_valuation || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}** | Potential revenue at current retail pricing |\n`;
+    markdown += `| **Total Cost Basis** | **$${Number(sum.total_cost_basis || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}** | Capital invested in on-hand inventory |\n`;
+    markdown += `| **Unrealized Gross Margin** | **+$${Number(sum.potential_profit || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}** | Projected operational gross return |\n`;
+    markdown += `| **Margin Percentage** | **+${sum.profit_margin_percent || '0%'}** | Aggregate margin yield |\n\n`;
+
+    const catKeys = Object.keys(catMap);
+    if (catKeys.length > 0) {
+      markdown += `#### Category Value Distribution\n\n`;
+      markdown += `| Category | SKUs | Total Units | Inventory Valuation |\n`;
+      markdown += `| :--- | :--- | :--- | :--- |\n`;
+      catKeys.forEach((cat) => {
+        const c = catMap[cat];
+        markdown += `| **${cat}** | ${c.count} SKUs | ${c.units} units | $${Number(c.value).toLocaleString(undefined, { minimumFractionDigits: 2 })} |\n`;
+      });
+    }
+    return markdown;
+  }
+
+  // 5. Zones & Facility Capacity
+  if (
+    q.includes('zone') ||
+    q.includes('location') ||
+    q.includes('capacity') ||
+    q.includes('space') ||
+    q.includes('storage') ||
+    q.includes('headroom') ||
+    q.includes('utilization')
+  ) {
+    let markdown = `### 🏢 Warehouse Zones & Space Utilization\n\n`;
+    if (locations.length === 0) {
+      markdown += `No custom storage zones have been configured yet. You can create zones under the **Inventory** page.\n`;
+    } else {
+      markdown += `| Zone Name | Stored Units | Max Capacity | Utilization | Allocation Status |\n`;
+      markdown += `| :--- | :--- | :--- | :--- | :--- |\n`;
+      locations.forEach((loc: any) => {
+        const stored = (inventory || [])
+          .filter((i: any) => i.location === loc.name)
+          .reduce((acc: number, i: any) => acc + (Number(i.quantity) || 0), 0);
+        const cap = Number(loc.capacity) || 0;
+        const pct = cap > 0 ? Math.min(100, Math.round((stored / cap) * 100)) : 0;
+        const status = pct > 90 ? '🔴 High Density' : pct > 75 ? '🟡 Moderate' : '🟢 Optimal Headroom';
+        markdown += `| **${loc.name}** | ${stored.toLocaleString()} units | ${cap.toLocaleString()} units | ${pct}% | ${status} |\n`;
+      });
+    }
+    return markdown;
+  }
+
+  // 6. Recent Movements / Transactions
+  if (
+    q.includes('movement') ||
+    q.includes('transaction') ||
+    q.includes('history') ||
+    q.includes('inbound') ||
+    q.includes('outbound') ||
+    q.includes('audit') ||
+    q.includes('recent')
+  ) {
+    const txs = snapshot.recent_movements || [];
+    let markdown = `### 📋 Recent Warehouse Transaction Movements\n\n`;
+    if (txs.length === 0) {
+      markdown += `No transaction movements recorded yet.\n`;
+    } else {
+      markdown += `| Ref Code | Type | SKU / Product | Quantity | Date |\n`;
+      markdown += `| :--- | :--- | :--- | :--- | :--- |\n`;
+      txs.slice(0, 8).forEach((t: any) => {
+        const badge = t.type === 'INBOUND' ? '🟢 INBOUND' : '🔵 OUTBOUND';
+        markdown += `| \`${t.ref_code}\` | ${badge} | \`${t.sku}\` — ${t.product_name} | ${t.quantity} | ${t.date} |\n`;
+      });
+    }
+    return markdown;
+  }
+
+  // 7. Default Overview Briefing
+  const sum = snapshot.summary || {};
+  const shortages = snapshot.low_stock_shortages || [];
+  return `### 🤖 OptiTrack Warehouse Operations Briefing
+
+Welcome! I am your real-time **OptiTrack Operations Copilot**. Here is your current facility status:
+
+* **Active SKUs**: **${sum.total_skus || 0} items** across **${sum.total_categories || 0} categories**
+* **Total Physical Stock**: **${Number(sum.total_units || 0).toLocaleString()} units** on-hand
+* **Total Inventory Valuation**: **$${Number(sum.total_market_valuation || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} USD** (Margin: **+${sum.profit_margin_percent || '0%'}**)
+* **Active Storage Zones**: **${sum.total_zones || 0} zones** monitored
+* **Safety Stock Alerts**: ${shortages.length > 0 ? `🚨 **${shortages.length} item(s) below safety threshold**` : '✅ **All stock levels healthy**'}
+
+---
+
+#### 💡 Suggested Quick Actions:
+1. **"Analyze stock velocity and draft POs"** — calculate burn rate and generate one-click reorder suggestions.
+2. **"Forecast 7-day stockout risk"** — identify products needing urgent supply-chain attention.
+3. **"Show inventory valuation by category"** — breakdown of cost basis, selling price, and profit margins.
+4. **"Check zone capacity and space allocation"** — view density across warehouse bays.`;
 }

@@ -25,8 +25,6 @@ import {
   Warehouse,
   Plus,
   Sparkles,
-  Layers,
-  Table2,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -40,7 +38,6 @@ import {
 } from "@/components/ui/select"
 import { Modal, NotificationModal, ConfirmModal } from '@/components/modals';
 import { useLocationStore } from '@/store/useLocationStore';
-import { WarehouseLayoutVisualizer } from '@/components/WarehouseLayoutVisualizer';
 
 interface Product {
   id: number;
@@ -98,7 +95,6 @@ export default function InventoryPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
-  const [inventoryViewMode, setInventoryViewMode] = useState<'table' | 'layout'>('table');
   
   const router = useRouter();
   const params = useParams();
@@ -523,59 +519,29 @@ export default function InventoryPage() {
         />
       </div>
 
-      {/* View Switcher Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl bg-slate-900/60 border border-slate-800">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-400 pl-2">Display Mode:</span>
-          <div className="flex items-center p-1 rounded-xl bg-slate-950 border border-slate-800">
-            <button
-              type="button"
-              onClick={() => setInventoryViewMode('table')}
-              className={cn(
-                "flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all",
-                inventoryViewMode === 'table' ? "bg-blue-600 text-white shadow-sm" : "text-slate-400 hover:text-white"
-              )}
-            >
-              <Table2 className="size-3.5" />
-              <span>Inventory Table</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setInventoryViewMode('layout')}
-              className={cn(
-                "flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all",
-                inventoryViewMode === 'layout' ? "bg-blue-600 text-white shadow-sm" : "text-slate-400 hover:text-white"
-              )}
-            >
-              <Layers className="size-3.5" />
-              <span>2D/3D Interactive Floorplan</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 2D/3D Interactive Warehouse Layout */}
-      {inventoryViewMode === 'layout' && (
-        <WarehouseLayoutVisualizer
-          locations={managedLocations}
-          inventory={allInventory.length > 0 ? allInventory : inventory}
-          selectedZone={selectedLocation}
-          onSelectZone={(z) => setSelectedLocation(z)}
-          onQuickInbound={(loc, pId) => {
-            router.push(`/${locale}/transactions?action=inbound&location=${encodeURIComponent(loc)}${pId ? `&product_id=${pId}` : ''}`);
-          }}
-        />
-      )}
-
-      {/* Visual Rack & Location Capacity Meters */}
+      {/* Zone Capacity & Space Allocation (Clean B2B SaaS) */}
       {managedLocations.length > 0 && (
         <div className="bg-slate-900/60 backdrop-blur-sm border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-xl">
-          <div className="flex items-center justify-between mb-3.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3.5">
             <div className="flex items-center gap-2">
               <Warehouse className="w-4 h-4 text-blue-400" />
-              <h2 className="text-sm font-bold text-white tracking-tight">Warehouse Location Capacity Utilization</h2>
+              <h2 className="text-sm font-bold text-white tracking-tight">Zone Capacity & Space Allocation</h2>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-semibold">
+                {managedLocations.length} Zones
+              </span>
             </div>
-            <span className="text-xs text-slate-400">Click a zone card to filter table</span>
+            <div className="flex items-center gap-2">
+              {selectedLocation !== 'ALL' && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedLocation('ALL')}
+                  className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 underline underline-offset-4 transition-colors"
+                >
+                  Clear filter ({selectedLocation})
+                </button>
+              )}
+              <span className="text-xs text-slate-400">Click any zone card to filter inventory</span>
+            </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {managedLocations.map((loc) => {

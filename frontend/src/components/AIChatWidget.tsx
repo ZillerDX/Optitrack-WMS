@@ -20,11 +20,6 @@ import {
   BarChart3,
   Package,
   TrendingDown,
-  Cpu,
-  Key,
-  Eye,
-  EyeOff,
-  Check,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -50,11 +45,6 @@ export function AIChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [isPredictiveOpen, setIsPredictiveOpen] = useState(false);
-  const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState('');
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [hasCustomKey, setHasCustomKey] = useState(false);
-  const [keySavedStatus, setKeySavedStatus] = useState<string | null>(null);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -105,45 +95,6 @@ export function AIChatWidget() {
       window.removeEventListener('focus', loadUser);
     };
   }, []);
-
-  // Sync custom API key state
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('optitrack_gemini_key') || '';
-      setHasCustomKey(!!stored);
-      setApiKeyInput(stored);
-    }
-  }, [isOpen]);
-
-  const saveCustomApiKey = () => {
-    if (typeof window === 'undefined') return;
-    const cleanKey = apiKeyInput.trim();
-    if (cleanKey) {
-      localStorage.setItem('optitrack_gemini_key', cleanKey);
-      setHasCustomKey(true);
-      setKeySavedStatus('Key saved successfully!');
-    } else {
-      localStorage.removeItem('optitrack_gemini_key');
-      setHasCustomKey(false);
-      setKeySavedStatus('Key removed.');
-    }
-    setTimeout(() => {
-      setKeySavedStatus(null);
-      setIsKeyModalOpen(false);
-    }, 1200);
-  };
-
-  const clearCustomApiKey = () => {
-    if (typeof window === 'undefined') return;
-    localStorage.removeItem('optitrack_gemini_key');
-    setApiKeyInput('');
-    setHasCustomKey(false);
-    setKeySavedStatus('Key cleared.');
-    setTimeout(() => {
-      setKeySavedStatus(null);
-      setIsKeyModalOpen(false);
-    }, 1000);
-  };
 
   // Load chat history from localStorage whenever active user is resolved
   useEffect(() => {
@@ -345,90 +296,6 @@ export function AIChatWidget() {
         </button>
       )}
 
-      {/* Key Settings Modal */}
-      {isKeyModalOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-5 overflow-hidden">
-            <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-blue-500/15 rounded-full blur-2xl pointer-events-none" />
-
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400">
-                  <Key size={18} />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm text-white">Gemini API Key</h4>
-                  <p className="text-[11px] text-slate-400">Direct Browser Session Config</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsKeyModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-300 leading-relaxed mb-3">
-              Configure your Google Gemini API Key below. It will be stored securely in your browser&apos;s local storage and used directly for real-time AI requests.
-            </p>
-
-            <div className="relative mb-3">
-              <input
-                type={showApiKey ? "text" : "password"}
-                value={apiKeyInput}
-                onChange={(e) => setApiKeyInput(e.target.value)}
-                placeholder="Paste Gemini API Key (AQ.Ab8RN...)"
-                className="w-full px-3 py-2.5 pr-10 rounded-xl bg-slate-950 border border-slate-700 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-mono"
-              />
-              <button
-                type="button"
-                onClick={() => setShowApiKey(!showApiKey)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
-              >
-                {showApiKey ? <EyeOff size={15} /> : <Eye size={15} />}
-              </button>
-            </div>
-
-            {keySavedStatus && (
-              <div className="mb-3 px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
-                <Check size={14} />
-                <span>{keySavedStatus}</span>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between gap-2 pt-1">
-              {hasCustomKey ? (
-                <button
-                  type="button"
-                  onClick={clearCustomApiKey}
-                  className="px-3 py-1.5 text-xs font-semibold text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors"
-                >
-                  Clear Key
-                </button>
-              ) : <div />}
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsKeyModalOpen(false)}
-                  className="px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={saveCustomApiKey}
-                  className="px-4 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl shadow-lg shadow-blue-500/25 transition-all"
-                >
-                  Save Key
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Chat Window */}
       {isOpen && (
         <div
@@ -489,20 +356,6 @@ export function AIChatWidget() {
               </button>
 
               <button
-                type="button"
-                onClick={() => setIsKeyModalOpen(true)}
-                className={cn(
-                  "p-2 rounded-xl transition-all border",
-                  hasCustomKey
-                    ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20"
-                    : "text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 border-slate-700/60"
-                )}
-                title={hasCustomKey ? "Gemini Key Configured" : "Configure Gemini API Key"}
-              >
-                <Key size={15} />
-              </button>
-              
-              <button
                 onClick={clearChat}
                 className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all"
                 title="Clear Chat History"
@@ -527,7 +380,7 @@ export function AIChatWidget() {
                 <div className="relative mb-4 animate-in fade-in zoom-in-75 duration-500">
                   <div className="absolute -inset-4 bg-gradient-to-r from-blue-600/30 via-indigo-600/30 to-purple-600/30 rounded-full blur-2xl animate-pulse" />
                   <div className="relative p-4 rounded-2xl bg-slate-900/90 border border-slate-800 ring-1 ring-blue-500/30 shadow-2xl">
-                    <Cpu size={32} className="text-blue-400" />
+                    <Bot size={32} className="text-blue-400" />
                   </div>
                 </div>
 
@@ -697,20 +550,6 @@ export function AIChatWidget() {
                             >
                               {message.content}
                             </ReactMarkdown>
-
-                            {/* Actionable Button if API Key is not configured */}
-                            {message.content.includes("AI service is not configured") && (
-                              <div className="mt-3 pt-2.5 border-t border-slate-800">
-                                <button
-                                  type="button"
-                                  onClick={() => setIsKeyModalOpen(true)}
-                                  className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-lg shadow-blue-500/25 transition-all hover:scale-105 active:scale-95"
-                                >
-                                  <Key size={13} />
-                                  Configure Gemini API Key
-                                </button>
-                              </div>
-                            )}
                           </div>
                         ) : (
                           <p className="text-[13px] whitespace-pre-wrap leading-relaxed">{message.content}</p>

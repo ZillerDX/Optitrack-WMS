@@ -140,8 +140,8 @@ export async function POST(req: NextRequest) {
       {
         id: 3,
         priority: 'LOW',
-        title: 'Conduct Cycle Count & Floorplan Audit',
-        description: 'Leverage the 2D/3D visualizer to inspect shelf tiers and confirm physical bin alignment across active storage racks.',
+        title: 'Conduct Cycle Count & Zone Audit',
+        description: 'Inspect storage bays and confirm physical barcode alignment across active warehouse zones.',
       }
     ];
 
@@ -184,7 +184,7 @@ Status: Operational Grade ${healthGrade} (${score}/100)
 -----------------------------------------------------------------
 [1] Inbound Allocation: Target headroom zones for next batch delivery.
 [2] Safety Margins: Maintain safety stock buffers against supply-chain delays.
-[3] Digital Twin Verification: Audit physical rack tags with 2D/3D floorplan grid.
+[3] Zone Inventory Verification: Audit physical barcode tags across high-velocity storage bays.
 =================================================================`;
 
     return NextResponse.json({
