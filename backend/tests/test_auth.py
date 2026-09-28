@@ -35,6 +35,22 @@ class TestAuthentication:
         assert "password_hash" not in data
 
     @pytest.mark.asyncio
+    async def test_register_ignores_client_supplied_role(self, client: AsyncClient):
+        """The system has a single ADMIN role; a client-supplied role is ignored."""
+        response = await client.post(
+            "/api/auth/register",
+            json={
+                "email": "staffwannabe@test.com",
+                "password": "password123",
+                "first_name": "Staff",
+                "last_name": "Wannabe",
+                "role": "STAFF",
+            },
+        )
+        assert response.status_code == 200
+        assert response.json()["role"] == "ADMIN"
+
+    @pytest.mark.asyncio
     async def test_register_duplicate_email(self, client: AsyncClient, admin_user: User):
         """Test registration with existing email fails."""
         response = await client.post(

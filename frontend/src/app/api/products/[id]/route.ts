@@ -11,6 +11,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
 
     const body = await req.json();
+    // Never let a client reassign ownership or primary key.
+    delete body.id;
+    delete body.owner_id;
     const id = params.id;
     const res = await supabaseRest(`products?id=eq.${id}&owner_id=eq.${user.id}`, {
       method: 'PATCH',

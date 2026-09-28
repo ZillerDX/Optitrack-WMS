@@ -66,7 +66,7 @@ async def register(
         password_hash=get_password_hash(user_data.password),
         first_name=user_data.first_name,
         last_name=user_data.last_name,
-        role=UserRole(user_data.role),
+        role=UserRole.ADMIN,
         image_url=user_data.image_url,
         is_active=True
     )
@@ -92,10 +92,7 @@ async def update_me(
 ):
     """Update the current authenticated user's editable profile fields."""
     update_data = user_data.model_dump(exclude_unset=True)
-    
-    if "role" in update_data:
-        del update_data["role"]
-    
+
     for field, value in update_data.items():
         setattr(current_user, field, value)
     

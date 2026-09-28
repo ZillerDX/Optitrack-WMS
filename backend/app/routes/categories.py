@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, get_current_admin_user
+from app.core.dependencies import get_current_user
 from app.core.schemas import CategoryCreate, CategoryResponse
 from app.models.category import Category
 from app.models.user import User
@@ -34,7 +34,7 @@ async def get_categories(
 async def create_category(
     category_data: CategoryCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_admin_user)
+    current_user: User = Depends(get_current_user)
 ):
     """Create a category for the current admin user."""
     result = await db.execute(
@@ -64,7 +64,7 @@ async def update_category(
     category_id: int,
     category_data: CategoryCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_admin_user)
+    current_user: User = Depends(get_current_user)
 ):
     """Update a category for the current admin user."""
     result = await db.execute(
@@ -105,7 +105,7 @@ async def update_category(
 async def delete_category(
     category_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_admin_user)
+    current_user: User = Depends(get_current_user)
 ):
     """Delete a category for the current admin user."""
     result = await db.execute(

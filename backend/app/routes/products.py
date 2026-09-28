@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, get_current_admin_user
+from app.core.dependencies import get_current_user
 from app.core.schemas import ProductCreate, ProductUpdate, ProductResponse
 from app.core.utils import validate_pagination, not_found_error
 from app.models.product import Product
@@ -113,9 +113,9 @@ async def update_product(
     product_id: int,
     product_data: ProductUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_admin_user)
+    current_user: User = Depends(get_current_user)
 ):
-    """Update a product for the current admin user."""
+    """Update a product for the current user."""
     result = await db.execute(
         select(Product).where(
             Product.id == product_id,
@@ -164,9 +164,9 @@ async def update_product(
 async def delete_product(
     product_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_admin_user)
+    current_user: User = Depends(get_current_user)
 ):
-    """Delete a product for the current admin user."""
+    """Delete a product for the current user."""
     result = await db.execute(
         select(Product).where(
             Product.id == product_id,

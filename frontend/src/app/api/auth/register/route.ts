@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, password, first_name, last_name, role } = body;
+    const { email, password, first_name, last_name } = body;
 
     if (!email || !password || !first_name || !last_name) {
       return NextResponse.json(
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
         password_hash,
         first_name: first_name.trim(),
         last_name: last_name.trim(),
-        role: role || 'ADMIN',
+        role: 'ADMIN', // single-role system; never trust a client-supplied role
         is_active: true,
       }),
     });

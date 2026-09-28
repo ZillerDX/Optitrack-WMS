@@ -14,7 +14,6 @@ class UserBase(BaseModel):
     email: EmailStr
     first_name: str = Field(..., min_length=1, max_length=100)
     last_name: str = Field(..., min_length=1, max_length=100)
-    role: str = Field(..., pattern="^(ADMIN|STAFF|USER)$")
     image_url: Optional[str] = Field(None, max_length=500)
 
 
@@ -26,13 +25,13 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     first_name: Optional[str] = Field(None, min_length=1, max_length=100)
     last_name: Optional[str] = Field(None, min_length=1, max_length=100)
-    role: Optional[str] = Field(None, pattern="^(ADMIN|STAFF|USER)$")
     image_url: Optional[str] = Field(None, max_length=500)
     is_active: Optional[bool] = None
 
 
 class UserResponse(UserBase):
     id: int
+    role: str
     is_active: bool
 
     model_config = ConfigDict(from_attributes=True)

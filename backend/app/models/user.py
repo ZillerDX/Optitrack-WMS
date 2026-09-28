@@ -9,10 +9,8 @@ from app.core.database import Base
 
 
 class UserRole(str, enum.Enum):
-    """User roles for role-based access control."""
-    ADMIN = "ADMIN"  # Demo/Super Admin
-    STAFF = "STAFF"  # Warehouse Staff
-    USER = "USER"    # Standard User (Tenant Owner)
+    """The system has a single role: every account administers its own tenant."""
+    ADMIN = "ADMIN"
 
 
 class User(Base):

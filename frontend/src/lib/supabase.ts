@@ -1,24 +1,34 @@
 import { SignJWT, jwtVerify } from 'jose';
 
-const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hdvalaxaujjyqcejhyqb.supabase.co';
+/**
+ * Required server-side configuration. Read lazily (at request time) so that
+ * `next build` succeeds without secrets, but a misconfigured deployment fails
+ * loudly instead of silently falling back to a publicly known key.
+ */
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value || !value.trim()) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
 
-const SUPABASE_ANON_KEY =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkdmFsYXhhdWpqeXFjZWpoeXFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyNjYwODQsImV4cCI6MjEwMzg0MjA4NH0.JbTv5a-PwcLgVdie7wZej1hZFBXgLErHDun3kE_I7wg';
-
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const SUPABASE_KEY = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY;
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.SECRET_KEY || 'optitrack-dev-secret-key-32-chars-minimum-safe'
-);
+function getJwtSecret(): Uint8Array {
+  const secret = requireEnv('SECRET_KEY');
+  if (secret.length < 32) {
+    throw new Error('SECRET_KEY must be at least 32 characters long');
+  }
+  return new TextEncoder().encode(secret);
+}
 
 export async function supabaseRest(path: string, options: RequestInit = {}) {
-  const url = `${SUPABASE_URL}/rest/v1/${path}`;
+  // Service-role key only: all access control is enforced in these route
+  // handlers (RLS denies anon). Never fall back to the anon key.
+  const key = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
+  const url = `${requireEnv('NEXT_PUBLIC_SUPABASE_URL')}/rest/v1/${path}`;
   const headers = {
-    apikey: SUPABASE_KEY,
-    Authorization: `Bearer ${SUPABASE_KEY}`,
+    apikey: key,
+    Authorization: `Bearer ${key}`,
     'Content-Type': 'application/json',
     Prefer: 'return=representation',
     ...(options.headers || {}),
@@ -37,12 +47,12 @@ export async function createSessionToken(payload: { sub: string; email: string; 
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('24h')
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 }
 
 export async function verifySessionToken(token: string) {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecret(), { algorithms: ['HS256'] });
     return payload;
   } catch {
     return null;
@@ -66,6 +76,6 @@ export async function getAuthUser(req: Request): Promise<AuthUser | null> {
   return {
     id: Number(payload.sub),
     email: (payload.email as string) || '',
-    role: (payload.role as string) || 'ADMIN',
+    role: 'ADMIN',
   };
 }

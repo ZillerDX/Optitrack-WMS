@@ -64,27 +64,3 @@ async def get_current_user(
         )
 
     return user
-
-
-async def get_current_admin_user(
-    current_user: User = Depends(get_current_user)
-) -> User:
-    """
-    Dependency to ensure the current user is an admin.
-
-    Args:
-        current_user: The current authenticated user
-
-    Returns:
-        The User object if they are an admin
-
-    Raises:
-        HTTPException: If user is not an admin
-    """
-    if current_user.role != "ADMIN":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
-        )
-
-    return current_user
