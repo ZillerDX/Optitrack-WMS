@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     }
 
     // The product and the location must both belong to the caller.
-    const prodRes = await supabaseRest(`products?id=eq.${productId}&owner_id=eq.${user.id}&select=id,min_stock_level`);
+    const prodRes = await supabaseRest(`products?id=eq.${productId}&owner_id=eq.${user.id}&deleted_at=is.null&select=id,min_stock_level`);
     const prods = prodRes.ok ? await prodRes.json() : [];
     if (!Array.isArray(prods) || prods.length === 0) {
       return NextResponse.json({ detail: 'Product not found or access denied' }, { status: 404 });

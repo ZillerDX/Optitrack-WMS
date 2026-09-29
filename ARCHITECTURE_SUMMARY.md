@@ -45,7 +45,7 @@ Browser ──(same origin, session cookie)──▶ Next.js Route Handler ─�
 - Location and inventory rows reference locations **by name**, not by id. Uniqueness is enforced by the
   database: `(owner_id, name)` on locations and categories, `(owner_id, sku)` on products,
   `(product_id, location)` on inventory.
-- Schema changes are hand-run SQL files in `supabase/migrations/`, numbered `0000`–`0009`, all idempotent.
+- Schema changes are hand-run SQL files in `supabase/migrations/`, numbered `0000`–`0010`, all idempotent.
   CI applies them to an empty PostgreSQL twice.
 
 ## Sessions
@@ -77,6 +77,8 @@ through PostgREST RPC; nothing else writes transactions or moves stock.
   `authenticated` because the caller supplies the user id.
 
 Renaming a location goes through `update_location` (`0009_update_location.sql`), which renames the location and the inventory and transaction rows that reference its name in one transaction.
+
+Deleting a product is a soft delete (`delete_product`, `0010_soft_delete_products.sql`): its stock is taken to zero with ADJUST movements, the row is kept with `deleted_at` set so the transaction history stays, and its SKU is renamed `<sku>-deleted<id>` so it can be reused. Deleted products are hidden from lists and cannot be moved.
 
 `PUT /api/inventory/{id}` (manual correction) is an ADJUST movement too: only `quantity` is editable, the status follows it, and the location cannot be changed.
 
@@ -112,7 +114,6 @@ loudly instead of falling back to a default.
 
 ## Known limitations
 
-- Deleting a product deletes its transaction history (cascade); there is no soft delete.
 - Locations are still referenced by name (renaming is safe: `update_location` moves the stock and history in one transaction), not by id.
 - Sessions last 24 h and are revoked per user, not per device.
 - The CSP allows inline scripts (see above); the app has no nonce-based CSP.

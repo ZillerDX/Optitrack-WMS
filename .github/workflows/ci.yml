@@ -115,6 +115,9 @@ jobs:
       - name: Location update / rename cascade
         run: psql -v ON_ERROR_STOP=1 -q -f supabase/tests/update_location.sql
 
+      - name: Product soft delete
+        run: psql -v ON_ERROR_STOP=1 -q -f supabase/tests/soft_delete_products.sql
+
       - name: Stock functions - concurrent sessions (no overselling, no lost updates)
         run: bash supabase/tests/stock_concurrency.sh
 

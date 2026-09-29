@@ -82,6 +82,8 @@ export class FakePostgrest {
         if (String(row[key]) !== decodeURIComponent(value.slice(3))) return false;
       } else if (value.startsWith('neq.')) {
         if (String(row[key]) === decodeURIComponent(value.slice(4))) return false;
+      } else if (value === 'is.null') {
+        if (row[key] !== null && row[key] !== undefined) return false;
       } else if (value.startsWith('in.(')) {
         const list = value.slice(4, -1).split(',').map((v) => decodeURIComponent(v));
         if (!list.includes(String(row[key]))) return false;

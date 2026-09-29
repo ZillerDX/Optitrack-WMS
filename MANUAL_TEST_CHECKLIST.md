@@ -1,10 +1,10 @@
 # Manual test checklist (PR #1 + #2)
 
-Run on a staging deployment (Vercel preview + a Supabase project with migrations 0000-0009 applied).
+Run on a staging deployment (Vercel preview + a Supabase project with migrations 0000-0010 applied).
 Use two separate admin accounts, A and B, in two browser profiles, to test tenant isolation.
 
 ## 0. Before testing
-- [ ] Migrations `0000`...`0009` applied in order on the target project (see the "Supabase state" note in the PR).
+- [ ] Migrations `0000`...`0010` applied in order on the target project (see the "Supabase state" note in the PR).
 - [ ] Env set: `SECRET_KEY` (>= 32 chars), `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `APP_URL`.
 - [ ] Optional: `NEXT_PUBLIC_GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_ID`, SMTP_*, `SIGNUP_ALLOWED_DOMAINS`.
 - [ ] Site is served over HTTPS (the `__Host-session` cookie is `Secure`).
@@ -44,7 +44,9 @@ Use two separate admin accounts, A and B, in two browser profiles, to test tenan
 - [ ] Rename a location that holds stock: the stock and its transaction history appear under the new name, nothing is left under the old one, and INBOUND/OUTBOUND still work there.
 - [ ] Rename a location onto another location's name: refused (409), nothing changes.
 - [ ] Another account with a location of the same old name is unaffected (use accounts A and B).
-- [ ] Delete a product: it disappears; note that its transactions are deleted too (known limitation).
+- [ ] Delete a product that has stock: it disappears from products/inventory/dashboard/AI, its transactions REMAIN (Transactions page still shows its name), and an ADJUST-to-0 row is added per shelf; the shelf capacity is freed.
+- [ ] Create a new product with the deleted product's SKU: allowed.
+- [ ] A deleted product cannot receive a transaction (404) or be edited.
 - [ ] Avatar upload: png/jpg works; an .html or .svg renamed to .png is rejected; > size limit rejected.
 
 ## 6. Stock movements (PR #2)

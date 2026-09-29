@@ -113,6 +113,18 @@ export function approveReorder(params: {
 }
 
 /**
+ * Soft-delete a product in one database transaction (0010_soft_delete_products.sql): its stock is
+ * taken to zero through ADJUST movements, the product is marked deleted (history stays) and its SKU
+ * is freed.
+ */
+export function deleteProduct(params: { userId: number; productId: number }): Promise<RpcResult<{ id: number; deleted_at: string }>> {
+  return callRpc<{ id: number; deleted_at: string }>('delete_product', {
+    p_user_id: params.userId,
+    p_product_id: params.productId,
+  });
+}
+
+/**
  * Update a location, including a rename, in one database transaction (0009_update_location.sql).
  * Inventory and transactions reference a location by name, so a rename moves them with it.
  * `patch` may hold name, capacity and description only.
