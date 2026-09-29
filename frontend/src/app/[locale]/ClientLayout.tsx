@@ -41,27 +41,31 @@ export default function ClientLayout({
   // Pages that should not display the full enterprise sidebar / titlebar shell
   const isLoginPage = pathname?.includes('/login') || pathname?.includes('/signup');
   const isRootPage = !pathname || pathname === '/' || pathname === '/en';
+  // Reachable signed-in or out (the emailed link must always work)
+  const isResetPage = !!pathname?.includes('/reset-password');
 
   // Display standalone layout for root splash, login, and signup
   const isStandalonePage = isStandalonePageCheck(pathname);
 
   function isStandalonePageCheck(path: string | null) {
       if (!path) return true;
-      return path === '/' || path === '/en' || path.includes('/login') || path.includes('/signup');
+      return path === '/' || path === '/en' || path.includes('/login') || path.includes('/signup') || path.includes('/reset-password');
   }
 
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    // The session itself is an httpOnly cookie JavaScript cannot see; `user` is the hint that
+    // someone signed in here. The API answers 401 when the session is gone, which clears it.
     const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+    const signedIn = !!userStr;
 
     // Authentication Guard
-    if (!token && !isLoginPage && !isRootPage) {
+    if (!signedIn && !isLoginPage && !isRootPage && !isResetPage) {
       router.replace('/login');
       return;
     }
 
     // Redirect already authenticated users from login page to dashboard
-    if (token && isLoginPage) {
+    if (signedIn && isLoginPage) {
       router.replace('/dashboard');
       return;
     }
@@ -76,7 +80,7 @@ export default function ClientLayout({
         console.error('Failed to parse user:', e);
       }
     }
-  }, [pathname, router, isLoginPage, isRootPage]);
+  }, [pathname, router, isLoginPage, isRootPage, isResetPage]);
 
   if (isStandalonePage) {
     return (
@@ -120,7 +124,7 @@ export default function ClientLayout({
             </div>
             {user?.image_url && (
               <Image
-                src={user.image_url.startsWith('http') ? user.image_url : `${process.env.NEXT_PUBLIC_API_URL || ''}${user.image_url}`}
+                src={user.image_url}
                 alt="User"
                 width={32}
                 height={32}

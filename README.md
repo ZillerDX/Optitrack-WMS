@@ -4,9 +4,8 @@
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-optitrack--wms.vercel.app-0070f3?style=for-the-badge&logo=vercel)](https://optitrack-wms.vercel.app)
 [![CI/CD Pipeline](https://img.shields.io/badge/CI%2FCD-Passing-success?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/ZillerDX/Optitrack-WMS/actions/workflows/ci.yml)
-[![Next.js](https://img.shields.io/badge/Next.js-14_App_Router-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-15_App_Router-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-RLS_Protected-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-Python_3.11-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0_Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![ESLint](https://img.shields.io/badge/ESLint-Zero_Warnings-success?style=for-the-badge&logo=eslint)](https://eslint.org/)
 
@@ -125,16 +124,16 @@ OptiTrack WMS re-engineers warehouse management from the ground up as a **cloud-
 
 ```mermaid
 flowchart TD
-    subgraph ClientLayer ["Client Presentation Layer (Next.js 14 App Router)"]
+    subgraph ClientLayer ["Client Presentation Layer (Next.js 15 App Router)"]
         UI_Dash["📊 Executive Dashboard\n(Recharts & KPIs)"]
         UI_Inv["🏢 Zone Capacity & Ledger\n(Space Allocation & Filtering)"]
         UI_AI["🤖 Autonomous AI Copilot\n(Zero-Config Chat Widget)"]
-        UI_Auth["🔒 Enterprise Sign-In\n(Google OAuth + JWT)"]
+        UI_Auth["🔒 Enterprise Sign-In\n(Google OAuth + httpOnly session cookie)"]
     end
 
     subgraph EdgeGateway ["Edge API & Orchestration Layer (Next.js Serverless Edge)"]
         Route_Auth["/api/auth/*\n(Session Verification)"]
-        Route_Data["/api/inventory & /api/products\n(REST Proxy with Auth)"]
+        Route_Data["/api/inventory & /api/products\n(Validated, tenant-scoped REST)"]
         Route_AI["/api/ai/chat & /api/ai/report\n(Telemetry Calculation Engine)"]
     end
 
@@ -147,7 +146,6 @@ flowchart TD
     subgraph DataLayer ["Data Persistence & Security Layer"]
         DB_PG[("PostgreSQL Database\n(Supabase Cloud)")]
         DB_RLS["🔒 Row-Level Security (RLS)\n(owner_id & user_id Isolation)"]
-        DB_Local[("SQLite Local Engine\n(FastAPI Dev Environment)")]
     end
 
     UI_Dash --> Route_Data
@@ -163,7 +161,6 @@ flowchart TD
     Route_AI --> DB_RLS
     Route_Auth --> DB_RLS
     DB_RLS --> DB_PG
-    Route_Data -.->|Local Dev| DB_Local
 ```
 
 ---
@@ -299,47 +296,62 @@ erDiagram
 
 ---
 
-## 📡 6. Interactive API Specification
+## 📡 6. API Specification
 
-| Method | Endpoint | Description | Auth Required |
+The API is the set of Route Handlers in `frontend/src/app/api`. It is same-origin with the UI and
+authenticated by the `__Host-session` cookie (an `Authorization: Bearer` header is also accepted for
+non-browser clients). Unauthenticated calls answer `401`; failures answer generic `4xx/5xx` bodies.
+
+| Method | Endpoint | Description | Auth |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/auth/register` | Register new organization / operator account | None |
-| `POST` | `/api/auth/login` | Authenticate credentials and issue JWT session token | None |
-| `POST` | `/api/auth/google` | Verify Google ID token and provision session | None |
-| `GET` | `/api/auth/me` | Fetch authenticated user profile and roles | Bearer JWT |
-| `GET` | `/api/products/` | Paginated product list with search and category filters | Bearer JWT |
-| `POST` | `/api/products/` | Create new SKU with barcode and safety thresholds | Bearer JWT |
-| `GET` | `/api/inventory/` | Fetch real-time inventory ledger filtered by zone | Bearer JWT |
-| `GET` | `/api/inventory/locations` | Retrieve all warehouse zones and capacity limits | Bearer JWT |
-| `POST` | `/api/transactions/` | Record INBOUND receipt, OUTBOUND dispatch, or adjustment | Bearer JWT |
-| `POST` | `/api/ai/chat` | Query Autonomous Copilot for velocity, DOI, and draft POs | Bearer JWT |
-| `POST` | `/api/ai/report` | Generate strategic executive operations intelligence report | Bearer JWT |
-| `POST` | `/api/ai/predictive` | Retrieve quantitative replenishment forecasts per SKU | Bearer JWT |
-| `POST` | `/api/ai/reorder/approve` | One-click execution of recommended purchase orders | Bearer JWT |
+| `POST` | `/api/auth/register` | Create an account (optionally limited by `SIGNUP_ALLOWED_DOMAINS`) | None |
+| `POST` | `/api/auth/login` | Verify credentials, set the session cookie | None |
+| `POST` | `/api/auth/google` | Verify a Google ID token (audience and issuer checked), set the cookie | None |
+| `POST` | `/api/auth/logout` | Clear the cookie and revoke all sessions of the user | Session |
+| `POST` | `/api/auth/forgot-password` | Email a single-use reset link (same answer for any address) | None |
+| `POST` | `/api/auth/reset-password` | Set a new password with a reset token | Reset token |
+| `GET` / `PUT` | `/api/auth/me` | Read / update own name and avatar | Session |
+| `POST` | `/api/auth/upload-image` | Upload an avatar (image bytes verified) | Session |
+| `GET` / `POST` | `/api/products` | List / create products (validated, unique SKU per owner) | Session |
+| `PUT` / `DELETE` | `/api/products/{id}` | Update / delete an own product | Session |
+| `GET` / `POST` | `/api/inventory` | Stock ledger / create a stock row at an own location | Session |
+| `PUT` / `DELETE` | `/api/inventory/{id}` | Edit quantity, status or location of an own row | Session |
+| `GET` | `/api/inventory/locations` | Location names of the caller | Session |
+| `GET` / `POST` | `/api/locations`, `/api/categories` | List / create (unique name per owner) | Session |
+| `PUT` / `DELETE` | `/api/locations/{id}` | Update / delete a location | Session |
+| `DELETE` | `/api/categories/{id}` | Delete a category | Session |
+| `GET` / `POST` | `/api/transactions` | Movement journal / record INBOUND, OUTBOUND or ADJUST | Session |
+| `GET` | `/api/dashboard/metrics` | Capacity usage | Session |
+| `POST` | `/api/ai/chat` | AI assistant (rate limited, input validated) | Session |
+| `POST` | `/api/ai/report` | Operations report | Session |
+| `GET` | `/api/ai/predictive` | Replenishment forecast per SKU | Session |
+| `POST` | `/api/ai/reorder/approve` | Approve a reorder: receives stock and stores the PO | Session |
 
 ---
 
-## 🛡️ 7. Security Hardening & 5 Quality Gates Audit
+## 🛡️ 7. Security Model
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-│                             5 PRODUCTION QUALITY GATES AUDIT                               │
-├─────────────────────────┬───────────────────────────┬───────────────────────────────────────┤
-│ GATE                    │ VERIFICATION COMMAND      │ STATUS                                │
-├─────────────────────────┼───────────────────────────┼───────────────────────────────────────┤
-│ 1. TypeScript Strict    │ npx tsc --noEmit          │ ✅ Pass (0 type errors)               │
-│ 2. Automated Tests      │ npm test / pytest         │ ✅ Pass (Exit Code 0)                 │
-│ 3. Production Build     │ npm run build             │ ✅ Pass (Next.js 14 SSG/SSR clean)    │
-│ 4. Playwright Headless  │ browser_take_screenshot   │ ✅ Pass (0 console errors, UI clean)  │
-│ 5. Zero-Leak Security   │ git secret scan & RLS     │ ✅ Pass (0 exposed keys, least priv.) │
-└─────────────────────────┴───────────────────────────┴───────────────────────────────────────┘
-```
+What protects the data, and what to verify. See `ARCHITECTURE_SUMMARY.md` for detail.
 
-### Security Guardrails
-1. **Zero Secret Leakage**: All sensitive keys (`GEMINI_API_KEY`, `GROQ_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) are managed exclusively on the server side via environment variables. No secrets are ever packaged into client-side bundles.
-2. **PostgreSQL Row-Level Security (RLS)**: Every query sent to Supabase is scoped to the authenticated user's tenant ID (`owner_id = auth.uid()`), preventing cross-tenant data access.
-3. **Cryptographic JWT Tokens**: Session tokens are signed using `HS256` with strict expiration windows and encrypted password hashes (bcrypt with cost factor 12).
-4. **Defensive Input Sanitization**: Comprehensive input coercion, strict string sanitization, and SQL parameterization to eliminate injection vectors.
+1. **Tenant isolation lives in the API.** The server talks to Supabase with the service-role key, which
+   bypasses Row Level Security, so every handler filters by the caller's `owner_id` / `user_id` and takes
+   nothing tenant-related from the request. RLS (`0002_enable_rls.sql`) is deny-by-default for the public
+   `anon` key; **check that on your project** by trying to read a table with the anon key.
+2. **Sessions.** HS256 JWT in an httpOnly, Secure, SameSite=Lax cookie; each request re-checks that the user
+   exists and is active and that the token version is current, so logout, password reset and deactivation
+   revoke access. Cookie-authenticated writes must be same-origin (CSRF).
+3. **Secrets.** `SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY` and the URL have no fallback values: the API
+   returns 500 rather than run with a default key. Provider keys (Gemini/Groq) come from the server
+   environment only, never from request headers.
+4. **Abuse controls.** Shared (Postgres) rate limits on login (per address and per account), sign-up, Google,
+   password reset, uploads and AI endpoints; validated input everywhere; generic error bodies.
+5. **Browser hardening.** CSP, HSTS, `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`.
+   The CSP has to allow inline scripts (statically generated pages), so it is defence in depth, not an XSS
+   guarantee.
+
+Automated checks in CI: `npm run lint`, `tsc --noEmit`, `npm test`, `npm audit --omit=dev --audit-level=high`,
+`next build`, the SQL migrations applied twice to a real PostgreSQL, the SQL and concurrency tests of the stock
+functions, and the API integration tests against PostgreSQL + PostgREST.
 
 ---
 
@@ -347,12 +359,12 @@ erDiagram
 
 | Layer | Technologies | Rationale |
 | :--- | :--- | :--- |
-| **Frontend Framework** | [Next.js 14](https://nextjs.org/) (App Router) | High-performance hybrid SSR/SSG rendering with Edge API routes |
+| **Frontend Framework** | [Next.js 15](https://nextjs.org/) (App Router, React 19) | High-performance hybrid SSR/SSG rendering with Edge API routes |
 | **Language** | [TypeScript 5](https://www.typescriptlang.org/) | End-to-end type safety, zero compile-time ambiguities |
 | **Styling & Design Tokens** | [Tailwind CSS 3.4](https://tailwindcss.com/) | Modern dark glassmorphic B2B SaaS design tokens, responsive layout |
 | **Component Primitives** | [Radix UI](https://www.radix-ui.com/) + Lucide Icons | Accessible headless popovers, dialogs, custom selects, vector SVGs |
 | **Charts & Data Viz** | [Recharts](https://recharts.org/) | Responsive SVG charts for velocity trends and category distribution |
-| **Backend API** | [FastAPI](https://fastapi.tiangolo.com/) + Python 3.11 | High-throughput asynchronous REST API for warehouse operations |
+| **Backend API** | Next.js Route Handlers (same app) | One deployable unit for UI and API; validated, tenant-scoped handlers |
 | **Database & Auth** | [Supabase](https://supabase.com/) (PostgreSQL) | Managed cloud database with native Row-Level Security (RLS) |
 | **AI Intelligence** | Google Gemini 1.5/2.0 + Groq LLaMA | High-speed multi-model AI failover with deterministic calculation fallback |
 
@@ -390,19 +402,18 @@ Optitrack-WMS/
 │   │   │   ├── PredictiveReorderAgentModal.tsx # 1-click Purchase Order modal
 │   │   │   └── Sidebar.tsx             # Responsive B2B navigation bar
 │   │   └── lib/
-│   │       ├── api.ts                  # Resilient Axios API client
-│   │       └── supabase.ts             # Supabase client with JWT encryption
+│   │       ├── api.ts                  # Same-origin Axios client (cookie session)
+│   │       ├── supabase.ts             # PostgREST access + session verification
+│   │       ├── stock.ts                # The only path that changes stock
+│   │       └── rateLimit.ts            # Shared rate limiter
 │   └── package.json
 │
-├── backend/
-│   ├── app/
-│   │   ├── core/                       # Config, database, security, limiter
-│   │   ├── models/                     # SQLAlchemy ORM schemas
-│   │   ├── routes/                     # FastAPI route controllers
-│   │   └── services/
-│   │       └── ai_agent_service.py     # AI agent service with database tools
-│   ├── main.py                         # FastAPI application entrypoint
-│   └── requirements.txt
+├── supabase/
+│   └── migrations/                     # 0000_baseline ... 0010_soft_delete_products (run in order, idempotent)
+│
+├── frontend/
+│   ├── tests/                          # Vitest: API handlers against an in-memory PostgREST double
+│   └── src/lib/                        # session, stock movements, rate limiter, validation
 │
 └── README.md
 ```
@@ -412,50 +423,37 @@ Optitrack-WMS/
 ## 🚀 10. Local Development & Deployment
 
 ### 10.1 Prerequisites
-* Node.js 18+ or 20+
-* Python 3.11+
-* Git
+* Node.js 20+
+* A Supabase project (or any PostgreSQL behind PostgREST)
 
-### 10.2 Frontend Setup
-```powershell
-# Navigate to frontend directory
+### 10.2 Database
+Apply the SQL files in `supabase/migrations/` **in order** (`0000` ... `0010`) with the Supabase SQL editor or
+`psql`. They are idempotent; run newer ones before deploying code that needs them.
+
+### 10.3 Run the app
+```bash
 cd frontend
-
-# Install dependencies
-npm install
-
-# Start Next.js development server
-npm run dev
-# Live preview available at http://localhost:3000
+cp .env.example .env.local      # fill in SECRET_KEY, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+npm ci
+npm run dev                     # http://localhost:3000
 ```
 
-### 10.3 Backend Setup (Optional for Local Python Dev)
-```powershell
-# Navigate to backend directory
-cd backend
+### 10.4 Checks
+```bash
+npm run lint && npx tsc --noEmit && npm test && npm run build
+npm audit --omit=dev --audit-level=high
 
-# Create and activate virtual environment
-python -m venv venv
-.\venv\Scripts\Activate.ps1
+# Against a real PostgreSQL + PostgREST (needs Docker): see frontend/tests-integration/README.md
+eval "$(bash ../supabase/tests/integration-stack.sh up)" && npm run test:integration
 
-# Install requirements
-pip install -r requirements.txt
-
-# Run database migrations / seed
-python scripts/populate_sample.py
-
-# Start FastAPI server
-python -m uvicorn main:app --port 8000 --reload
-# API docs available at http://localhost:8000/docs
+# Browser tests of the production build (Playwright): see frontend/e2e/README.md
+npm run build && npm run test:e2e
 ```
 
-### 10.4 Production Deployment
-The application is pre-configured for automated continuous deployment on **Vercel** connected to **Supabase Cloud**:
-```powershell
-# Run production verification build
-npm run build
-```
-When pushed to the `main` branch, GitHub Actions executes all lint, type, and build verification jobs before production deployment.
+### 10.5 Production
+Deploy `frontend/` to Vercel (set the environment variables from `.env.example`) or run
+`docker compose up --build` from the repository root. GitHub Actions runs the checks above on every push and
+pull request, plus a job that applies the migrations to an empty PostgreSQL twice.
 
 ---
 

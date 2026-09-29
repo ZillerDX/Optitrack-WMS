@@ -5,7 +5,7 @@
 
 // ================= User Types =================
 
-export type UserRole = 'ADMIN' | 'STAFF' | 'USER';
+export type UserRole = 'ADMIN';
 
 export interface User {
   id: number;
@@ -20,7 +20,6 @@ export interface UserCreate {
   email: string;
   first_name: string;
   last_name: string;
-  role: UserRole;
   password: string;
 }
 
@@ -28,7 +27,6 @@ export interface UserUpdate {
   email?: string;
   first_name?: string;
   last_name?: string;
-  role?: UserRole;
   is_active?: boolean;
 }
 
@@ -194,7 +192,7 @@ export interface LoginRequest {
 }
 
 export interface TokenResponse {
-  access_token: string;
+  /** 'cookie': the session is an httpOnly cookie and is not part of the response. */
   token_type: string;
   user: User;
 }

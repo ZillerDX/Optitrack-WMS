@@ -1,48 +1,22 @@
-name: OptiTrack WMS - CI/CD & PWA Pipeline
+name: OptiTrack WMS - CI
 
 on:
   push:
     branches: [ main, master ]
+  # any base branch, so a PR stacked on another branch is checked too
   pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  backend-test:
-    name: Backend API Tests & Lint
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./backend
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
-
-      - name: Install Backend Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt pytest pytest-asyncio httpx
-
-      - name: Run Pytest Suite
-        env:
-          DATABASE_URL: "sqlite+aiosqlite:///ci_test.db"
-          SECRET_KEY: "ci-secret-key-32-characters-long-safe-jwt"
-          ENVIRONMENT: "development"
-        run: |
-          pytest -v --tb=short
-
-  frontend-pwa-build:
-    name: Frontend PWA Build & Artifact
+  frontend:
+    name: Lint, types, tests, audit and build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -57,32 +31,164 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: frontend/package.json
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Install Frontend Dependencies
-        run: npm install
+      - name: Install dependencies (from the lockfile)
+        run: npm ci
 
-      - name: Verify TypeScript Types
+      - name: Lint
+        run: npm run lint
+
+      - name: Verify TypeScript types
         run: npx tsc --noEmit
 
-      - name: Verify PWA Assets
+      - name: Unit / API tests
+        run: npm test
+
+      # Fails the build on a known high or critical advisory in what ships to production.
+      - name: Dependency audit (production dependencies)
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Verify PWA assets
         run: |
           test -f public/manifest.json || { echo "manifest.json missing"; exit 1; }
           test -f public/sw.js || { echo "sw.js missing"; exit 1; }
           test -f public/offline.html || { echo "offline.html missing"; exit 1; }
           echo "PWA core files verified!"
 
-      - name: Build Next.js Production PWA
+      # The secrets below are placeholders: the build only needs the variables to exist
+      # to be evaluated lazily at request time; nothing here talks to a real service.
+      - name: Build Next.js production app
         env:
-          NEXT_PUBLIC_API_URL: "http://localhost:8000"
+          SECRET_KEY: ci-build-only-secret-key-0123456789-abcdef
+          SUPABASE_SERVICE_ROLE_KEY: ci-build-only
+          NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
           NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
         run: npm run build
 
-      - name: Upload PWA Standalone Artifacts
+      - name: Upload standalone build
         uses: actions/upload-artifact@v4
         with:
-          name: optitrack-pwa-build
+          name: optitrack-wms-build
           path: |
             frontend/.next/standalone
             frontend/public
+          retention-days: 7
+
+  migrations:
+    name: SQL migrations and stock functions (real PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+
+      # Supabase provides these roles; the migrations grant to / revoke from them.
+      - name: Create the roles a Supabase project already has
+        run: psql -v ON_ERROR_STOP=1 -q -f supabase/tests/roles.sql
+
+      - name: Apply migrations in order
+        run: |
+          for f in supabase/migrations/*.sql; do echo "== $f"; psql -v ON_ERROR_STOP=1 -q -f "$f"; done
+
+      - name: Apply them again (each must be idempotent)
+        run: |
+          for f in supabase/migrations/*.sql; do echo "== $f"; psql -v ON_ERROR_STOP=1 -q -f "$f"; done
+
+      - name: Stock functions - rules, atomicity, privileges
+        run: psql -v ON_ERROR_STOP=1 -q -f supabase/tests/stock_movements.sql
+
+      - name: Location update / rename cascade
+        run: psql -v ON_ERROR_STOP=1 -q -f supabase/tests/update_location.sql
+
+      - name: Product soft delete
+        run: psql -v ON_ERROR_STOP=1 -q -f supabase/tests/soft_delete_products.sql
+
+      - name: Stock functions - concurrent sessions (no overselling, no lost updates)
+        run: bash supabase/tests/stock_concurrency.sh
+
+  integration:
+    name: API against real PostgreSQL + PostgREST
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Start PostgreSQL + PostgREST with the migrations applied
+        run: bash supabase/tests/integration-stack.sh up | tee /tmp/itest.env
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Route handlers end to end
+        working-directory: ./frontend
+        run: |
+          set -a; . /tmp/itest.env; set +a
+          npm run test:integration
+
+  e2e:
+    name: Browser tests (Playwright) against the production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Start PostgreSQL + PostgREST with the migrations applied
+        run: bash supabase/tests/integration-stack.sh up | tee /tmp/itest.env
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Install the browser
+        working-directory: ./frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Build the production app
+        working-directory: ./frontend
+        env:
+          SECRET_KEY: ci-build-only-secret-key-0123456789-abcdef
+          SUPABASE_SERVICE_ROLE_KEY: ci-build-only
+          NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
+        run: npm run build
+
+      - name: Browser tests
+        working-directory: ./frontend
+        run: |
+          set -a; . /tmp/itest.env; set +a
+          npm run test:e2e
+
+      - name: Upload the report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            frontend/playwright-report
+            frontend/test-results
           retention-days: 7

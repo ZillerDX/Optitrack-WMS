@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit } from '@/lib/rateLimit';
 import bcrypt from 'bcryptjs';
 import { supabaseRest, createSessionToken } from '@/lib/supabase';
+import { setSessionCookie } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+
+    // Throttle credential guessing per IP and per target account.
+    const limited = await rateLimit(req, {
+      name: 'login',
+      limit: 5,
+      windowSeconds: 60,
+      identifier: { value: typeof body.email === 'string' ? body.email.trim() : '', limit: 10, windowSeconds: 900 },
+    });
+    if (limited) return limited;
     const { email, password } = body;
 
     if (!email || !password) {
@@ -57,6 +68,7 @@ export async function POST(req: NextRequest) {
       sub: String(user.id),
       email: user.email,
       role: user.role,
+      tv: Number(user.token_version) || 0,
     });
 
     const userResponse = {
@@ -69,15 +81,14 @@ export async function POST(req: NextRequest) {
       is_active: user.is_active,
     };
 
-    return NextResponse.json({
-      access_token,
-      token_type: 'bearer',
-      user: userResponse,
-    });
+    // The token goes into an httpOnly cookie and is deliberately not in the body, so page
+    // scripts never see it.
+    return setSessionCookie(NextResponse.json({ token_type: 'cookie', user: userResponse }), access_token);
   } catch (error: any) {
     console.error('[Login API Error]:', error);
-    let detail = error?.message || 'Internal server error during login.';
-    if (detail === 'fetch failed' || detail.includes('ENOTFOUND') || detail.includes('ECONNREFUSED')) {
+    let detail = 'Internal server error during login.';
+    const raw = String(error?.message ?? '');
+    if (raw === 'fetch failed' || raw.includes('ENOTFOUND') || raw.includes('ECONNREFUSED')) {
       detail = 'Database connection error: Service temporarily unreachable. Please try again shortly.';
     }
     return NextResponse.json(
