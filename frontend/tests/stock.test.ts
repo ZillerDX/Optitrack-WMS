@@ -218,11 +218,58 @@ describe('/api/inventory', () => {
 describe('PUT/DELETE /api/inventory/[id] (cross-tenant)', () => {
   it('cannot edit or delete another tenant\'s stock, answering 404 like a missing row', async () => {
     const id = db.tables.inventory[0].id;
+    // the database function answers PT404 unless the row belongs to the caller
+    db.rpc.delete_inventory = ({ p_user_id }: any) => {
+      if (p_user_id !== alice.id) throw new RpcError(404, { code: 'PT404', message: 'Inventory record not found', details: null, hint: null });
+      return { id, removed_quantity: 8 };
+    };
     const put = await updateInventory(req('PUT', { quantity: 999 }, { token: bob.token }), ctx(id));
     const del = await deleteInventory(req('DELETE', undefined, { token: bob.token }), ctx(id));
     const missing = await updateInventory(req('PUT', { quantity: 1 }, { token: bob.token }), ctx(424242));
     expect([put.status, del.status, missing.status]).toEqual([404, 404, 404]);
     expect(db.tables.inventory[0].quantity).toBe(8);
+  });
+
+  describe('DELETE (an ADJUST to 0 is recorded first, in one transaction: delete_inventory)', () => {
+    const rpcCalls = () => rpcCallsOf('delete_inventory');
+    const rpcCallsOf = (name: string) => db.calls.filter((c) => c.table === `rpc/${name}`);
+    const del = (id: number | string, who = alice) => deleteInventory(req('DELETE', undefined, { token: who.token }), ctx(id));
+
+    it('calls the database function with the session user and never deletes rows itself', async () => {
+      const id = db.tables.inventory[0].id;
+      db.rpc.delete_inventory = () => ({ id, removed_quantity: 8 });
+      expect((await del(id)).status).toBe(200);
+      expect(rpcCalls()).toHaveLength(1);
+      expect(rpcCalls()[0].body).toEqual({ p_user_id: alice.id, p_inventory_id: id });
+      expect(db.calls.filter((c) => c.method === 'DELETE')).toHaveLength(0);
+      expect(db.tables.inventory).toHaveLength(1); // the route itself removed nothing
+    });
+
+    it('answers 503 when the function is missing (migration 0011 not applied)', async () => {
+      db.rpc.delete_inventory = () => {
+        throw new RpcError(404, { code: 'PGRST202', message: 'Could not find the function public.delete_inventory', details: null, hint: null });
+      };
+      expect((await del(db.tables.inventory[0].id)).status).toBe(503);
+    });
+
+    it('never leaks a database error', async () => {
+      db.rpc.delete_inventory = () => {
+        throw new RpcError(500, { code: 'XX000', message: 'connection to server at db.internal failed', details: null, hint: null });
+      };
+      const res = await del(db.tables.inventory[0].id);
+      expect(res.status).toBe(500);
+      expect(JSON.stringify(await res.json())).not.toMatch(/internal|connection/i);
+    });
+
+    it.each(['abc', '0', '-2', '1.5'])('rejects the id %s before calling the database', async (bad) => {
+      expect((await del(bad)).status).toBe(400);
+      expect(rpcCalls()).toHaveLength(0);
+    });
+
+    it('requires a session', async () => {
+      expect((await deleteInventory(req('DELETE'), ctx(1))).status).toBe(401);
+      expect(rpcCalls()).toHaveLength(0);
+    });
   });
 
   it('records a correction as an ADJUST movement for the session user, never a direct write', async () => {

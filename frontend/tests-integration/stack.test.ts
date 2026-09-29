@@ -9,7 +9,7 @@ import { DELETE as deleteProduct } from '@/app/api/products/[id]/route';
 import { GET as listLocations, POST as createLocation } from '@/app/api/locations/route';
 import { GET as listCategories, POST as createCategory } from '@/app/api/categories/route';
 import { GET as listInventory, POST as createInventory } from '@/app/api/inventory/route';
-import { PUT as updateInventory } from '@/app/api/inventory/[id]/route';
+import { DELETE as deleteInventory, PUT as updateInventory } from '@/app/api/inventory/[id]/route';
 import { PUT as updateLocation } from '@/app/api/locations/[id]/route';
 import { POST as createTransaction } from '@/app/api/transactions/route';
 import { POST as approveReorder } from '@/app/api/ai/reorder/approve/route';
@@ -351,6 +351,26 @@ describe('inventory endpoints against the real database', () => {
     const again = await createProduct(call('POST', { sku: 'P1', name: 'New P1', cost_price: 5, sell_price: 9, min_stock_level: 3 }, u.token));
     expect(again.status).toBe(200);
     expect((await move(u.token, (await again.json()).id, 'INBOUND', 20)).status).toBe(201);
+  });
+
+  it('DELETE /api/inventory/[id] records the units it removes and frees the shelf', async () => {
+    const a = await signup('a@x.com');
+    const b = await signup('b@x.com');
+    const p = await seedWarehouse(a.token, 'P1', 'A1', 20);
+    await move(a.token, p, 'INBOUND', 12);
+    const row = (await rows(`inventory?product_id=eq.${p}`))[0];
+    const del = (token: string, id: number) => deleteInventory(call('DELETE', undefined, token), ctx(id));
+
+    expect((await del(b.token, row.id)).status).toBe(404); // not Bob's
+    expect((await rows(`inventory?id=eq.${row.id}`))[0].quantity).toBe(12);
+
+    expect((await del(a.token, row.id)).status).toBe(200);
+    expect(await rows(`inventory?id=eq.${row.id}`)).toHaveLength(0);
+    const history = (await rows(`transactions?product_id=eq.${p}&order=id.asc`)).map((t) => `${t.type}:${t.quantity}`);
+    expect(history).toEqual(['INBOUND:12', 'ADJUST:0']);
+
+    expect((await del(a.token, row.id)).status).toBe(404); // already gone
+    expect((await move(a.token, p, 'INBOUND', 20)).status).toBe(201); // the shelf is free again
   });
 
   it('POST /api/inventory: negative quantity refused, duplicate 409, capacity enforced', async () => {
