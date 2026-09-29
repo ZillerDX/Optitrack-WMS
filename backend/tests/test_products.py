@@ -92,7 +92,7 @@ class TestProductCreation:
                 "unit": "pcs"
             }
         )
-        assert response.status_code == 403  # HTTPBearer ส่งคืน 403 เมื่อไม่มีการระบุการตรวจสอบสิทธิ์
+        assert response.status_code == 401  # HTTPBearer ตอบ 401 เมื่อไม่มี Bearer token (FastAPI >= 0.122)
 
 
 class TestProductRetrieval:

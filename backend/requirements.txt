@@ -1,39 +1,36 @@
+# Runtime dependencies (exact versions verified against the test suite).
+# Test-only packages live in requirements-dev.txt.
+
 # FastAPI and Web Server
-fastapi==0.109.0
-uvicorn[standard]==0.27.0
-gunicorn>=21.2.0
-python-multipart>=0.0.9
+fastapi==0.141.1
+uvicorn[standard]==0.54.0
+gunicorn==26.2.0
+python-multipart==0.0.32
 
 # Database
-sqlalchemy[asyncio]>=2.0.25
-asyncpg>=0.29.0
-alembic>=1.13.0
+sqlalchemy[asyncio]==2.1.1
+asyncpg==0.31.0
+alembic==1.20.0
 
 # Authentication & Security
-python-jose[cryptography]==3.3.0
-bcrypt>=4.0.1
+PyJWT==2.15.1
+bcrypt==5.0.0
 
 # Data Validation
-pydantic>=2.6.0
-pydantic-settings>=2.1.0
-email-validator>=2.1.0
+pydantic==2.13.5
+pydantic-settings==2.15.0
+email-validator==2.3.0
 
-# AI Integration
-groq==0.4.2
+# HTTP client (Google token verification) and AI integration
+httpx==0.28.1
+groq==1.7.0
 
-# Object storage (S3 / MinIO) — async
-aioboto3>=12.3.0
-botocore>=1.33.2,<1.34.35
+# Object storage (S3 / MinIO) — async. botocore is left to aioboto3's own pin.
+aioboto3==15.5.0
 
 # Async background queue + Redis (also used by slowapi when configured)
-arq>=0.25.0
-redis>=5.0.0
+arq==0.28.0
+redis==5.3.1
 
 # Rate limiting
-slowapi>=0.1.9
-
-# Development & Testing
-pytest==7.4.4
-pytest-asyncio==0.23.3
-httpx==0.26.0
-aiosqlite==0.19.0
+slowapi==0.1.10

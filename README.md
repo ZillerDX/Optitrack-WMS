@@ -438,7 +438,7 @@ cd backend
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 
-# Install requirements
+# Install requirements (use requirements-dev.txt to also get the test tools)
 pip install -r requirements.txt
 
 # Run database migrations / seed

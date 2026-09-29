@@ -443,7 +443,7 @@ class TestTransactionValidation:
             }
         )
 
-        assert response.status_code == 403  # HTTPBearer returns 403 when no auth provided
+        assert response.status_code == 401  # HTTPBearer returns 401 when no bearer token is provided (FastAPI >= 0.122)
 
 
 class TestInventoryConsistency:

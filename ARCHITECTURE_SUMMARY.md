@@ -26,7 +26,7 @@ Core capabilities:
 | Database | PostgreSQL via `asyncpg` |
 | ORM | SQLAlchemy 2.0 async |
 | Validation | Pydantic v2 and `pydantic-settings` |
-| Authentication | JWT with `python-jose`, bcrypt password hashing |
+| Authentication | JWT with `PyJWT`, bcrypt password hashing |
 | AI | Groq SDK `0.4.2`, model `llama-3.3-70b-versatile` by default |
 | Object storage | Local filesystem or S3-compatible storage through `aioboto3` |
 | Rate limiting | SlowAPI |
