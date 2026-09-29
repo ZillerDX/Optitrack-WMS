@@ -225,3 +225,83 @@ class TestPasswordSecurity:
             }
         )
         assert response.status_code == 422
+
+class TestPasswordReset:
+    """Forgot-password -> reset-password flow."""
+
+    @staticmethod
+    async def _request_token(client: AsyncClient, email: str) -> str:
+        from unittest.mock import patch
+
+        with patch("app.routes.auth.send_reset_password_email", return_value=True) as sent:
+            resp = await client.post("/api/auth/forgot-password", json={"email": email})
+        assert resp.status_code == 200
+        return sent.call_args.args[1]
+
+    @pytest.mark.asyncio
+    async def test_full_reset_flow_and_single_use(self, client: AsyncClient, admin_user: User):
+        token = await self._request_token(client, "admin@test.com")
+
+        resp = await client.post(
+            "/api/auth/reset-password", json={"token": token, "new_password": "brandNew123"}
+        )
+        assert resp.status_code == 200
+
+        old = await client.post(
+            "/api/auth/login", json={"email": "admin@test.com", "password": "admin123"}
+        )
+        assert old.status_code == 401
+        new = await client.post(
+            "/api/auth/login", json={"email": "admin@test.com", "password": "brandNew123"}
+        )
+        assert new.status_code == 200
+
+        # The same link cannot be used twice: the password changed under it.
+        again = await client.post(
+            "/api/auth/reset-password", json={"token": token, "new_password": "another456"}
+        )
+        assert again.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_unknown_email_gets_generic_response_and_no_email(self, client: AsyncClient):
+        from unittest.mock import patch
+
+        with patch("app.routes.auth.send_reset_password_email") as sent:
+            resp = await client.post("/api/auth/forgot-password", json={"email": "nobody@test.com"})
+        assert resp.status_code == 200
+        assert "if the email is registered" in resp.json()["message"].lower()
+        sent.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_access_token_cannot_reset_password(self, client: AsyncClient, admin_token: str):
+        resp = await client.post(
+            "/api/auth/reset-password", json={"token": admin_token, "new_password": "hacked123"}
+        )
+        assert resp.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_expired_token_rejected(self, client: AsyncClient, admin_user: User):
+        from datetime import timedelta
+
+        from app.core.security import create_access_token, password_fingerprint
+
+        expired = create_access_token(
+            data={
+                "sub": str(admin_user.id),
+                "scope": "password_reset",
+                "pwd": password_fingerprint(admin_user.password_hash),
+            },
+            expires_delta=timedelta(minutes=-1),
+        )
+        resp = await client.post(
+            "/api/auth/reset-password", json={"token": expired, "new_password": "brandNew123"}
+        )
+        assert resp.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_overlong_password_rejected(self, client: AsyncClient, admin_user: User):
+        token = await self._request_token(client, "admin@test.com")
+        resp = await client.post(
+            "/api/auth/reset-password", json={"token": token, "new_password": "x" * 100}
+        )
+        assert resp.status_code == 422

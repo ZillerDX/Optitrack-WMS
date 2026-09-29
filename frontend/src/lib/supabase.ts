@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { SignJWT, jwtVerify } from 'jose';
 
 /**
@@ -53,7 +54,40 @@ export async function createSessionToken(payload: { sub: string; email: string; 
 export async function verifySessionToken(token: string) {
   try {
     const { payload } = await jwtVerify(token, getJwtSecret(), { algorithms: ['HS256'] });
+    // Scoped tokens (e.g. the emailed password-reset link) are not sessions.
+    if (payload.scope !== undefined) return null;
     return payload;
+  } catch {
+    return null;
+  }
+}
+
+export const PASSWORD_RESET_SCOPE = 'password_reset';
+
+/** Digest of the current password hash; embedded in reset tokens so they die once the password changes. */
+export function passwordFingerprint(passwordHash: string): string {
+  return createHash('sha256').update(passwordHash).digest('hex').slice(0, 16);
+}
+
+export async function createPasswordResetToken(userId: number, passwordHash: string) {
+  return await new SignJWT({
+    sub: String(userId),
+    scope: PASSWORD_RESET_SCOPE,
+    pwd: passwordFingerprint(passwordHash),
+  })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('1h')
+    .sign(getJwtSecret());
+}
+
+export async function verifyPasswordResetToken(token: string) {
+  try {
+    const { payload } = await jwtVerify(token, getJwtSecret(), { algorithms: ['HS256'] });
+    if (payload.scope !== PASSWORD_RESET_SCOPE || !payload.sub || typeof payload.pwd !== 'string') {
+      return null;
+    }
+    return payload as typeof payload & { sub: string; pwd: string };
   } catch {
     return null;
   }

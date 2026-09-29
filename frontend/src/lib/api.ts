@@ -109,6 +109,11 @@ export const api = {
     return response.data;
   },
 
+  resetPassword: async (token: string, newPassword: string) => {
+    const response = await apiClient.post('/api/auth/reset-password', { token, new_password: newPassword });
+    return response.data;
+  },
+
   logout: async () => {
     const response = await apiClient.post('/api/auth/logout');
     return response.data;

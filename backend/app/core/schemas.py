@@ -225,6 +225,12 @@ class PasswordResetRequest(BaseModel):
     email: EmailStr
 
 
+class PasswordResetConfirm(BaseModel):
+    token: str = Field(..., min_length=1, max_length=2048)
+    # bcrypt only uses the first 72 bytes (and newer versions raise above that).
+    new_password: str = Field(..., min_length=6, max_length=72)
+
+
 class PasswordChangeRequest(BaseModel):
     current_password: str
     new_password: str = Field(..., min_length=6)

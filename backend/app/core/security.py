@@ -3,6 +3,7 @@
 จัดการการแฮชรหัสผ่านและการสร้าง/ตรวจสอบ JWT token
 """
 
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
@@ -86,3 +87,39 @@ def decode_access_token(token: str) -> Optional[dict]:
         return payload
     except JWTError:
         return None
+
+
+PASSWORD_RESET_SCOPE = "password_reset"
+PASSWORD_RESET_EXPIRE_MINUTES = 60
+
+
+def password_fingerprint(password_hash: str) -> str:
+    """Short digest of the current password hash.
+
+    Embedded in reset tokens so a token stops working the moment the password
+    changes (single use), without storing anything server-side.
+    """
+    return hashlib.sha256(password_hash.encode("utf-8")).hexdigest()[:16]
+
+
+def create_password_reset_token(user_id: int, password_hash: str) -> str:
+    """Create a short-lived, single-use password reset token."""
+    return create_access_token(
+        data={
+            "sub": str(user_id),
+            "scope": PASSWORD_RESET_SCOPE,
+            "pwd": password_fingerprint(password_hash),
+        },
+        expires_delta=timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES),
+    )
+
+
+def decode_password_reset_token(token: str) -> Optional[dict]:
+    """Return the payload of a valid reset token, or None for anything else."""
+    payload = decode_access_token(token)
+    if not payload or payload.get("scope") != PASSWORD_RESET_SCOPE:
+        return None
+    if not payload.get("sub") or not payload.get("pwd"):
+        return None
+    return payload
+

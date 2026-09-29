@@ -41,13 +41,15 @@ export default function ClientLayout({
   // Pages that should not display the full enterprise sidebar / titlebar shell
   const isLoginPage = pathname?.includes('/login') || pathname?.includes('/signup');
   const isRootPage = !pathname || pathname === '/' || pathname === '/en';
+  // Reachable signed-in or out (the emailed link must always work)
+  const isResetPage = !!pathname?.includes('/reset-password');
 
   // Display standalone layout for root splash, login, and signup
   const isStandalonePage = isStandalonePageCheck(pathname);
 
   function isStandalonePageCheck(path: string | null) {
       if (!path) return true;
-      return path === '/' || path === '/en' || path.includes('/login') || path.includes('/signup');
+      return path === '/' || path === '/en' || path.includes('/login') || path.includes('/signup') || path.includes('/reset-password');
   }
 
   useEffect(() => {
@@ -55,7 +57,7 @@ export default function ClientLayout({
     const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
 
     // Authentication Guard
-    if (!token && !isLoginPage && !isRootPage) {
+    if (!token && !isLoginPage && !isRootPage && !isResetPage) {
       router.replace('/login');
       return;
     }

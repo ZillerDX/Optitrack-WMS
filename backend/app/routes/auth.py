@@ -1,8 +1,8 @@
 """Authentication routes for user identity and account management."""
 
+import asyncio
 import logging
 import secrets
-from datetime import timedelta
 
 import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
@@ -18,13 +18,21 @@ from app.core.schemas import (
     GoogleAuthRequest,
     LoginRequest,
     PasswordChangeRequest,
+    PasswordResetConfirm,
     PasswordResetRequest,
     TokenResponse,
     UserCreate,
     UserResponse,
     UserUpdate,
 )
-from app.core.security import create_access_token, get_password_hash, verify_password
+from app.core.security import (
+    create_access_token,
+    create_password_reset_token,
+    decode_password_reset_token,
+    get_password_hash,
+    password_fingerprint,
+    verify_password,
+)
 from app.models.user import User, UserRole
 from app.services.demo_service import reset_demo_data
 from app.services.storage_service import StorageError, storage_service
@@ -296,29 +304,70 @@ async def google_auth(
 
 
 @router.post("/forgot-password")
+@limiter.limit("3/minute")
 async def forgot_password(
-    request: PasswordResetRequest,
+    request: Request,
+    reset_request: PasswordResetRequest,
     db: AsyncSession = Depends(get_db)
 ):
     """Generate and email a password reset token when the account exists."""
-    result = await db.execute(select(User).where(User.email == request.email))
-    user = result.scalar_one_or_none()
-    
-    if not user:
-        return {"message": "If the email is registered, a reset link has been sent."}
-    
-    reset_token_expires = timedelta(hours=1)
-    reset_token = create_access_token(
-        data={"sub": str(user.id), "scope": "password_reset"},
-        expires_delta=reset_token_expires
-    )
-    
-    success = send_reset_password_email(user.email, reset_token)
-    
-    if not success:
-        logger.warning("Password reset email could not be sent to %s", user.email)
+    generic = {"message": "If the email is registered, a reset link has been sent."}
 
-    return {"message": "If the email is registered, a reset link has been sent."}
+    result = await db.execute(select(User).where(User.email == reset_request.email))
+    user = result.scalar_one_or_none()
+
+    if not user or not user.is_active:
+        return generic
+
+    reset_token = create_password_reset_token(user.id, user.password_hash)
+
+    # smtplib is blocking; keep it off the event loop.
+    success = await asyncio.to_thread(send_reset_password_email, user.email, reset_token)
+
+    if not success:
+        logger.warning("Password reset email could not be sent for user %s", user.id)
+
+    return generic
+
+
+@router.post("/reset-password")
+@limiter.limit("10/minute")
+async def reset_password(
+    request: Request,
+    confirm: PasswordResetConfirm,
+    db: AsyncSession = Depends(get_db),
+):
+    """Set a new password using the emailed, single-use reset token."""
+    invalid = HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Invalid or expired reset link",
+    )
+
+    payload = decode_password_reset_token(confirm.token)
+    if payload is None:
+        raise invalid
+
+    try:
+        user_id = int(payload["sub"])
+    except (TypeError, ValueError):
+        raise invalid
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    # The fingerprint changes as soon as the password does, so a used (or
+    # superseded) token is rejected here.
+    if (
+        user is None
+        or not user.is_active
+        or not secrets.compare_digest(payload["pwd"], password_fingerprint(user.password_hash))
+    ):
+        raise invalid
+
+    user.password_hash = get_password_hash(confirm.new_password)
+    await db.commit()
+
+    return {"message": "Password has been reset. You can now sign in."}
 
 
 @router.post("/change-password")
