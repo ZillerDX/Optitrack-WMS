@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
+import { rateLimit } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +10,14 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
     }
+
+    const limited = await rateLimit(req, {
+      name: 'ai-report',
+      limit: 30,
+      windowSeconds: 60,
+      identifier: { value: String(user.id), limit: 10, windowSeconds: 60 },
+    });
+    if (limited) return limited;
 
     // 1. Fetch live warehouse data snapshot
     const [productsRes, inventoryRes, txRes, locRes] = await Promise.all([

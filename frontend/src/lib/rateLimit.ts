@@ -36,6 +36,12 @@ async function hit(key: string, windowSeconds: number, max: number): Promise<num
   }
 }
 
+export interface IdentifierLimit {
+  value: string;
+  limit: number;
+  windowSeconds: number;
+}
+
 /**
  * Enforce a per-IP limit and, optionally, a second limit on an identifier
  * (e.g. the target email) so distributed attempts against one account are also
@@ -47,19 +53,18 @@ export async function rateLimit(
     name: string;
     limit: number;
     windowSeconds: number;
-    /** Extra per-identifier limit; the identifier is hashed before storage. */
-    identifier?: { value: string; limit: number; windowSeconds: number };
+    /** Extra per-identifier limits; the identifier is hashed before storage. */
+    identifier?: IdentifierLimit | IdentifierLimit[];
   }
 ): Promise<NextResponse | null> {
   const checks: Array<[string, number, number]> = [
     [`${opts.name}:ip:${getClientIp(req)}`, opts.windowSeconds, opts.limit],
   ];
-  if (opts.identifier?.value) {
-    checks.push([
-      `${opts.name}:id:${digest(opts.identifier.value.toLowerCase())}`,
-      opts.identifier.windowSeconds,
-      opts.identifier.limit,
-    ]);
+  const identifiers = opts.identifier ? (Array.isArray(opts.identifier) ? opts.identifier : [opts.identifier]) : [];
+  for (const id of identifiers) {
+    if (!id.value) continue;
+    // The window is part of the key so a per-minute and a per-day limit do not share a counter.
+    checks.push([`${opts.name}:id:${digest(id.value.toLowerCase())}:${id.windowSeconds}`, id.windowSeconds, id.limit]);
   }
 
   for (const [key, windowSeconds, max] of checks) {

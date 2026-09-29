@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
+import { rateLimit } from '@/lib/rateLimit';
+import { parseChatInput, type ChatMessage } from '@/lib/aiInput';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,11 +14,6 @@ const GEMINI_MODELS = [
   'gemini-flash-latest',
 ];
 
-interface ChatMessage {
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-}
-
 function containsThai(text: string): boolean {
   return /[\u0E00-\u0E7F]/.test(text);
 }
@@ -28,21 +25,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await req.json();
-    const userMessage: string = body.message || '';
-    const history: ChatMessage[] = Array.isArray(body.history) ? body.history : [];
-    const isThaiQuery = containsThai(userMessage);
+    // Every call can cost money (LLM) and reads the whole warehouse: cap per user and per day.
+    const limited = await rateLimit(req, {
+      name: 'ai-chat',
+      limit: 30,
+      windowSeconds: 60,
+      identifier: [
+        { value: String(user.id), limit: 10, windowSeconds: 60 },
+        { value: String(user.id), limit: 200, windowSeconds: 86400 },
+      ],
+    });
+    if (limited) return limited;
 
-    if (!userMessage.trim()) {
-      return NextResponse.json({
-        response: isThaiQuery ? 'กรุณากรอกข้อความหรือคำถามครับ' : 'Please enter a message or question.',
-      });
+    const parsed = parseChatInput(await req.json());
+    if (!parsed.ok) {
+      return NextResponse.json({ detail: parsed.detail }, { status: 422 });
     }
+    const userMessage: string = parsed.message;
+    const history: ChatMessage[] = parsed.history;
+    const isThaiQuery = containsThai(userMessage);
 
     // 1. Fetch real-time warehouse data snapshot for authenticated user in parallel
     const [productsRes, inventoryRes, txRes, locRes, catRes] = await Promise.all([
-      supabaseRest(`products?owner_id=eq.${user.id}&select=*&order=id.desc`),
-      supabaseRest(`inventory?select=*,product:products!inner(*)&product.owner_id=eq.${user.id}&order=id.desc`),
+      supabaseRest(`products?owner_id=eq.${user.id}&select=*&order=id.desc&limit=1000`),
+      supabaseRest(`inventory?select=*,product:products!inner(*)&product.owner_id=eq.${user.id}&order=id.desc&limit=2000`),
       supabaseRest(`transactions?user_id=eq.${user.id}&select=*,product:products(*)&order=created_at.desc&limit=25`),
       supabaseRest(`locations?owner_id=eq.${user.id}&select=*`),
       supabaseRest(`categories?owner_id=eq.${user.id}&select=*`),
@@ -221,10 +227,10 @@ AUTONOMOUS AGENT CAPABILITIES:
 
     // 5. Multi-Engine Failover Execution
     let aiResponseText = '';
-    const clientGeminiKey = req.headers.get('x-gemini-key')?.trim();
-    const clientGroqKey = req.headers.get('x-groq-key')?.trim();
-    const geminiKey = process.env.GEMINI_API_KEY || clientGeminiKey;
-    const groqKey = process.env.GROQ_API_KEY || clientGroqKey;
+    // Provider keys come from the server environment only. Accepting them from request
+    // headers would turn this endpoint into an open relay and keep users' keys in the browser.
+    const geminiKey = process.env.GEMINI_API_KEY;
+    const groqKey = process.env.GROQ_API_KEY;
 
     // Step A: Primary Engine - Google Gemini (Fast & Reliable Flash-Lite / Flash)
     if (geminiKey) {
@@ -239,10 +245,11 @@ AUTONOMOUS AGENT CAPABILITIES:
           ];
 
           const geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`,
             {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              // Key in a header, not the URL, so it does not end up in logs.
+              headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
               body: JSON.stringify({
                 systemInstruction: { parts: [{ text: systemPrompt }] },
                 contents: geminiContents,

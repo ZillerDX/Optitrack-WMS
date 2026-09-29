@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
 import { applyStockMovement } from '@/lib/stock';
+import { rateLimit } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,14 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
     }
+
+    const limited = await rateLimit(req, {
+      name: 'ai-approve',
+      limit: 60,
+      windowSeconds: 60,
+      identifier: { value: String(user.id), limit: 30, windowSeconds: 60 },
+    });
+    if (limited) return limited;
 
     const body = await req.json();
     const { po_number, product_name, sku, supplier, notes } = body;

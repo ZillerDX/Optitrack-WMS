@@ -33,6 +33,9 @@ export class FakePostgrest {
   rpc: Record<string, RpcHandler> = {};
   /** Make every request fail (simulates an outage). */
   failAll = false;
+  /** Requests to anything that is not Supabase (LLM providers, Google, ...). */
+  external: Array<{ url: string; init: any }> = [];
+  externalHandler: (url: string, init: any) => { status: number; body: any } = () => ({ status: 500, body: {} });
   private nextId = 1;
 
   constructor(specs: Record<string, TableSpec>) {
@@ -129,6 +132,11 @@ export class FakePostgrest {
   }
 
   private async handle(rawUrl: string, init: any) {
+    if (!rawUrl.startsWith(process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://supabase.test')) {
+      this.external.push({ url: rawUrl, init });
+      const { status, body } = this.externalHandler(rawUrl, init);
+      return this.response(body, status);
+    }
     const url = new URL(rawUrl);
     const method = (init.method ?? 'GET').toUpperCase();
     const prefer: string = init.headers?.Prefer ?? 'return=representation';
