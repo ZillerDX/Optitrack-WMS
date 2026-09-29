@@ -25,6 +25,7 @@ class TestGoogleAuth:
         """Test Google authentication auto-registers a new active user."""
         mock_payload = {
             "aud": MOCK_GOOGLE_CLIENT_ID,
+            "iss": "https://accounts.google.com",
             "email": "newgoogleuser@example.com",
             "email_verified": "true",
             "given_name": "Google",
@@ -65,6 +66,7 @@ class TestGoogleAuth:
 
         mock_payload = {
             "aud": MOCK_GOOGLE_CLIENT_ID,
+            "iss": "https://accounts.google.com",
             "email": "existing@example.com",
             "email_verified": True,
             "given_name": "Existing",
@@ -118,3 +120,37 @@ class TestGoogleAuth:
 
         assert response.status_code == 401
         assert "audience mismatch" in response.json()["detail"].lower()
+
+    async def test_google_auth_rejected_when_client_id_not_configured(self, client):
+        """Without GOOGLE_CLIENT_ID any app's token would pass, so refuse outright."""
+        settings.GOOGLE_CLIENT_ID = None
+
+        with patch("httpx.AsyncClient.get") as mock_get:
+            response = await client.post(
+                "/api/auth/google",
+                json={"credential": "any-token"}
+            )
+
+        assert response.status_code == 503
+        mock_get.assert_not_called()
+
+    async def test_google_auth_rejected_wrong_issuer(self, client):
+        """Test Google endpoint rejects tokens not issued by Google."""
+        mock_payload = {
+            "aud": MOCK_GOOGLE_CLIENT_ID,
+            "iss": "https://evil.example.com",
+            "email": "hacker@example.com",
+            "email_verified": True,
+            "sub": "99999"
+        }
+
+        with patch("httpx.AsyncClient.get") as mock_get:
+            mock_get.return_value = Response(200, json=mock_payload)
+
+            response = await client.post(
+                "/api/auth/google",
+                json={"credential": "token-with-bad-issuer"}
+            )
+
+        assert response.status_code == 401
+        assert "issuer" in response.json()["detail"].lower()

@@ -10,6 +10,17 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const token = body.credential?.trim();
 
+    // Without a configured client id we cannot tell our tokens from tokens Google
+    // issued to any other app, so refuse rather than accept every audience.
+    const expectedClientId = process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    if (!expectedClientId) {
+      console.error('[Google Auth] GOOGLE_CLIENT_ID is not configured');
+      return NextResponse.json(
+        { detail: 'Google sign-in is not configured' },
+        { status: 503 }
+      );
+    }
+
     if (!token) {
       return NextResponse.json(
         { detail: 'Google credential token is required' },
@@ -32,6 +43,20 @@ export async function POST(req: NextRequest) {
     }
 
     const payload = await googleRes.json();
+
+    if (payload.aud !== expectedClientId) {
+      console.warn('[Google Auth] audience mismatch');
+      return NextResponse.json(
+        { detail: 'Google token audience mismatch' },
+        { status: 401 }
+      );
+    }
+    if (payload.iss !== 'accounts.google.com' && payload.iss !== 'https://accounts.google.com') {
+      return NextResponse.json(
+        { detail: 'Invalid Google token issuer' },
+        { status: 401 }
+      );
+    }
     const email = payload.email?.toLowerCase().trim();
     const email_verified = payload.email_verified === 'true' || payload.email_verified === true;
 

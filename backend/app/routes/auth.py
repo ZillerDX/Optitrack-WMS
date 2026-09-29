@@ -178,6 +178,16 @@ async def google_auth(
     db: AsyncSession = Depends(get_db),
 ):
     """Authenticate or register a user using Google OAuth ID token."""
+    # Without a configured client id we cannot tell our tokens from tokens Google
+    # issued to any other app, so refuse rather than accept every audience.
+    expected_client_id = settings.GOOGLE_CLIENT_ID
+    if not expected_client_id:
+        logger.error("GOOGLE_CLIENT_ID is not configured; rejecting Google sign-in")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google sign-in is not configured",
+        )
+
     token = auth_data.credential.strip()
     if not token:
         raise HTTPException(
@@ -189,7 +199,8 @@ async def google_auth(
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
-                f"https://oauth2.googleapis.com/tokeninfo?id_token={token}"
+                "https://oauth2.googleapis.com/tokeninfo",
+                params={"id_token": token},
             )
     except Exception as exc:
         logger.exception("Failed to connect to Google verification endpoint")
@@ -208,9 +219,7 @@ async def google_auth(
 
     payload = resp.json()
 
-    # Validate Audience if GOOGLE_CLIENT_ID is configured
-    expected_client_id = settings.GOOGLE_CLIENT_ID
-    if expected_client_id and payload.get("aud") != expected_client_id:
+    if payload.get("aud") != expected_client_id:
         logger.warning(
             "Google token audience mismatch. Expected: %s, Received: %s",
             expected_client_id,
@@ -219,6 +228,13 @@ async def google_auth(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Google token audience mismatch",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if payload.get("iss") not in ("accounts.google.com", "https://accounts.google.com"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Google token issuer",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
