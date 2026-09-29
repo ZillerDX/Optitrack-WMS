@@ -69,6 +69,13 @@ BEGIN
     r := public.apply_stock_movement(a, pa, 'A1', 'ADJUST', 4);
     ASSERT pg_temp.qty(pa, 'A1') = 4 AND (r -> 'transaction' ->> 'unit_price')::numeric = 5, 'adjust sets the quantity';
 
+    -- ADJUST to 0 empties the shelf; 0 is not a valid amount for INBOUND / OUTBOUND
+    r := public.apply_stock_movement(a, pa, 'A1', 'ADJUST', 0);
+    ASSERT pg_temp.qty(pa, 'A1') = 0 AND (r -> 'inventory' ->> 'status') = 'OUT_OF_STOCK', 'adjust to zero';
+    PERFORM pg_temp.expect_error(format('SELECT public.apply_stock_movement(%s, %s, ''A1'', ''INBOUND'', 0)', a, pa), 'PT400', 'quantity must be a positive integer');
+    PERFORM pg_temp.expect_error(format('SELECT public.apply_stock_movement(%s, %s, ''A1'', ''OUTBOUND'', 0)', a, pa), 'PT400', 'quantity must be a positive integer');
+    PERFORM public.apply_stock_movement(a, pa, 'A1', 'ADJUST', 4);
+
     -- created_at and notes are stored
     r := public.apply_stock_movement(a, pa, 'A2', 'INBOUND', 1, 'cycle count', '2024-01-02 03:04:05+00');
     ASSERT (r -> 'transaction' ->> 'notes') = 'cycle count', 'notes stored';

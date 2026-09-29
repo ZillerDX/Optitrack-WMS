@@ -43,7 +43,8 @@ BEGIN
     IF p_type IS NULL OR p_type NOT IN ('INBOUND', 'OUTBOUND', 'ADJUST') THEN
         RAISE EXCEPTION 'type must be INBOUND, OUTBOUND or ADJUST' USING ERRCODE = 'PT400';
     END IF;
-    IF p_quantity IS NULL OR p_quantity <= 0 THEN
+    -- ADJUST sets the quantity, so 0 is a valid target (empty the shelf); the others move a positive amount.
+    IF p_quantity IS NULL OR p_quantity < 0 OR (p_quantity = 0 AND p_type <> 'ADJUST') THEN
         RAISE EXCEPTION 'quantity must be a positive integer' USING ERRCODE = 'PT400';
     END IF;
     IF p_location IS NULL OR length(btrim(p_location)) = 0 OR length(p_location) > 50 THEN
