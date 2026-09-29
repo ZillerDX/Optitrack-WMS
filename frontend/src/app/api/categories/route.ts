@@ -16,9 +16,12 @@ export async function GET(req: NextRequest) {
 
     // Auto-seed standard categories for user if none exist
     if (Array.isArray(data) && data.length === 0) {
+      // Concurrent first loads all reach this point; ignore-duplicates keeps the
+      // seeding idempotent (unique owner_id + name) instead of creating copies.
       const seedPromises = DEFAULT_CATEGORIES.map(name =>
-        supabaseRest('categories', {
+        supabaseRest('categories?on_conflict=owner_id,name', {
           method: 'POST',
+          headers: { Prefer: 'return=minimal,resolution=ignore-duplicates' },
           body: JSON.stringify({ owner_id: user.id, name }),
         })
       );
@@ -41,14 +44,24 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
+
+    const name = typeof body.name === 'string' ? body.name.trim() : '';
+    if (!name || name.length > 100) {
+      return NextResponse.json({ detail: 'name is required (max 100 characters)' }, { status: 422 });
+    }
+
     const res = await supabaseRest('categories', {
       method: 'POST',
-      body: JSON.stringify({
-        owner_id: user.id,
-        name: body.name,
-      }),
+      body: JSON.stringify({ owner_id: user.id, name }),
     });
-    if (!res.ok) return NextResponse.json({ detail: await res.text() }, { status: 400 });
+    if (res.status === 409) {
+      // uq_categories_owner_name
+      return NextResponse.json({ detail: `Category '${name}' already exists` }, { status: 409 });
+    }
+    if (!res.ok) {
+      console.error('[Create Category Error]:', await res.text());
+      return NextResponse.json({ detail: 'Failed to create category' }, { status: 400 });
+    }
     const created = await res.json();
     return NextResponse.json(created[0]);
   } catch (err: any) {

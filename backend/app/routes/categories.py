@@ -4,6 +4,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -53,7 +54,15 @@ async def create_category(
 
     new_category = Category(**category_data.model_dump(), owner_id=current_user.id)
     db.add(new_category)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        # Lost a race with a concurrent create: uq_categories_owner_name.
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Category '{category_data.name}' already exists"
+        )
     await db.refresh(new_category)
 
     return new_category
@@ -95,7 +104,14 @@ async def update_category(
             )
 
     category.name = category_data.name
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Category '{category_data.name}' already exists"
+        )
     await db.refresh(category)
 
     return category

@@ -2,7 +2,7 @@
 Location model for warehouse locations.
 """
 
-from sqlalchemy import Column, Integer, String, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -12,10 +12,11 @@ class Location(Base):
     Stores valid warehouse locations.
     """
     __tablename__ = "locations"
+    __table_args__ = (UniqueConstraint("owner_id", "name", name="uq_locations_owner_name"),)
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    name = Column(String(50), index=True, nullable=False) # Remove unique globally
+    name = Column(String(50), index=True, nullable=False)  # unique per owner (uq_locations_owner_name)
     description = Column(String(255), nullable=True)
     capacity = Column(Integer, nullable=False, default=0)
 

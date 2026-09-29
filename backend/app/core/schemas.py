@@ -213,6 +213,8 @@ class TransactionWithProductResponse(BaseModel):
 # ================= สกีมาหมวดหมู่ =================
 
 class CategoryBase(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     name: str = Field(..., min_length=1, max_length=100)
 
 
@@ -288,6 +290,8 @@ class SalesVsCostData(BaseModel):
 # ================= สกีมาสถานที่ =================
 
 class LocationBase(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     name: str = Field(..., min_length=1, max_length=50)
     description: Optional[str] = Field(None, max_length=255)
     capacity: int = Field(..., ge=0)
@@ -298,6 +302,8 @@ class LocationCreate(LocationBase):
 
 
 class LocationUpdate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     name: Optional[str] = Field(None, min_length=1, max_length=50)
     description: Optional[str] = Field(None, max_length=255)
     capacity: Optional[int] = Field(None, ge=0)

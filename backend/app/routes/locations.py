@@ -4,6 +4,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, func, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -59,7 +60,15 @@ async def create_location(
         owner_id=current_user.id
     )
     db.add(new_location)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        # Lost a race with a concurrent create: uq_locations_owner_name.
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Location '{location_data.name}' already exists"
+        )
     await db.refresh(new_location)
     return new_location
 
@@ -168,7 +177,14 @@ async def update_location(
     if "capacity" in update_data:
         location.capacity = update_data["capacity"]
 
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Location '{new_name}' already exists"
+        )
     await db.refresh(location)
     return location
 
