@@ -24,7 +24,7 @@ export function inventoryStatus(quantity: number, minStockLevel: number): string
 /**
  * Validate a stock movement for `userId` and apply it to inventory.
  *
- * Mirrors the FastAPI transaction rules: the product and the location must
+ * Rules: the product and the location must
  * belong to the caller, OUTBOUND can never exceed available stock (no silent
  * clamping), INBOUND/ADJUST cannot exceed the location capacity, and the price
  * always comes from the product record, never from the client.

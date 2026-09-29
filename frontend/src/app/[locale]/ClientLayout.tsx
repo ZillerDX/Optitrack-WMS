@@ -124,7 +124,7 @@ export default function ClientLayout({
             </div>
             {user?.image_url && (
               <Image
-                src={user.image_url.startsWith('http') ? user.image_url : `${process.env.NEXT_PUBLIC_API_URL || ''}${user.image_url}`}
+                src={user.image_url}
                 alt="User"
                 width={32}
                 height={32}

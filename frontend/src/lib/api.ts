@@ -93,16 +93,6 @@ export const api = {
     return response.data;
   },
 
-  getProductById: async (id: number) => {
-    const response = await apiClient.get(`/api/products/${id}`);
-    return response.data;
-  },
-
-  getProductBySku: async (sku: string) => {
-    const response = await apiClient.get(`/api/products/sku/${sku}`);
-    return response.data;
-  },
-
   createProduct: async (data: any) => {
     const response = await apiClient.post('/api/products/', data);
     return response.data;
@@ -159,11 +149,6 @@ export const api = {
     return response.data;
   },
 
-  getInventoryById: async (id: number) => {
-    const response = await apiClient.get(`/api/inventory/${id}`);
-    return response.data;
-  },
-
   createInventory: async (data: {
     product_id: number;
     location: string;
@@ -186,11 +171,6 @@ export const api = {
       params.location = location;
     }
     const response = await apiClient.get('/api/transactions/', { params });
-    return response.data;
-  },
-
-  getTransactionById: async (id: number) => {
-    const response = await apiClient.get(`/api/transactions/${id}`);
     return response.data;
   },
 
@@ -225,11 +205,6 @@ export const api = {
 
   createCategory: async (name: string) => {
     const response = await apiClient.post('/api/categories/', { name });
-    return response.data;
-  },
-
-  updateCategory: async (id: number, name: string) => {
-    const response = await apiClient.put(`/api/categories/${id}`, { name });
     return response.data;
   },
 

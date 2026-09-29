@@ -35,7 +35,6 @@ electron/node_modules/
 *.tsbuildinfo
 
 # Local uploads and generated files
-backend/uploads/
 !frontend/public/sw.js
 frontend/public/workbox-*.js
 frontend/public/worker-*.js
