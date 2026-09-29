@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
+import { applyStockMovement, MOVEMENT_TYPES, MovementType } from '@/lib/stock';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
     const user = await getAuthUser(req);
-    if (!user) return NextResponse.json([]);
+    if (!user) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
     const location = searchParams.get('location');
@@ -18,13 +20,13 @@ export async function GET(req: NextRequest) {
     const res = await supabaseRest(path);
     if (!res.ok) {
       console.error('[Supabase Transactions Error]:', await res.text());
-      return NextResponse.json([]);
+      return NextResponse.json({ detail: 'Failed to load data' }, { status: 500 });
     }
     const data = await res.json();
     return NextResponse.json(Array.isArray(data) ? data : []);
   } catch (err: any) {
     console.error('[GET Transactions Error]:', err);
-    return NextResponse.json([]);
+    return NextResponse.json({ detail: 'Failed to load data' }, { status: 500 });
   }
 }
 
@@ -34,52 +36,59 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const ref_code = body.ref_code || `TXN-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    const qty = Number(body.quantity) || 1;
-    const prodId = Number(body.product_id);
-    const loc = body.location || 'Zone A-01';
 
-    let unitPrice = Number(body.unit_price) || 0;
-    let totalPrice = Number(body.total_price) || 0;
-    let minStockLevel = 5;
+    // Validate everything the client controls. Price, status, ref_code and
+    // ownership are decided server-side.
+    const type = body.type as MovementType;
+    const quantity = Number(body.quantity);
+    const productId = Number(body.product_id);
+    const location = typeof body.location === 'string' ? body.location.trim() : '';
+    const notes = typeof body.notes === 'string' ? body.notes : null;
 
-    // Fetch product details for accurate pricing and threshold
-    try {
-      const prodRes = await supabaseRest(`products?id=eq.${prodId}&select=cost_price,sell_price,min_stock_level`);
-      if (prodRes.ok) {
-        const prods = await prodRes.json();
-        if (Array.isArray(prods) && prods[0]) {
-          const prod = prods[0];
-          minStockLevel = Number(prod.min_stock_level) || 5;
-          const cost = Number(prod.cost_price) || 0;
-          const sell = Number(prod.sell_price) || 0;
-          if (unitPrice === 0) {
-            unitPrice = body.type === 'INBOUND' ? (cost > 0 ? cost : sell) : (sell > 0 ? sell : cost);
-          }
-          if (totalPrice === 0) {
-            totalPrice = unitPrice * qty;
-          }
-        }
-      }
-    } catch (pErr) {
-      console.warn('[Fetch Product Price Error]:', pErr);
+    if (!MOVEMENT_TYPES.includes(type)) {
+      return NextResponse.json({ detail: 'type must be INBOUND, OUTBOUND or ADJUST' }, { status: 400 });
     }
-
-    const txPayload: any = {
-      ref_code,
-      type: body.type,
-      quantity: qty,
-      unit_price: unitPrice,
-      total_price: totalPrice,
-      status: body.status || 'COMPLETED',
-      location: loc,
-      notes: body.notes || null,
-      user_id: user.id,
-      product_id: prodId,
-    };
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      return NextResponse.json({ detail: 'quantity must be a positive integer' }, { status: 400 });
+    }
+    if (!Number.isInteger(productId) || productId <= 0) {
+      return NextResponse.json({ detail: 'product_id must be a positive integer' }, { status: 400 });
+    }
+    if (!location || location.length > 50) {
+      return NextResponse.json({ detail: 'location is required (max 50 characters)' }, { status: 400 });
+    }
+    if (notes !== null && notes.length > 500) {
+      return NextResponse.json({ detail: 'notes must be at most 500 characters' }, { status: 400 });
+    }
+    let createdAt: string | undefined;
     if (body.created_at) {
-      txPayload.created_at = body.created_at;
+      const parsed = new Date(body.created_at);
+      if (Number.isNaN(parsed.getTime())) {
+        return NextResponse.json({ detail: 'created_at is not a valid date' }, { status: 400 });
+      }
+      createdAt = parsed.toISOString();
     }
+
+    // Ownership, capacity and stock rules; also applies the inventory change.
+    const movement = await applyStockMovement({ userId: user.id, productId, location, type, quantity });
+    if (!movement.ok) {
+      return NextResponse.json({ detail: movement.detail }, { status: movement.status });
+    }
+
+    const day = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const txPayload: Record<string, unknown> = {
+      ref_code: `TXN-${day}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`,
+      type,
+      quantity,
+      unit_price: movement.unitPrice,
+      total_price: movement.unitPrice * quantity,
+      status: 'COMPLETED',
+      location,
+      notes,
+      user_id: user.id,
+      product_id: productId,
+    };
+    if (createdAt) txPayload.created_at = createdAt;
 
     const res = await supabaseRest('transactions', {
       method: 'POST',
@@ -87,49 +96,15 @@ export async function POST(req: NextRequest) {
     });
 
     if (!res.ok) {
-      return NextResponse.json({ detail: await res.text() }, { status: 400 });
+      // Keep stock and history consistent: undo the inventory change.
+      await movement.revert();
+      console.error('[Create Transaction Error]:', await res.text());
+      return NextResponse.json({ detail: 'Failed to record transaction' }, { status: 500 });
     }
     const created = await res.json();
-
-    // Synchronize inventory in target location
-    try {
-      const invRes = await supabaseRest(`inventory?product_id=eq.${prodId}&location=eq.${encodeURIComponent(loc)}`);
-      if (invRes.ok) {
-        const invList = await invRes.json();
-        if (Array.isArray(invList) && invList.length > 0) {
-          const invItem = invList[0];
-          const currentQty = Number(invItem.quantity) || 0;
-          const newQty = body.type === 'INBOUND' 
-            ? currentQty + qty 
-            : body.type === 'OUTBOUND'
-              ? Math.max(0, currentQty - qty)
-              : qty;
-          const newStatus = newQty <= 0 ? 'OUT_OF_STOCK' : newQty <= minStockLevel ? 'LOW_STOCK' : 'IN_STOCK';
-          await supabaseRest(`inventory?id=eq.${invItem.id}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ quantity: newQty, status: newStatus }),
-          });
-        } else {
-          // If inventory record does not exist yet in this location, create it
-          const newQty = body.type === 'INBOUND' ? qty : 0;
-          const newStatus = newQty <= 0 ? 'OUT_OF_STOCK' : newQty <= minStockLevel ? 'LOW_STOCK' : 'IN_STOCK';
-          await supabaseRest('inventory', {
-            method: 'POST',
-            body: JSON.stringify({
-              product_id: prodId,
-              location: loc,
-              quantity: newQty,
-              status: newStatus,
-            }),
-          });
-        }
-      }
-    } catch (invErr) {
-      console.warn('[Sync Inventory Error]:', invErr);
-    }
-
-    return NextResponse.json(created[0]);
+    return NextResponse.json(created[0], { status: 201 });
   } catch (err: any) {
-    return NextResponse.json({ detail: err.message }, { status: 500 });
+    console.error('[POST Transactions Error]:', err);
+    return NextResponse.json({ detail: 'Failed to create transaction' }, { status: 500 });
   }
 }

@@ -1,14 +1,19 @@
 # OptiTrack WMS - Database Schema
 
-This document describes the database structure currently implemented in the FastAPI backend under `backend/app/models/` and the related business rules enforced by the route layer.
+This document describes the database used by the Next.js API (`frontend/src/app/api`). The schema is defined
+by the SQL files in `supabase/migrations/` (`0000_baseline.sql` ... `0007_rate_limits.sql`, applied in order and
+idempotent), which are the source of truth. The business rules below are enforced by the Route Handlers.
 
 ## Database Engine
 
-- **Production database:** PostgreSQL via `postgresql+asyncpg`
-- **ORM:** SQLAlchemy 2.0 async
-- **Session pattern:** request-scoped `AsyncSession` from `app/core/database.py`
-- **Schema bootstrap:** `python -m scripts.init_db` or `INIT_DB_ON_STARTUP=True` in development
-- **Test database:** SQLite with `aiosqlite`
+- **Database:** PostgreSQL (Supabase)
+- **Access:** PostgREST through the service-role key, from the server only (`src/lib/supabase.ts`)
+- **Row Level Security:** enabled on every table with no policies, so the public `anon` / `authenticated` roles
+  cannot read or write anything; tenant isolation is done by the handlers (`owner_id` / `user_id` filters)
+- **Schema changes:** add a numbered file to `supabase/migrations/`; CI applies all of them twice to an empty
+  PostgreSQL to prove they run and are idempotent
+- **Additional tables/columns added after the baseline:** `users.token_version` (session revocation),
+  `rate_limits` (shared rate limiter), unique constraints on locations, categories and product SKUs
 
 ## Entity Relationship Diagram
 
@@ -348,7 +353,5 @@ The dashboard uses existing tables instead of dedicated aggregate tables.
 - **No separate tenant table:** the authenticated user is the tenant boundary.
 - **No direct location FK:** inventory and transactions store `location` as text.
 - **No category FK:** products store `category` as text.
-- **Per-owner uniqueness:** SKU, category name, and location name uniqueness are enforced by route logic.
+- **Per-owner uniqueness:** SKU, category name and location name are unique per owner, enforced by database constraints (`uq_products_owner_sku`, `uq_categories_owner_name`, `uq_locations_owner_name`) and checked in the handlers for a clean 409.
 - **Stock previews are not persisted:** inbound/outbound "items after" and "items left" values are computed in the frontend from current inventory data.
-- **Docker bootstrap:** `db-init` runs `python -m scripts.init_db` before the API starts.
-- **Compatibility bootstrap:** schema init adds `locations.capacity` if an existing table is missing that column.

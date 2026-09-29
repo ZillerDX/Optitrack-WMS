@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
+import { applyStockMovement } from '@/lib/stock';
+import { rateLimit } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,46 +12,95 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
     }
 
+    const limited = await rateLimit(req, {
+      name: 'ai-approve',
+      limit: 60,
+      windowSeconds: 60,
+      identifier: { value: String(user.id), limit: 30, windowSeconds: 60 },
+    });
+    if (limited) return limited;
+
     const body = await req.json();
-    const {
-      po_number,
-      product_id,
-      product_name,
-      sku,
-      supplier,
-      reorder_qty,
-      unit_cost,
-      total_amount,
-      target_location,
-      notes,
-    } = body;
+    const { po_number, product_name, sku, supplier, notes } = body;
 
-    const qty = Number(reorder_qty) || 1;
-    const prodId = Number(product_id);
-    const loc = target_location || 'Zone A-01';
-    const unitPrice = Number(unit_cost) || 0;
-    const totalPrice = Number(total_amount) || unitPrice * qty;
-    const poNum = po_number || `PO-${Date.now()}`;
+    const qty = Number(body.reorder_qty);
+    const prodId = Number(body.product_id);
+    const loc = typeof body.target_location === 'string' ? body.target_location.trim() : '';
+    const poNum =
+      typeof po_number === 'string' && po_number.trim() && po_number.length <= 100
+        ? po_number.trim()
+        : `PO-${Date.now()}`;
 
-    // 1. Store or update Purchase Order record in Supabase
+    if (!Number.isInteger(qty) || qty <= 0) {
+      return NextResponse.json({ detail: 'reorder_qty must be a positive integer' }, { status: 400 });
+    }
+    if (!Number.isInteger(prodId) || prodId <= 0) {
+      return NextResponse.json({ detail: 'product_id must be a positive integer' }, { status: 400 });
+    }
+    if (!loc || loc.length > 50) {
+      return NextResponse.json({ detail: 'target_location is required (max 50 characters)' }, { status: 400 });
+    }
+
+    // Ownership of the product and location, capacity, and the price all come from
+    // the server-side records; the client-supplied cost/total are ignored.
+    const movement = await applyStockMovement({
+      userId: user.id,
+      productId: prodId,
+      location: loc,
+      type: 'INBOUND',
+      quantity: qty,
+    });
+    if (!movement.ok) {
+      return NextResponse.json({ detail: movement.detail }, { status: movement.status });
+    }
+
+    const unitPrice = movement.unitPrice;
+    const totalPrice = unitPrice * qty;
+
+    // Record the receipt; if that fails, undo the stock change so history and stock agree.
+    const txRes = await supabaseRest('transactions', {
+      method: 'POST',
+      body: JSON.stringify({
+        ref_code: poNum,
+        type: 'INBOUND',
+        quantity: qty,
+        unit_price: unitPrice,
+        total_price: totalPrice,
+        status: 'COMPLETED',
+        location: loc,
+        notes: `Restock PO: ${poNum} (AI Reorder Agent)`,
+        user_id: user.id,
+        product_id: prodId,
+      }),
+    });
+    if (!txRes.ok) {
+      await movement.revert();
+      console.error('[Approve Reorder Transaction Error]:', await txRes.text());
+      return NextResponse.json(
+        { detail: 'Failed to record the receipt (the PO number may already exist).' },
+        { status: 409 }
+      );
+    }
+    const createdTx = (await txRes.json())[0] ?? null;
+
     const poPayload = {
       po_number: poNum,
       user_id: user.id,
-      supplier: supplier || 'Vendor',
+      supplier: typeof supplier === 'string' && supplier ? supplier : 'Vendor',
       total_amount: totalPrice,
       status: 'APPROVED',
       items: [
         {
           product_id: prodId,
-          name: product_name,
-          sku: sku,
+          name: typeof product_name === 'string' ? product_name : null,
+          sku: typeof sku === 'string' ? sku : null,
           quantity: qty,
           unit_cost: unitPrice,
           total: totalPrice,
           location: loc,
         },
       ],
-      notes: notes || '1-Click approved via AI Predictive Reorder Agent',
+      notes: typeof notes === 'string' && notes ? notes : '1-Click approved via AI Predictive Reorder Agent',
       approved_at: new Date().toISOString(),
     };
 
@@ -60,83 +111,12 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify(poPayload),
       });
       if (poRes.ok) {
-        const poData = await poRes.json();
-        savedPO = poData[0];
+        savedPO = (await poRes.json())[0] ?? null;
+      } else {
+        console.warn('[Save PO Warning]:', await poRes.text());
       }
     } catch (poErr) {
       console.warn('[Save PO Warning]:', poErr);
-    }
-
-    // 2. Automatically record INBOUND transaction to fulfill warehouse receipt
-    const txPayload = {
-      ref_code: poNum,
-      type: 'INBOUND',
-      quantity: qty,
-      unit_price: unitPrice,
-      total_price: totalPrice,
-      status: 'COMPLETED',
-      location: loc,
-      notes: `Restock PO: ${poNum} (AI Reorder Agent)`,
-      user_id: user.id,
-      product_id: prodId,
-    };
-
-    const txRes = await supabaseRest('transactions', {
-      method: 'POST',
-      body: JSON.stringify(txPayload),
-    });
-
-    let createdTx = null;
-    if (txRes.ok) {
-      const txData = await txRes.json();
-      createdTx = txData[0];
-    }
-
-    // 3. Atomically update inventory in the target location
-    try {
-      // Get min_stock_level for proper status tagging
-      let minStockLevel = 5;
-      const prodRes = await supabaseRest(`products?id=eq.${prodId}&select=min_stock_level`);
-      if (prodRes.ok) {
-        const pList = await prodRes.json();
-        if (pList[0]) minStockLevel = Number(pList[0].min_stock_level) || 5;
-      }
-
-      const invRes = await supabaseRest(
-        `inventory?product_id=eq.${prodId}&location=eq.${encodeURIComponent(loc)}`
-      );
-      if (invRes.ok) {
-        const invList = await invRes.json();
-        if (Array.isArray(invList) && invList.length > 0) {
-          const invItem = invList[0];
-          const newQty = (Number(invItem.quantity) || 0) + qty;
-          const newStatus = newQty <= 0 ? 'OUT_OF_STOCK' : newQty <= minStockLevel ? 'LOW_STOCK' : 'IN_STOCK';
-          await supabaseRest(`inventory?id=eq.${invItem.id}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ quantity: newQty, status: newStatus }),
-          });
-
-          // Delete extra duplicates if any exist
-          if (invList.length > 1) {
-            for (let i = 1; i < invList.length; i++) {
-              await supabaseRest(`inventory?id=eq.${invList[i].id}`, { method: 'DELETE' });
-            }
-          }
-        } else {
-          const newStatus = qty <= minStockLevel ? 'LOW_STOCK' : 'IN_STOCK';
-          await supabaseRest('inventory', {
-            method: 'POST',
-            body: JSON.stringify({
-              product_id: prodId,
-              location: loc,
-              quantity: qty,
-              status: newStatus,
-            }),
-          });
-        }
-      }
-    } catch (invErr) {
-      console.warn('[Sync Inventory in Approve PO Error]:', invErr);
     }
 
     return NextResponse.json({
@@ -147,6 +127,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     console.error('[Approve Reorder Error]:', err);
-    return NextResponse.json({ detail: err.message }, { status: 500 });
+    return NextResponse.json({ detail: 'Failed to approve purchase order' }, { status: 500 });
   }
 }

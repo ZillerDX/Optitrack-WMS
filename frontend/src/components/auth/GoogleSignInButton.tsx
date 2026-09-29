@@ -77,15 +77,12 @@ export function GoogleSignInButton({ mode = 'signin', onError, className = '' }:
           setIsLoading(true);
           try {
             const data = await api.loginWithGoogle(response.credential);
-            if (data.access_token) {
-              localStorage.setItem('token', data.access_token);
-              if (data.user) {
-                localStorage.setItem('user', JSON.stringify(data.user));
-              }
+            if (data.user) {
+              localStorage.setItem('user', JSON.stringify(data.user));
               // Redirect to dashboard
               router.push('/dashboard');
             } else {
-              throw new Error('No access token in response');
+              throw new Error('No user in response');
             }
           } catch (err: any) {
             console.error('Google Auth Error:', err);

@@ -1,70 +1,18 @@
 /**
- * เลเยอร์การรวม API
- * จัดการคำขอ HTTP ไปยัง backend FastAPI ด้วยการยืนยันตัวตน JWT
+ * API client. The API is served by this same Next.js app, so requests are same-origin and
+ * the session is an httpOnly cookie the browser attaches by itself: no token is stored in
+ * or read by JavaScript. `user` in localStorage is only a non-secret UI hint (name, avatar).
  */
 
-import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance } from 'axios';
 
-export const getStoredApiUrl = (): string => {
-  if (typeof window !== 'undefined') {
-    const custom = localStorage.getItem('optitrack_api_url');
-    if (custom) return custom;
-    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-      return '';
-    }
-    return process.env.NEXT_PUBLIC_API_URL || '';
-  }
-  return process.env.NEXT_PUBLIC_API_URL || '';
-};
-
-export const setStoredApiUrl = (url: string) => {
-  if (typeof window !== 'undefined') {
-    const cleanUrl = url.replace(/\/+$/, '');
-    localStorage.setItem('optitrack_api_url', cleanUrl);
-    apiClient.defaults.baseURL = cleanUrl;
-  }
-};
-
-const API_BASE_URL = getStoredApiUrl();
-
-// สร้างอินสแตนซ์ axios
 const apiClient: AxiosInstance = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: '',
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
-
-// ตัวดักจับคำขอเพื่อเพิ่มโทเค็น JWT และ dynamic base URL
-apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    if (typeof window !== 'undefined') {
-      const customUrl = localStorage.getItem('optitrack_api_url');
-      if (customUrl) {
-        config.baseURL = customUrl.replace(/\/+$/, '');
-      } else if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        config.baseURL = '';
-      } else if (process.env.NEXT_PUBLIC_API_URL) {
-        config.baseURL = process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '');
-      } else {
-        config.baseURL = '';
-      }
-      const token = localStorage.getItem('token');
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-      const customGeminiKey = localStorage.getItem('optitrack_gemini_key')?.trim();
-      if (customGeminiKey && config.headers) {
-        config.headers['x-gemini-key'] = customGeminiKey;
-      }
-    }
-
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
 
 // ตัวดักจับการตอบกลับเพื่อจัดการข้อผิดพลาด
 apiClient.interceptors.response.use(
@@ -81,7 +29,6 @@ apiClient.interceptors.response.use(
                            (window.location.pathname.includes('/login') || window.location.pathname.includes('/signup'));
 
       if (!isAuthEndpoint && !isOnAuthPage && typeof window !== 'undefined') {
-        localStorage.removeItem('token');
         localStorage.removeItem('user');
         window.location.href = '/login';
       }
@@ -106,6 +53,11 @@ export const api = {
 
   forgotPassword: async (email: string) => {
     const response = await apiClient.post('/api/auth/forgot-password', { email });
+    return response.data;
+  },
+
+  resetPassword: async (token: string, newPassword: string) => {
+    const response = await apiClient.post('/api/auth/reset-password', { token, new_password: newPassword });
     return response.data;
   },
 
@@ -138,16 +90,6 @@ export const api = {
   // สินค้า
   getProducts: async () => {
     const response = await apiClient.get('/api/products/', { params: { limit: 1000 } });
-    return response.data;
-  },
-
-  getProductById: async (id: number) => {
-    const response = await apiClient.get(`/api/products/${id}`);
-    return response.data;
-  },
-
-  getProductBySku: async (sku: string) => {
-    const response = await apiClient.get(`/api/products/sku/${sku}`);
     return response.data;
   },
 
@@ -207,11 +149,6 @@ export const api = {
     return response.data;
   },
 
-  getInventoryById: async (id: number) => {
-    const response = await apiClient.get(`/api/inventory/${id}`);
-    return response.data;
-  },
-
   createInventory: async (data: {
     product_id: number;
     location: string;
@@ -234,11 +171,6 @@ export const api = {
       params.location = location;
     }
     const response = await apiClient.get('/api/transactions/', { params });
-    return response.data;
-  },
-
-  getTransactionById: async (id: number) => {
-    const response = await apiClient.get(`/api/transactions/${id}`);
     return response.data;
   },
 
@@ -273,11 +205,6 @@ export const api = {
 
   createCategory: async (name: string) => {
     const response = await apiClient.post('/api/categories/', { name });
-    return response.data;
-  },
-
-  updateCategory: async (id: number, name: string) => {
-    const response = await apiClient.put(`/api/categories/${id}`, { name });
     return response.data;
   },
 

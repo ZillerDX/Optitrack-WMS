@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
+import { rateLimit } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +10,14 @@ export async function GET(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
     }
+
+    const limited = await rateLimit(req, {
+      name: 'ai-predictive',
+      limit: 60,
+      windowSeconds: 60,
+      identifier: { value: String(user.id), limit: 20, windowSeconds: 60 },
+    });
+    if (limited) return limited;
 
     // 1. Fetch real-time products, inventory, transactions, and existing POs in parallel
     const [prodRes, invRes, txRes, poRes] = await Promise.all([

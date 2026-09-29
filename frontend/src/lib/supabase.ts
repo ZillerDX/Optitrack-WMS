@@ -1,24 +1,36 @@
+import { createHash } from 'crypto';
 import { SignJWT, jwtVerify } from 'jose';
+import { isSameOriginRequest, readSessionCookie } from '@/lib/session';
 
-const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hdvalaxaujjyqcejhyqb.supabase.co';
+/**
+ * Required server-side configuration. Read lazily (at request time) so that
+ * `next build` succeeds without secrets, but a misconfigured deployment fails
+ * loudly instead of silently falling back to a publicly known key.
+ */
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value || !value.trim()) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
 
-const SUPABASE_ANON_KEY =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkdmFsYXhhdWpqeXFjZWpoeXFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyNjYwODQsImV4cCI6MjEwMzg0MjA4NH0.JbTv5a-PwcLgVdie7wZej1hZFBXgLErHDun3kE_I7wg';
-
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const SUPABASE_KEY = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY;
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.SECRET_KEY || 'optitrack-dev-secret-key-32-chars-minimum-safe'
-);
+function getJwtSecret(): Uint8Array {
+  const secret = requireEnv('SECRET_KEY');
+  if (secret.length < 32) {
+    throw new Error('SECRET_KEY must be at least 32 characters long');
+  }
+  return new TextEncoder().encode(secret);
+}
 
 export async function supabaseRest(path: string, options: RequestInit = {}) {
-  const url = `${SUPABASE_URL}/rest/v1/${path}`;
+  // Service-role key only: all access control is enforced in these route
+  // handlers (RLS denies anon). Never fall back to the anon key.
+  const key = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
+  const url = `${requireEnv('NEXT_PUBLIC_SUPABASE_URL')}/rest/v1/${path}`;
   const headers = {
-    apikey: SUPABASE_KEY,
-    Authorization: `Bearer ${SUPABASE_KEY}`,
+    apikey: key,
+    Authorization: `Bearer ${key}`,
     'Content-Type': 'application/json',
     Prefer: 'return=representation',
     ...(options.headers || {}),
@@ -32,18 +44,51 @@ export async function supabaseRest(path: string, options: RequestInit = {}) {
   return response;
 }
 
-export async function createSessionToken(payload: { sub: string; email: string; role: string }) {
+export async function createSessionToken(payload: { sub: string; email: string; role: string; tv?: number }) {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('24h')
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 }
 
 export async function verifySessionToken(token: string) {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecret(), { algorithms: ['HS256'] });
+    // Scoped tokens (e.g. the emailed password-reset link) are not sessions.
+    if (payload.scope !== undefined) return null;
     return payload;
+  } catch {
+    return null;
+  }
+}
+
+export const PASSWORD_RESET_SCOPE = 'password_reset';
+
+/** Digest of the current password hash; embedded in reset tokens so they die once the password changes. */
+export function passwordFingerprint(passwordHash: string): string {
+  return createHash('sha256').update(passwordHash).digest('hex').slice(0, 16);
+}
+
+export async function createPasswordResetToken(userId: number, passwordHash: string) {
+  return await new SignJWT({
+    sub: String(userId),
+    scope: PASSWORD_RESET_SCOPE,
+    pwd: passwordFingerprint(passwordHash),
+  })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('1h')
+    .sign(getJwtSecret());
+}
+
+export async function verifyPasswordResetToken(token: string) {
+  try {
+    const { payload } = await jwtVerify(token, getJwtSecret(), { algorithms: ['HS256'] });
+    if (payload.scope !== PASSWORD_RESET_SCOPE || !payload.sub || typeof payload.pwd !== 'string') {
+      return null;
+    }
+    return payload as typeof payload & { sub: string; pwd: string };
   } catch {
     return null;
   }
@@ -55,17 +100,59 @@ export interface AuthUser {
   role: string;
 }
 
+interface CachedUser {
+  at: number;
+  user: AuthUser | null;
+  tokenVersion: number;
+}
+
+// Sessions are re-checked against the database so that deactivating a user or
+// bumping `token_version` (password reset, logout) revokes them. A few seconds of
+// cache keeps that to one query per user, not per request; the trade-off is that
+// another serverless instance may accept a revoked token for up to this long.
+const AUTH_CACHE_TTL_MS = 5_000;
+const authCache = new Map<number, CachedUser>();
+
+export function clearAuthCache(userId?: number) {
+  if (userId === undefined) authCache.clear();
+  else authCache.delete(userId);
+}
+
 export async function getAuthUser(req: Request): Promise<AuthUser | null> {
+  // An explicit Authorization header wins (API clients, tests). Otherwise the session
+  // cookie is used, and then a request that changes data must be same-origin (CSRF).
   const authHeader = req.headers.get('Authorization') || '';
-  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  let token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  if (!token) {
+    token = readSessionCookie(req) ?? '';
+    if (token && !isSameOriginRequest(req)) return null;
+  }
   if (!token) return null;
 
   const payload = await verifySessionToken(token);
   if (!payload || !payload.sub) return null;
 
-  return {
-    id: Number(payload.sub),
-    email: (payload.email as string) || '',
-    role: (payload.role as string) || 'ADMIN',
-  };
+  const id = Number(payload.sub);
+  if (!Number.isInteger(id) || id <= 0) return null;
+
+  let entry = authCache.get(id);
+  if (!entry || Date.now() - entry.at > AUTH_CACHE_TTL_MS) {
+    // select=* (not the column list): before session_revocation.sql has run there is no
+    // token_version column, and naming it would 400 and log every user out.
+    const res = await supabaseRest(`users?id=eq.${id}&select=*`);
+    if (!res.ok) return null; // fail closed
+    const rows = await res.json();
+    const row = Array.isArray(rows) ? rows[0] : null;
+    entry = {
+      at: Date.now(),
+      user: row && row.is_active ? { id: row.id, email: row.email, role: 'ADMIN' } : null,
+      tokenVersion: Number(row?.token_version) || 0,
+    };
+    authCache.set(id, entry);
+  }
+
+  if (!entry.user) return null;
+  // Tokens issued before token_version existed carry no `tv`: treat them as version 0.
+  if ((Number(payload.tv) || 0) !== entry.tokenVersion) return null;
+  return entry.user;
 }
