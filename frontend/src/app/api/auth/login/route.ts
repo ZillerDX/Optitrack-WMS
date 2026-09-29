@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit } from '@/lib/rateLimit';
 import bcrypt from 'bcryptjs';
 import { supabaseRest, createSessionToken } from '@/lib/supabase';
 
@@ -7,6 +8,15 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+
+    // Throttle credential guessing per IP and per target account.
+    const limited = await rateLimit(req, {
+      name: 'login',
+      limit: 5,
+      windowSeconds: 60,
+      identifier: { value: typeof body.email === 'string' ? body.email.trim() : '', limit: 10, windowSeconds: 900 },
+    });
+    if (limited) return limited;
     const { email, password } = body;
 
     if (!email || !password) {

@@ -59,6 +59,14 @@ class Settings(BaseSettings):
     S3_MAX_UPLOAD_BYTES: int = 5 * 1024 * 1024
 
     REDIS_URL: str = "redis://localhost:6379/0"
+
+    # Rate limiting. "memory://" is per-process: with N Gunicorn workers each one
+    # counts separately (N x the intended limit). Use a shared store such as
+    # redis://host:6379/1 in any multi-worker / multi-replica deployment.
+    RATE_LIMIT_STORAGE_URI: str = "memory://"
+    # Number of trusted reverse proxies in front of the app (0 = none). Only then
+    # is X-Forwarded-For used, taking the entry the nearest trusted proxy appended.
+    TRUSTED_PROXY_COUNT: int = Field(default=0, ge=0)
     AI_QUEUE_NAME: str = "ai_jobs"
     AI_TASK_TIMEOUT_SECONDS: int = 60
     AI_TASK_MAX_TRIES: int = 2

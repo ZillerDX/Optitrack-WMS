@@ -1,4 +1,5 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit } from '@/lib/rateLimit';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -12,6 +13,14 @@ export async function POST(req: NextRequest) {
     if (!authUser) {
       return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
     }
+
+    const limited = await rateLimit(req, {
+      name: 'upload',
+      limit: 20,
+      windowSeconds: 60,
+      identifier: { value: String(authUser.id), limit: 10, windowSeconds: 60 },
+    });
+    if (limited) return limited;
 
     const formData = await req.formData();
     const file = formData.get('file') as File | null;

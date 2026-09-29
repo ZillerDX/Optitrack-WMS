@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit } from '@/lib/rateLimit';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { supabaseRest, createSessionToken } from '@/lib/supabase';
@@ -8,6 +9,9 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+
+    const limited = await rateLimit(req, { name: 'google', limit: 10, windowSeconds: 60 });
+    if (limited) return limited;
     const token = body.credential?.trim();
 
     // Without a configured client id we cannot tell our tokens from tokens Google

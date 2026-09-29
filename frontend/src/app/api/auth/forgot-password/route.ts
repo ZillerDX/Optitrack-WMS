@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, createPasswordResetToken } from '@/lib/supabase';
 import { sendPasswordResetEmail } from '@/lib/mailer';
+import { rateLimit } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,15 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+
+    // Also caps mail volume per address (email bombing) on top of the per-IP limit.
+    const limited = await rateLimit(req, {
+      name: 'forgot',
+      limit: 3,
+      windowSeconds: 60,
+      identifier: { value: email, limit: 3, windowSeconds: 3600 },
+    });
+    if (limited) return limited;
 
     if (!email || !email.includes('@') || email.length > 255) {
       return NextResponse.json(

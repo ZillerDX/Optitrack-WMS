@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit } from '@/lib/rateLimit';
 import { timingSafeEqual } from 'crypto';
 import bcrypt from 'bcryptjs';
 import { supabaseRest, verifyPasswordResetToken, passwordFingerprint } from '@/lib/supabase';
@@ -10,6 +11,9 @@ const INVALID_LINK = { detail: 'Invalid or expired reset link' };
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+
+    const limited = await rateLimit(req, { name: 'reset', limit: 10, windowSeconds: 60 });
+    if (limited) return limited;
     const token = typeof body.token === 'string' ? body.token : '';
     const newPassword = typeof body.new_password === 'string' ? body.new_password : '';
 

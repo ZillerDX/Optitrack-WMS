@@ -26,6 +26,12 @@ async def lifespan(app: FastAPI):
     """Initialize optional schema bootstrap and shared external connections."""
     logger.info("Starting %s in %s mode", settings.APP_NAME, settings.ENVIRONMENT)
 
+    if settings.ENVIRONMENT != "development" and settings.RATE_LIMIT_STORAGE_URI.startswith("memory"):
+        logger.warning(
+            "RATE_LIMIT_STORAGE_URI is in-memory: limits are counted per worker process. "
+            "Set it to a shared Redis URL (e.g. redis://redis:6379/1)."
+        )
+
     if settings.INIT_DB_ON_STARTUP:
         logger.warning(
             "INIT_DB_ON_STARTUP is enabled — running Base.metadata.create_all. "

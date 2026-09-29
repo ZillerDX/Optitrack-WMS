@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit } from '@/lib/rateLimit';
 import bcrypt from 'bcryptjs';
 import { supabaseRest } from '@/lib/supabase';
 
@@ -7,6 +8,9 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+
+    const limited = await rateLimit(req, { name: 'register', limit: 5, windowSeconds: 60 });
+    if (limited) return limited;
     const { email, password, first_name, last_name } = body;
 
     if (!email || !password || !first_name || !last_name) {

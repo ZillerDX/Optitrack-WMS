@@ -110,7 +110,9 @@ async def update_me(
 
 
 @router.post("/upload-image", response_model=UserResponse)
+@limiter.limit("10/minute")
 async def upload_profile_image(
+    request: Request,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -371,19 +373,21 @@ async def reset_password(
 
 
 @router.post("/change-password")
+@limiter.limit("5/minute")
 async def change_password(
-    request: PasswordChangeRequest,
+    request: Request,
+    change: PasswordChangeRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Change the current authenticated user's password."""
-    if not verify_password(request.current_password, current_user.password_hash):
+    if not verify_password(change.current_password, current_user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Incorrect current password"
         )
 
-    current_user.password_hash = get_password_hash(request.new_password)
+    current_user.password_hash = get_password_hash(change.new_password)
     await db.commit()
 
     return {"message": "Password updated successfully"}
