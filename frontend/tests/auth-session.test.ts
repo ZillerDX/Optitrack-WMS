@@ -90,6 +90,21 @@ describe('session revocation (B2)', () => {
   });
 });
 
+describe('deploying before session_revocation.sql has run', () => {
+  it('keeps everyone logged in when users has no token_version column', async () => {
+    const u = await makeUser(db, 'a@x.com');
+    delete db.tables.users[0].token_version; // the column does not exist yet
+    expect(await getAuthUser(req('GET', undefined, { token: u.token }))).not.toBeNull();
+  });
+
+  it('logout does not fail or invent the column', async () => {
+    const u = await makeUser(db, 'a@x.com');
+    delete db.tables.users[0].token_version;
+    expect((await logout(req('POST', undefined, { token: u.token }))).status).toBe(200);
+    expect('token_version' in db.tables.users[0]).toBe(false);
+  });
+});
+
 describe('profile update', () => {
   it('uses the revocation check too (PUT /me with a revoked token is 401)', async () => {
     const u = await makeUser(db, 'a@x.com');

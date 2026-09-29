@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(INVALID_LINK, { status: 400 });
     }
 
-    const userRes = await supabaseRest(`users?id=eq.${userId}&select=id,password_hash,is_active,token_version`);
+    const userRes = await supabaseRest(`users?id=eq.${userId}&select=*`);
     if (!userRes.ok) {
       return NextResponse.json({ detail: 'Could not reset password. Please try again.' }, { status: 500 });
     }
@@ -61,7 +61,11 @@ export async function POST(req: NextRequest) {
       {
         method: 'PATCH',
         // A new password ends every existing session.
-        body: JSON.stringify({ password_hash, token_version: (Number(user.token_version) || 0) + 1 }),
+        body: JSON.stringify(
+          'token_version' in user
+            ? { password_hash, token_version: (Number(user.token_version) || 0) + 1 }
+            : { password_hash }
+        ),
       }
     );
     if (!patch.ok) {

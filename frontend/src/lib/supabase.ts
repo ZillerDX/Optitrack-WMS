@@ -130,7 +130,9 @@ export async function getAuthUser(req: Request): Promise<AuthUser | null> {
 
   let entry = authCache.get(id);
   if (!entry || Date.now() - entry.at > AUTH_CACHE_TTL_MS) {
-    const res = await supabaseRest(`users?id=eq.${id}&select=id,email,is_active,token_version`);
+    // select=* (not the column list): before session_revocation.sql has run there is no
+    // token_version column, and naming it would 400 and log every user out.
+    const res = await supabaseRest(`users?id=eq.${id}&select=*`);
     if (!res.ok) return null; // fail closed
     const rows = await res.json();
     const row = Array.isArray(rows) ? rows[0] : null;
