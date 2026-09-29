@@ -3,8 +3,8 @@ name: OptiTrack WMS - CI
 on:
   push:
     branches: [ main, master ]
+  # any base branch, so a PR stacked on another branch is checked too
   pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
 
 permissions:
@@ -76,7 +76,7 @@ jobs:
           retention-days: 7
 
   migrations:
-    name: SQL migrations apply cleanly (twice)
+    name: SQL migrations and stock functions (real PostgreSQL)
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -98,9 +98,8 @@ jobs:
       - uses: actions/checkout@v4
 
       # Supabase provides these roles; the migrations grant to / revoke from them.
-      - name: Create the roles Supabase provides
-        run: |
-          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; CREATE ROLE service_role NOLOGIN;"
+      - name: Create the roles a Supabase project already has
+        run: psql -v ON_ERROR_STOP=1 -q -f supabase/tests/roles.sql
 
       - name: Apply migrations in order
         run: |
@@ -109,3 +108,34 @@ jobs:
       - name: Apply them again (each must be idempotent)
         run: |
           for f in supabase/migrations/*.sql; do echo "== $f"; psql -v ON_ERROR_STOP=1 -q -f "$f"; done
+
+      - name: Stock functions - rules, atomicity, privileges
+        run: psql -v ON_ERROR_STOP=1 -q -f supabase/tests/stock_movements.sql
+
+      - name: Stock functions - concurrent sessions (no overselling, no lost updates)
+        run: bash supabase/tests/stock_concurrency.sh
+
+  integration:
+    name: API against real PostgreSQL + PostgREST
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Start PostgreSQL + PostgREST with the migrations applied
+        run: bash supabase/tests/integration-stack.sh up | tee /tmp/itest.env
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Route handlers end to end
+        working-directory: ./frontend
+        run: |
+          set -a; . /tmp/itest.env; set +a
+          npm run test:integration

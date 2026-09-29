@@ -18,8 +18,8 @@ together. Data lives in a hosted PostgreSQL database (Supabase). There is no sep
 | Auth | Email + password (bcrypt) and Google Sign-In; HS256 JWT in an httpOnly cookie |
 | Email | SMTP through `nodemailer` (password reset) |
 | AI | Gemini, then Groq, then a deterministic analytics fallback (server-side keys only) |
-| Tests | Vitest (API handlers against an in-memory PostgREST double) |
-| CI | GitHub Actions: lint, `tsc`, tests, `npm audit`, build, and a job that applies the SQL migrations to a real PostgreSQL twice |
+| Tests | Vitest (API handlers against an in-memory PostgREST double); integration tests of the same handlers against a real PostgreSQL + PostgREST; SQL tests of the stock functions, including concurrent sessions |
+| CI | GitHub Actions: lint, `tsc`, tests, `npm audit`, build; a job that applies the migrations twice and runs the SQL / concurrency tests on PostgreSQL; a job that runs the integration tests against PostgreSQL + PostgREST |
 
 ## Request flow
 
@@ -45,7 +45,7 @@ Browser ──(same origin, session cookie)──▶ Next.js Route Handler ─�
 - Location and inventory rows reference locations **by name**, not by id. Uniqueness is enforced by the
   database: `(owner_id, name)` on locations and categories, `(owner_id, sku)` on products,
   `(product_id, location)` on inventory.
-- Schema changes are hand-run SQL files in `supabase/migrations/`, numbered `0000`–`0007`, all idempotent.
+- Schema changes are hand-run SQL files in `supabase/migrations/`, numbered `0000`–`0008`, all idempotent.
   CI applies them to an empty PostgreSQL twice.
 
 ## Sessions
@@ -58,14 +58,28 @@ Browser ──(same origin, session cookie)──▶ Next.js Route Handler ─�
   Deactivating a user takes effect within the 5 s cache window.
 - Password reset links are single use: the token carries a fingerprint of the current password hash.
 
-## Stock movements (`src/lib/stock.ts`)
+## Stock movements
 
-`applyStockMovement` is the only code path that changes stock through transactions and purchase-order
-approval: the product and location must belong to the caller, OUTBOUND cannot exceed stock (never clamped),
-INBOUND/ADJUST cannot exceed the location capacity, the price comes from the product, and the inventory write
-is a compare-and-swap on the previous quantity (409 on a concurrent change) that is reverted if the
-transaction row cannot be written. PostgREST cannot run a multi-statement transaction, so this is
-best-effort atomicity; the durable fix is a Postgres function (see limitations).
+Stock is changed by two Postgres functions (`0008_stock_movements.sql`), called with the service-role key
+through PostgREST RPC; nothing else writes transactions or moves stock.
+
+- `apply_stock_movement(user, product, location, type, quantity, ...)` runs as **one database transaction**:
+  it checks that the product and the location belong to the caller, locks the location row and the stock row
+  (`FOR UPDATE`), applies the rules (OUTBOUND never exceeds stock and is never clamped; INBOUND/ADJUST never
+  exceed the location capacity; the price comes from the product), updates or creates the stock row and inserts
+  the transaction. If any step fails, none of it happened.
+- `approve_reorder(...)` does the same for a purchase-order receipt and also writes the PO row, so stock,
+  transaction and PO are all-or-nothing (a repeated PO number rolls the receipt back).
+- Every movement takes the **location lock first**, so movements at one location are serialised (capacity spans
+  all its products) and cannot deadlock. Movements at different locations run in parallel.
+- User-facing refusals are raised as SQLSTATE `PT4xx`, which PostgREST returns as HTTP 4xx with the message;
+  the API passes those through and reports anything else generically. Execution is revoked from `anon` and
+  `authenticated` because the caller supplies the user id.
+
+`src/lib/stock.ts` is only the RPC client. The rules are tested where they live: `supabase/tests/stock_movements.sql`
+(rules, atomicity, privileges) and `supabase/tests/stock_concurrency.sh` (dozens of simultaneous connections:
+no overselling, no lost updates, one receipt per PO number) run against real PostgreSQL in CI. Removing the row
+locks makes them fail.
 
 ## Abuse controls
 
@@ -94,9 +108,9 @@ loudly instead of falling back to a default.
 
 ## Known limitations
 
-- Stock movements are not a single database transaction (see above).
 - Deleting a product deletes its transaction history (cascade); there is no soft delete.
 - Renaming a location does not update inventory or transactions that reference the old name.
 - Sessions last 24 h and are revoked per user, not per device.
 - The CSP allows inline scripts (see above); the app has no nonce-based CSP.
-- Only the Route Handlers are covered by automated tests; there is no browser end-to-end suite.
+- There is no browser end-to-end suite: the Route Handlers, the SQL and the stack under them are tested, the React screens are not.
+- Stock edited directly (`PUT /api/inventory/{id}`) is a manual correction and does not create a transaction row.
