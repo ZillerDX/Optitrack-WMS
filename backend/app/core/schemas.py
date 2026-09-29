@@ -2,6 +2,8 @@
 Pydantic schemas for request/response validation in OptiTrack WMS.
 """
 
+import re
+
 from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from typing import Optional
 from datetime import datetime
@@ -17,16 +19,41 @@ class UserBase(BaseModel):
     image_url: Optional[str] = Field(None, max_length=500)
 
 
+_SAFE_IMAGE_URL = re.compile(
+    r"^(https://\S+|/uploads/[\w./-]+|data:image/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+)$"
+)
+
+
+def _check_image_url(value: Optional[str]) -> Optional[str]:
+    """Only allow URLs an <img> can safely render (no javascript:, http:, file: ...)."""
+    if value is None or value == "":
+        return value
+    if not _SAFE_IMAGE_URL.match(value):
+        raise ValueError("image_url must be an https URL, an /uploads/ path or an image data URL")
+    return value
+
+
 class UserCreate(UserBase):
     password: str = Field(..., min_length=6)
 
+    _validate_image_url = field_validator("image_url")(_check_image_url)
+
 
 class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
+    """Self-service profile edit.
+
+    Deliberately limited to display fields. `email` (identity/login),
+    `is_active` and `role` are not editable here, and unknown fields are
+    rejected instead of silently dropped so a caller notices.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
     first_name: Optional[str] = Field(None, min_length=1, max_length=100)
     last_name: Optional[str] = Field(None, min_length=1, max_length=100)
     image_url: Optional[str] = Field(None, max_length=500)
-    is_active: Optional[bool] = None
+
+    _validate_image_url = field_validator("image_url")(_check_image_url)
 
 
 class UserResponse(UserBase):

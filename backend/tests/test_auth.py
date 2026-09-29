@@ -305,3 +305,52 @@ class TestPasswordReset:
             "/api/auth/reset-password", json={"token": token, "new_password": "x" * 100}
         )
         assert resp.status_code == 422
+
+
+class TestProfileUpdate:
+    """PUT /api/auth/me is limited to display fields."""
+
+    @staticmethod
+    async def _put(client: AsyncClient, token: str, payload: dict):
+        return await client.put(
+            "/api/auth/me", json=payload, headers={"Authorization": f"Bearer {token}"}
+        )
+
+    @pytest.mark.asyncio
+    async def test_can_update_display_fields(self, client: AsyncClient, admin_token: str):
+        resp = await self._put(
+            client, admin_token,
+            {"first_name": "Renamed", "last_name": "Person", "image_url": "https://example.com/a.png"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["first_name"] == "Renamed"
+        assert data["image_url"] == "https://example.com/a.png"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("field,value", [
+        ("email", "someone-else@test.com"),
+        ("is_active", False),
+        ("role", "STAFF"),
+    ])
+    async def test_identity_fields_are_not_editable(
+        self, client: AsyncClient, admin_token: str, db_session: AsyncSession, admin_user: User, field, value
+    ):
+        resp = await self._put(client, admin_token, {field: value})
+        assert resp.status_code == 422
+
+        await db_session.refresh(admin_user)
+        assert admin_user.email == "admin@test.com"
+        assert admin_user.is_active is True
+        assert admin_user.role == UserRole.ADMIN
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("url", [
+        "javascript:alert(1)",
+        "http://insecure.example.com/a.png",
+        "data:text/html;base64,PHNjcmlwdD4=",
+        "file:///etc/passwd",
+    ])
+    async def test_unsafe_image_url_rejected(self, client: AsyncClient, admin_token: str, url):
+        resp = await self._put(client, admin_token, {"image_url": url})
+        assert resp.status_code == 422

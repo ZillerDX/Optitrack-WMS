@@ -57,10 +57,43 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const updateData: any = {};
-    if (body.first_name !== undefined) updateData.first_name = body.first_name.trim();
-    if (body.last_name !== undefined) updateData.last_name = body.last_name.trim();
-    if (body.image_url !== undefined) updateData.image_url = body.image_url;
+
+    // Self-service profile edit: only display fields. email / role / is_active /
+    // password_hash are never taken from the client, and unknown fields are rejected.
+    const EDITABLE = ['first_name', 'last_name', 'image_url'];
+    const unknown = Object.keys(body).filter((k) => !EDITABLE.includes(k));
+    if (unknown.length > 0) {
+      return NextResponse.json(
+        { detail: `Field(s) not editable: ${unknown.join(', ')}` },
+        { status: 422 }
+      );
+    }
+
+    const updateData: Record<string, string | null> = {};
+    for (const key of ['first_name', 'last_name'] as const) {
+      if (body[key] === undefined) continue;
+      const value = typeof body[key] === 'string' ? body[key].trim() : '';
+      if (!value || value.length > 100) {
+        return NextResponse.json({ detail: `${key} must be 1-100 characters` }, { status: 422 });
+      }
+      updateData[key] = value;
+    }
+    if (body.image_url !== undefined) {
+      const url = body.image_url;
+      // https URL, /uploads path, or an image data URL (what upload-image stores).
+      const safe =
+        url === null ||
+        url === '' ||
+        (typeof url === 'string' &&
+          /^(https:\/\/\S+|\/uploads\/[\w./-]+|data:image\/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+)$/.test(url));
+      if (!safe || (typeof url === 'string' && url.length > 3_000_000)) {
+        return NextResponse.json({ detail: 'image_url is not an allowed image URL' }, { status: 422 });
+      }
+      updateData.image_url = url || null;
+    }
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ detail: 'No editable fields provided' }, { status: 422 });
+    }
 
     const userRes = await supabaseRest(`users?id=eq.${payload.sub}`, {
       method: 'PATCH',
