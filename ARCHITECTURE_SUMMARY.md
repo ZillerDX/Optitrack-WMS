@@ -45,7 +45,7 @@ Browser ──(same origin, session cookie)──▶ Next.js Route Handler ─�
 - Location and inventory rows reference locations **by name**, not by id. Uniqueness is enforced by the
   database: `(owner_id, name)` on locations and categories, `(owner_id, sku)` on products,
   `(product_id, location)` on inventory.
-- Schema changes are hand-run SQL files in `supabase/migrations/`, numbered `0000`–`0008`, all idempotent.
+- Schema changes are hand-run SQL files in `supabase/migrations/`, numbered `0000`–`0009`, all idempotent.
   CI applies them to an empty PostgreSQL twice.
 
 ## Sessions
@@ -75,6 +75,10 @@ through PostgREST RPC; nothing else writes transactions or moves stock.
 - User-facing refusals are raised as SQLSTATE `PT4xx`, which PostgREST returns as HTTP 4xx with the message;
   the API passes those through and reports anything else generically. Execution is revoked from `anon` and
   `authenticated` because the caller supplies the user id.
+
+Renaming a location goes through `update_location` (`0009_update_location.sql`), which renames the location and the inventory and transaction rows that reference its name in one transaction.
+
+`PUT /api/inventory/{id}` (manual correction) is an ADJUST movement too: only `quantity` is editable, the status follows it, and the location cannot be changed.
 
 `src/lib/stock.ts` is only the RPC client. The rules are tested where they live: `supabase/tests/stock_movements.sql`
 (rules, atomicity, privileges) and `supabase/tests/stock_concurrency.sh` (dozens of simultaneous connections:
@@ -109,8 +113,8 @@ loudly instead of falling back to a default.
 ## Known limitations
 
 - Deleting a product deletes its transaction history (cascade); there is no soft delete.
-- Renaming a location does not update inventory or transactions that reference the old name.
+- Locations are still referenced by name (renaming is safe: `update_location` moves the stock and history in one transaction), not by id.
 - Sessions last 24 h and are revoked per user, not per device.
 - The CSP allows inline scripts (see above); the app has no nonce-based CSP.
 - There is no browser end-to-end suite: the Route Handlers, the SQL and the stack under them are tested, the React screens are not.
-- Stock edited directly (`PUT /api/inventory/{id}`) is a manual correction and does not create a transaction row.
+- `DELETE /api/inventory/{id}` removes a stock row without a transaction row (`PUT` is recorded as an ADJUST movement).

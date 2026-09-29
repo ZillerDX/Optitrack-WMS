@@ -31,7 +31,11 @@ export interface ReorderData extends StockMovementData {
  * HTTP 4xx with `{code, message}`; their messages are written to be shown to the user.
  * Anything else is logged and reported generically.
  */
-async function callRpc<T>(name: string, args: Record<string, unknown>): Promise<RpcResult<T>> {
+async function callRpc<T>(
+  name: string,
+  args: Record<string, unknown>,
+  conflictDetail = 'This reference number is already in use'
+): Promise<RpcResult<T>> {
   const res = await supabaseRest(`rpc/${name}`, { method: 'POST', body: JSON.stringify(args) });
   if (res.ok) return { ok: true, data: (await res.json()) as T };
 
@@ -46,11 +50,11 @@ async function callRpc<T>(name: string, args: Record<string, unknown>): Promise<
     return { ok: false, status: Number(body.code.slice(2)), detail: body.message };
   }
   if (res.status === 409) {
-    // unique violation on transactions.ref_code / purchase_orders.po_number
-    return { ok: false, status: 409, detail: 'This reference number is already in use' };
+    // unique violation (transactions.ref_code, purchase_orders.po_number, locations (owner_id, name))
+    return { ok: false, status: 409, detail: conflictDetail };
   }
   if (res.status === 404 && body.code === 'PGRST202') {
-    console.error(`[Stock] function ${name} is missing: apply supabase/migrations/0008_stock_movements.sql`);
+    console.error(`[Stock] function ${name} is missing: apply the supabase/migrations (0008 stock movements, 0009 update_location)`);
     return { ok: false, status: 503, detail: 'Stock service is unavailable. Please try again later.' };
   }
   console.error(`[Stock] ${name} failed:`, res.status, body.code, body.message);
@@ -106,4 +110,21 @@ export function approveReorder(params: {
     p_sku: params.sku ?? null,
     p_notes: params.notes ?? null,
   });
+}
+
+/**
+ * Update a location, including a rename, in one database transaction (0009_update_location.sql).
+ * Inventory and transactions reference a location by name, so a rename moves them with it.
+ * `patch` may hold name, capacity and description only.
+ */
+export function updateLocation(params: {
+  userId: number;
+  locationId: number;
+  patch: { name?: string; capacity?: number; description?: string | null };
+}): Promise<RpcResult<Record<string, any>>> {
+  return callRpc<Record<string, any>>(
+    'update_location',
+    { p_user_id: params.userId, p_location_id: params.locationId, p_patch: params.patch },
+    'A location with this name already exists'
+  );
 }

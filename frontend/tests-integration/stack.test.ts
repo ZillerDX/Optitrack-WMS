@@ -9,6 +9,7 @@ import { GET as listLocations, POST as createLocation } from '@/app/api/location
 import { GET as listCategories, POST as createCategory } from '@/app/api/categories/route';
 import { GET as listInventory, POST as createInventory } from '@/app/api/inventory/route';
 import { PUT as updateInventory } from '@/app/api/inventory/[id]/route';
+import { PUT as updateLocation } from '@/app/api/locations/[id]/route';
 import { POST as createTransaction } from '@/app/api/transactions/route';
 import { POST as approveReorder } from '@/app/api/ai/reorder/approve/route';
 
@@ -261,6 +262,68 @@ describe('inventory endpoints against the real database', () => {
     expect((await updateInventory(call('PUT', { quantity: -1 }, a.token), ctx(row.id))).status).toBe(400);
     expect((await updateInventory(call('PUT', { quantity: 7 }, a.token), ctx(row.id))).status).toBe(200);
     expect((await rows(`inventory?id=eq.${row.id}`))[0].quantity).toBe(7);
+  });
+
+  it('PUT /api/inventory/[id] is an ADJUST movement: the history explains the stock, the status follows it', async () => {
+    const u = await signup('a@x.com');
+    const p = await seedWarehouse(u.token, 'P1', 'A1', 20);
+    await move(u.token, p, 'INBOUND', 5);
+    const row = (await rows(`inventory?product_id=eq.${p}`))[0];
+    const put = (body: unknown) => updateInventory(call('PUT', body, u.token), ctx(row.id));
+
+    const ok = await put({ quantity: 12 });
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toMatchObject({ quantity: 12, status: 'IN_STOCK' });
+    expect((await put({ quantity: 2 })).status).toBe(200);
+    expect((await rows(`inventory?id=eq.${row.id}`))[0]).toMatchObject({ quantity: 2, status: 'LOW_STOCK' });
+    expect((await put({ quantity: 0 })).status).toBe(200);
+    expect((await rows(`inventory?id=eq.${row.id}`))[0]).toMatchObject({ quantity: 0, status: 'OUT_OF_STOCK' });
+
+    const adjusts = (await rows(`transactions?product_id=eq.${p}&type=eq.ADJUST&order=id.asc`)).map((t) => t.quantity);
+    expect(adjusts).toEqual([12, 2, 0]);
+
+    // over capacity is refused and changes nothing
+    const over = await put({ quantity: 21 });
+    expect(over.status).toBe(400);
+    expect((await over.json()).detail).toMatch(/capacity exceeded/);
+    expect((await rows(`inventory?id=eq.${row.id}`))[0].quantity).toBe(0);
+    expect(await rows(`transactions?product_id=eq.${p}&type=eq.ADJUST`)).toHaveLength(3);
+
+    // status and location cannot be written directly
+    expect((await put({ status: 'IN_STOCK' })).status).toBe(400);
+    expect((await put({ location: 'Z9' })).status).toBe(400);
+  });
+
+  it('renaming a location moves its stock and history with it, atomically, for that tenant only', async () => {
+    const a = await signup('a@x.com');
+    const b = await signup('b@x.com');
+    const pa = await seedWarehouse(a.token, 'P1', 'A1', 20);
+    const pb = await seedWarehouse(b.token, 'P1', 'A1', 20);
+    await createLocation(call('POST', { name: 'Taken', capacity: 5 }, a.token));
+    await move(a.token, pa, 'INBOUND', 8);
+    await move(b.token, pb, 'INBOUND', 3);
+    const locId = (await rows(`locations?owner_id=eq.${a.id}&name=eq.A1`))[0].id;
+    const rename = (body: unknown, token = a.token) => updateLocation(call('PUT', body, token), ctx(locId));
+
+    // a taken name is 409 and changes nothing
+    expect((await rename({ name: 'Taken' })).status).toBe(409);
+    expect((await rows(`inventory?product_id=eq.${pa}`))[0].location).toBe('A1');
+
+    // another tenant cannot rename it
+    expect((await rename({ name: 'Mine now' }, b.token)).status).toBe(404);
+
+    const ok = await rename({ name: ' Zone 1 ', capacity: 30 });
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toMatchObject({ name: 'Zone 1', capacity: 30 });
+    expect((await rows(`inventory?product_id=eq.${pa}`))[0]).toMatchObject({ location: 'Zone 1', quantity: 8 });
+    expect((await rows(`transactions?product_id=eq.${pa}`)).map((t) => t.location)).toEqual(['Zone 1']);
+    // Bob's identically named location, stock and history are untouched
+    expect((await rows(`inventory?product_id=eq.${pb}`))[0]).toMatchObject({ location: 'A1', quantity: 3 });
+    expect((await rows(`transactions?product_id=eq.${pb}`)).map((t) => t.location)).toEqual(['A1']);
+
+    // the stock is still usable under the new name
+    expect((await move(a.token, pa, 'OUTBOUND', 2, 'Zone 1')).status).toBe(201);
+    expect((await rows(`inventory?product_id=eq.${pa}`))[0].quantity).toBe(6);
   });
 
   it('POST /api/inventory: negative quantity refused, duplicate 409, capacity enforced', async () => {

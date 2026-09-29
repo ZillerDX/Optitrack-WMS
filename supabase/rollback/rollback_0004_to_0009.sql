@@ -1,9 +1,12 @@
--- Manual rollback of migrations 0004-0008. NOT a migration: run by hand only if needed.
+-- Manual rollback of migrations 0004-0009. NOT a migration: run by hand only if needed.
 -- Everything here removes objects the migrations added; no application data is touched
 -- except rate_limits (counters only) and the token_version column (session revocation counters).
 -- Deploy the previous application version first, otherwise the new code will answer 503 for stock changes.
 
 BEGIN;
+
+-- 0009
+DROP FUNCTION IF EXISTS public.update_location(integer, integer, jsonb);
 
 -- 0008
 DROP FUNCTION IF EXISTS public.approve_reorder(integer, integer, text, integer, text, text, text, text, text);

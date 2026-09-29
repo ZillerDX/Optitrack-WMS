@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
+import { updateLocation } from '@/lib/stock';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id: routeId } = await params;
     const user = await getAuthUser(req);
     if (!user) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+
+    const id = Number(routeId);
+    if (!Number.isInteger(id) || id <= 0) {
+      return NextResponse.json({ detail: 'Invalid location id' }, { status: 400 });
+    }
 
     const body = await req.json();
 
@@ -39,24 +45,19 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ detail: 'No editable fields provided' }, { status: 422 });
     }
 
-    const res = await supabaseRest(`locations?id=eq.${routeId}&owner_id=eq.${user.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(update),
+    // One database transaction: a rename also moves the stock and history that reference the name.
+    const result = await updateLocation({
+      userId: user.id,
+      locationId: id,
+      patch: update as { name?: string; capacity?: number; description?: string | null },
     });
-    if (res.status === 409) {
-      return NextResponse.json({ detail: `Location '${update.name}' already exists` }, { status: 409 });
+    if (!result.ok) {
+      return NextResponse.json({ detail: result.detail }, { status: result.status });
     }
-    if (!res.ok) {
-      console.error('[Update Location Error]:', await res.text());
-      return NextResponse.json({ detail: 'Failed to update location' }, { status: 400 });
-    }
-    const updated = await res.json();
-    if (!Array.isArray(updated) || updated.length === 0) {
-      return NextResponse.json({ detail: 'Location not found' }, { status: 404 });
-    }
-    return NextResponse.json(updated[0]);
+    return NextResponse.json(result.data);
   } catch (err: any) {
-    return NextResponse.json({ detail: err.message }, { status: 500 });
+    console.error('[PUT Location Error]:', err);
+    return NextResponse.json({ detail: 'Failed to update location' }, { status: 500 });
   }
 }
 
