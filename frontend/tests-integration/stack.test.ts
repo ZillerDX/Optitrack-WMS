@@ -263,6 +263,36 @@ describe('inventory endpoints against the real database', () => {
     expect((await rows(`inventory?id=eq.${row.id}`))[0].quantity).toBe(7);
   });
 
+  it('PUT /api/inventory/[id] is an ADJUST movement: the history explains the stock, the status follows it', async () => {
+    const u = await signup('a@x.com');
+    const p = await seedWarehouse(u.token, 'P1', 'A1', 20);
+    await move(u.token, p, 'INBOUND', 5);
+    const row = (await rows(`inventory?product_id=eq.${p}`))[0];
+    const put = (body: unknown) => updateInventory(call('PUT', body, u.token), ctx(row.id));
+
+    const ok = await put({ quantity: 12 });
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toMatchObject({ quantity: 12, status: 'IN_STOCK' });
+    expect((await put({ quantity: 2 })).status).toBe(200);
+    expect((await rows(`inventory?id=eq.${row.id}`))[0]).toMatchObject({ quantity: 2, status: 'LOW_STOCK' });
+    expect((await put({ quantity: 0 })).status).toBe(200);
+    expect((await rows(`inventory?id=eq.${row.id}`))[0]).toMatchObject({ quantity: 0, status: 'OUT_OF_STOCK' });
+
+    const adjusts = (await rows(`transactions?product_id=eq.${p}&type=eq.ADJUST&order=id.asc`)).map((t) => t.quantity);
+    expect(adjusts).toEqual([12, 2, 0]);
+
+    // over capacity is refused and changes nothing
+    const over = await put({ quantity: 21 });
+    expect(over.status).toBe(400);
+    expect((await over.json()).detail).toMatch(/capacity exceeded/);
+    expect((await rows(`inventory?id=eq.${row.id}`))[0].quantity).toBe(0);
+    expect(await rows(`transactions?product_id=eq.${p}&type=eq.ADJUST`)).toHaveLength(3);
+
+    // status and location cannot be written directly
+    expect((await put({ status: 'IN_STOCK' })).status).toBe(400);
+    expect((await put({ location: 'Z9' })).status).toBe(400);
+  });
+
   it('POST /api/inventory: negative quantity refused, duplicate 409, capacity enforced', async () => {
     const u = await signup('a@x.com');
     const p = await seedWarehouse(u.token, 'P1', 'A1', 10);

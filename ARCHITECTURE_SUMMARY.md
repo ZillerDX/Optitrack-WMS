@@ -76,6 +76,8 @@ through PostgREST RPC; nothing else writes transactions or moves stock.
   the API passes those through and reports anything else generically. Execution is revoked from `anon` and
   `authenticated` because the caller supplies the user id.
 
+`PUT /api/inventory/{id}` (manual correction) is an ADJUST movement too: only `quantity` is editable, the status follows it, and the location cannot be changed.
+
 `src/lib/stock.ts` is only the RPC client. The rules are tested where they live: `supabase/tests/stock_movements.sql`
 (rules, atomicity, privileges) and `supabase/tests/stock_concurrency.sh` (dozens of simultaneous connections:
 no overselling, no lost updates, one receipt per PO number) run against real PostgreSQL in CI. Removing the row
@@ -113,4 +115,4 @@ loudly instead of falling back to a default.
 - Sessions last 24 h and are revoked per user, not per device.
 - The CSP allows inline scripts (see above); the app has no nonce-based CSP.
 - There is no browser end-to-end suite: the Route Handlers, the SQL and the stack under them are tested, the React screens are not.
-- Stock edited directly (`PUT /api/inventory/{id}`) is a manual correction and does not create a transaction row.
+- `DELETE /api/inventory/{id}` removes a stock row without a transaction row (`PUT` is recorded as an ADJUST movement).

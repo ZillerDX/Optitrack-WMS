@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
+import { recordStockMovement } from '@/lib/stock';
 
 export const dynamic = 'force-dynamic';
-
-const INVENTORY_STATUSES = ['IN_STOCK', 'LOW_STOCK', 'OUT_OF_STOCK'];
 
 /** Parse a positive integer route id; returns null when invalid. */
 function parseId(raw: string): number | null {
@@ -11,16 +10,32 @@ function parseId(raw: string): number | null {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
-/** True only when the inventory row belongs to a product owned by the user. */
-async function ownsInventory(inventoryId: number, userId: number): Promise<boolean> {
-  const res = await supabaseRest(
-    `inventory?id=eq.${inventoryId}&select=id,product:products!inner(owner_id)&product.owner_id=eq.${userId}`
-  );
-  if (!res.ok) return false;
-  const rows = await res.json();
-  return Array.isArray(rows) && rows.length > 0;
+interface OwnedInventory {
+  id: number;
+  product_id: number;
+  location: string;
 }
 
+/** The inventory row, but only when it belongs to a product owned by the user. */
+async function findOwnedInventory(inventoryId: number, userId: number): Promise<OwnedInventory | null> {
+  const res = await supabaseRest(
+    `inventory?id=eq.${inventoryId}&select=id,product_id,location,product:products!inner(owner_id)&product.owner_id=eq.${userId}`
+  );
+  if (!res.ok) return null;
+  const rows = await res.json();
+  return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+}
+
+/** True only when the inventory row belongs to a product owned by the user. */
+async function ownsInventory(inventoryId: number, userId: number): Promise<boolean> {
+  return (await findOwnedInventory(inventoryId, userId)) !== null;
+}
+
+/**
+ * Manual stock correction: sets the quantity. It is recorded as an ADJUST movement, so the
+ * transaction history always explains the stock. The status is derived from the quantity and
+ * the location cannot be changed here (moving stock is an OUTBOUND plus an INBOUND).
+ */
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: routeId } = await params;
@@ -31,46 +46,42 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (id === null) return NextResponse.json({ detail: 'Invalid inventory id' }, { status: 400 });
 
     // Same response for "missing" and "not yours" so ids cannot be probed.
-    if (!(await ownsInventory(id, user.id))) {
+    const row = await findOwnedInventory(id, user.id);
+    if (!row) {
       return NextResponse.json({ detail: 'Inventory record not found' }, { status: 404 });
     }
 
     const body = await req.json();
 
-    // Whitelist editable fields: product_id / id must never be client-controlled.
-    const update: Record<string, unknown> = {};
-    if (body.quantity !== undefined) {
-      const qty = Number(body.quantity);
-      if (!Number.isInteger(qty) || qty < 0) {
-        return NextResponse.json({ detail: 'quantity must be a non-negative integer' }, { status: 400 });
-      }
-      update.quantity = qty;
+    if (body.status !== undefined || body.location !== undefined) {
+      return NextResponse.json(
+        { detail: 'Only quantity can be edited: the status follows the quantity, and stock is moved with transactions' },
+        { status: 400 }
+      );
     }
-    if (body.status !== undefined) {
-      if (!INVENTORY_STATUSES.includes(body.status)) {
-        return NextResponse.json({ detail: 'Invalid status' }, { status: 400 });
-      }
-      update.status = body.status;
-    }
-    if (body.location !== undefined) {
-      if (typeof body.location !== 'string' || !body.location.trim() || body.location.length > 50) {
-        return NextResponse.json({ detail: 'Invalid location' }, { status: 400 });
-      }
-      update.location = body.location.trim();
-    }
-    if (Object.keys(update).length === 0) {
+    if (body.quantity === undefined) {
       return NextResponse.json({ detail: 'No editable fields provided' }, { status: 400 });
     }
+    const qty = Number(body.quantity);
+    if (!Number.isInteger(qty) || qty < 0) {
+      return NextResponse.json({ detail: 'quantity must be a non-negative integer' }, { status: 400 });
+    }
 
-    const res = await supabaseRest(`inventory?id=eq.${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(update),
+    const result = await recordStockMovement({
+      userId: user.id,
+      productId: row.product_id,
+      location: row.location,
+      type: 'ADJUST',
+      quantity: qty,
+      notes: 'Manual stock correction',
     });
-    if (!res.ok) return NextResponse.json({ detail: await res.text() }, { status: 400 });
-    const updated = await res.json();
-    return NextResponse.json(updated[0]);
+    if (!result.ok) {
+      return NextResponse.json({ detail: result.detail }, { status: result.status });
+    }
+    return NextResponse.json(result.data.inventory);
   } catch (err: any) {
-    return NextResponse.json({ detail: err.message }, { status: 500 });
+    console.error('[PUT Inventory Error]:', err);
+    return NextResponse.json({ detail: 'Failed to update inventory' }, { status: 500 });
   }
 }
 

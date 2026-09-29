@@ -225,15 +225,45 @@ describe('PUT/DELETE /api/inventory/[id] (cross-tenant)', () => {
     expect(db.tables.inventory[0].quantity).toBe(8);
   });
 
-  it('lets the owner edit whitelisted fields only', async () => {
+  it('records a correction as an ADJUST movement for the session user, never a direct write', async () => {
     const id = db.tables.inventory[0].id;
-    const res = await updateInventory(req('PUT', { quantity: 5, product_id: bobsProduct.id, id: 77 }, { token: alice.token }), ctx(id));
+    db.rpc.apply_stock_movement = () => movementResult({ type: 'ADJUST' });
+    const res = await updateInventory(req('PUT', { quantity: 5, product_id: bobsProduct.id, id: 77, user_id: bob.id }, { token: alice.token }), ctx(id));
     expect(res.status).toBe(200);
-    expect(db.tables.inventory[0]).toMatchObject({ id, product_id: product.id, quantity: 5 });
+    expect((await res.json()).quantity).toBe(10); // what the database function returned
+    expect(rpcCalls('apply_stock_movement')[0].body).toEqual({
+      p_user_id: alice.id,
+      p_product_id: product.id, // from the stored row, not the request body
+      p_location: 'A1',
+      p_type: 'ADJUST',
+      p_quantity: 5,
+      p_notes: 'Manual stock correction',
+      p_created_at: null,
+    });
+    expect(db.tables.inventory[0].quantity).toBe(8); // the route itself wrote nothing
   });
 
-  it.each([[{ quantity: -1 }], [{ status: 'WEIRD' }], [{ location: '' }], [{}]])('rejects %j', async (body) => {
+  it('allows correcting to zero', async () => {
     const id = db.tables.inventory[0].id;
-    expect((await updateInventory(req('PUT', body, { token: alice.token }), ctx(id))).status).toBe(400);
+    expect((await updateInventory(req('PUT', { quantity: 0 }, { token: alice.token }), ctx(id))).status).toBe(200);
+    expect(rpcCalls('apply_stock_movement')[0].body.p_quantity).toBe(0);
   });
+
+  it('reports a refusal from the database (e.g. capacity)', async () => {
+    const id = db.tables.inventory[0].id;
+    db.rpc.apply_stock_movement = () => dbError(400, 'PT400', "Location 'A1' capacity exceeded. Capacity: 20, Current stock: 8, Projected stock: 50");
+    const res = await updateInventory(req('PUT', { quantity: 50 }, { token: alice.token }), ctx(id));
+    expect(res.status).toBe(400);
+    expect((await res.json()).detail).toMatch(/capacity exceeded/);
+  });
+
+  it.each([[{ quantity: -1 }], [{ quantity: 1.5 }], [{ status: 'IN_STOCK' }], [{ location: 'A2' }], [{ quantity: 1, status: 'IN_STOCK' }], [{}]])(
+    'rejects %j without touching stock',
+    async (body) => {
+      const id = db.tables.inventory[0].id;
+      expect((await updateInventory(req('PUT', body, { token: alice.token }), ctx(id))).status).toBe(400);
+      expect(rpcCalls('apply_stock_movement')).toHaveLength(0);
+      expect(db.tables.inventory[0].quantity).toBe(8);
+    }
+  );
 });
