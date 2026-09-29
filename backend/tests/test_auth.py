@@ -124,6 +124,20 @@ class TestAuthentication:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
+    async def test_scoped_reset_token_cannot_authenticate(self, client: AsyncClient, admin_user: User):
+        """A password-reset token must not work as a session/access token."""
+        from app.core.security import create_access_token
+
+        reset_token = create_access_token(
+            data={"sub": str(admin_user.id), "scope": "password_reset"}
+        )
+        response = await client.get(
+            "/api/auth/me",
+            headers={"Authorization": f"Bearer {reset_token}"}
+        )
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
     async def test_get_current_user(self, client: AsyncClient, admin_token: str):
         """Test retrieving current user with valid token."""
         response = await client.get(

@@ -46,6 +46,11 @@ async def get_current_user(
     if payload is None:
         raise credentials_exception
 
+    # Scoped tokens (e.g. the emailed "password_reset" link token) are not
+    # sessions: they must never authenticate ordinary API calls.
+    if payload.get("scope") is not None:
+        raise credentials_exception
+
     user_id: Optional[int] = payload.get("sub")
     if user_id is None:
         raise credentials_exception
