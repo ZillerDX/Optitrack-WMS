@@ -125,6 +125,17 @@ export function deleteProduct(params: { userId: number; productId: number }): Pr
 }
 
 /**
+ * Delete a stock row in one database transaction (0011_delete_inventory.sql): a row that still holds
+ * stock is first taken to zero with an ADJUST movement, so the removal is always in the history.
+ */
+export function deleteInventory(params: { userId: number; inventoryId: number }): Promise<RpcResult<Record<string, any>>> {
+  return callRpc<Record<string, any>>('delete_inventory', {
+    p_user_id: params.userId,
+    p_inventory_id: params.inventoryId,
+  });
+}
+
+/**
  * Update a location, including a rename, in one database transaction (0009_update_location.sql).
  * Inventory and transactions reference a location by name, so a rename moves them with it.
  * `patch` may hold name, capacity and description only.

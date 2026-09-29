@@ -45,7 +45,7 @@ Browser ──(same origin, session cookie)──▶ Next.js Route Handler ─�
 - Location and inventory rows reference locations **by name**, not by id. Uniqueness is enforced by the
   database: `(owner_id, name)` on locations and categories, `(owner_id, sku)` on products,
   `(product_id, location)` on inventory.
-- Schema changes are hand-run SQL files in `supabase/migrations/`, numbered `0000`–`0010`, all idempotent.
+- Schema changes are hand-run SQL files in `supabase/migrations/`, numbered `0000`–`0011`, all idempotent.
   CI applies them to an empty PostgreSQL twice.
 
 ## Sessions
@@ -79,6 +79,8 @@ through PostgREST RPC; nothing else writes transactions or moves stock.
 Renaming a location goes through `update_location` (`0009_update_location.sql`), which renames the location and the inventory and transaction rows that reference its name in one transaction.
 
 Deleting a product is a soft delete (`delete_product`, `0010_soft_delete_products.sql`): its stock is taken to zero with ADJUST movements, the row is kept with `deleted_at` set so the transaction history stays, and its SKU is renamed `<sku>-deleted<id>` so it can be reused. Deleted products are hidden from lists and cannot be moved.
+
+`DELETE /api/inventory/{id}` (`delete_inventory`, `0011_delete_inventory.sql`) takes the same locks as a movement and, if the row still holds stock, first records an ADJUST to 0, then removes the row, so no unit disappears without a transaction.
 
 `PUT /api/inventory/{id}` (manual correction) is an ADJUST movement too: only `quantity` is editable, the status follows it, and the location cannot be changed.
 
@@ -118,4 +120,3 @@ loudly instead of falling back to a default.
 - Sessions last 24 h and are revoked per user, not per device.
 - The CSP allows inline scripts (see above); the app has no nonce-based CSP.
 - The browser tests (`frontend/e2e`) cover the session cookie, login/sign-out, CSRF and that the main pages load an account's own data; most other screens and their forms are still not covered.
-- `DELETE /api/inventory/{id}` removes a stock row without a transaction row (`PUT` is recorded as an ADJUST movement).

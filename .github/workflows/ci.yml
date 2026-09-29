@@ -115,6 +115,9 @@ jobs:
       - name: Location update / rename cascade
         run: psql -v ON_ERROR_STOP=1 -q -f supabase/tests/update_location.sql
 
+      - name: Stock row delete
+        run: psql -v ON_ERROR_STOP=1 -q -f supabase/tests/delete_inventory.sql
+
       - name: Product soft delete
         run: psql -v ON_ERROR_STOP=1 -q -f supabase/tests/soft_delete_products.sql
 

@@ -409,7 +409,7 @@ Optitrack-WMS/
 │   └── package.json
 │
 ├── supabase/
-│   └── migrations/                     # 0000_baseline ... 0010_soft_delete_products (run in order, idempotent)
+│   └── migrations/                     # 0000_baseline ... 0011_delete_inventory (run in order, idempotent)
 │
 ├── frontend/
 │   ├── tests/                          # Vitest: API handlers against an in-memory PostgREST double
@@ -427,7 +427,7 @@ Optitrack-WMS/
 * A Supabase project (or any PostgreSQL behind PostgREST)
 
 ### 10.2 Database
-Apply the SQL files in `supabase/migrations/` **in order** (`0000` ... `0010`) with the Supabase SQL editor or
+Apply the SQL files in `supabase/migrations/` **in order** (`0000` ... `0011`) with the Supabase SQL editor or
 `psql`. They are idempotent; run newer ones before deploying code that needs them.
 
 ### 10.3 Run the app

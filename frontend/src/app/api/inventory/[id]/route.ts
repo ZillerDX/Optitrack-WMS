@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
-import { recordStockMovement } from '@/lib/stock';
+import { deleteInventory, recordStockMovement } from '@/lib/stock';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,11 +24,6 @@ async function findOwnedInventory(inventoryId: number, userId: number): Promise<
   if (!res.ok) return null;
   const rows = await res.json();
   return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
-}
-
-/** True only when the inventory row belongs to a product owned by the user. */
-async function ownsInventory(inventoryId: number, userId: number): Promise<boolean> {
-  return (await findOwnedInventory(inventoryId, userId)) !== null;
 }
 
 /**
@@ -85,6 +80,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 }
 
+/** Removes the stock row. Stock still on it is first taken to zero with an ADJUST movement (one transaction). */
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: routeId } = await params;
@@ -94,14 +90,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const id = parseId(routeId);
     if (id === null) return NextResponse.json({ detail: 'Invalid inventory id' }, { status: 400 });
 
-    if (!(await ownsInventory(id, user.id))) {
-      return NextResponse.json({ detail: 'Inventory record not found' }, { status: 404 });
+    // Same answer for "missing" and "not yours" (the database function checks ownership).
+    const result = await deleteInventory({ userId: user.id, inventoryId: id });
+    if (!result.ok) {
+      return NextResponse.json({ detail: result.detail }, { status: result.status });
     }
-
-    const res = await supabaseRest(`inventory?id=eq.${id}`, { method: 'DELETE' });
-    if (!res.ok) return NextResponse.json({ detail: await res.text() }, { status: 400 });
     return NextResponse.json({ message: 'Inventory record deleted' });
   } catch (err: any) {
-    return NextResponse.json({ detail: err.message }, { status: 500 });
+    console.error('[DELETE Inventory Error]:', err);
+    return NextResponse.json({ detail: 'Failed to delete inventory' }, { status: 500 });
   }
 }

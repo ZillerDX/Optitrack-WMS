@@ -1,10 +1,10 @@
 # Manual test checklist (PR #1 + #2)
 
-Run on a staging deployment (Vercel preview + a Supabase project with migrations 0000-0010 applied).
+Run on a staging deployment (Vercel preview + a Supabase project with migrations 0000-0011 applied).
 Use two separate admin accounts, A and B, in two browser profiles, to test tenant isolation.
 
 ## 0. Before testing
-- [ ] Migrations `0000`...`0010` applied in order on the target project (see the "Supabase state" note in the PR).
+- [ ] Migrations `0000`...`0011` applied in order on the target project (see the "Supabase state" note in the PR).
 - [ ] Env set: `SECRET_KEY` (>= 32 chars), `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `APP_URL`.
 - [ ] Optional: `NEXT_PUBLIC_GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_ID`, SMTP_*, `SIGNUP_ALLOWED_DOMAINS`.
 - [ ] Site is served over HTTPS (the `__Host-session` cookie is `Secure`).
@@ -60,6 +60,7 @@ Setup: location L1 capacity 100, product P (min stock 10), starting stock 0.
 - [ ] Client-supplied price / status / user id in the request body is ignored (try in DevTools).
 - [ ] Two tabs: press OUTBOUND of the last units in both at the same moment -> only one succeeds, stock never negative.
 - [ ] Manual stock correction (`PUT /api/inventory/{id}` with `{quantity}`): stock changes, an ADJUST row is added, the status follows the quantity, above capacity is refused. Sending `status` or `location` is refused (400).
+- [ ] Delete a stock row that holds units (Inventory page): the row disappears and an ADJUST-to-0 transaction ("Inventory record deleted") is added, so the ledger still explains the stock; the shelf capacity is freed. Deleting an empty row adds no transaction.
 - [ ] Sum of transactions per product/location equals the stock shown.
 - [ ] Reference number reuse -> "reference number is already in use" (409).
 
