@@ -4,7 +4,7 @@ import { GET as listLocations, POST as createLocation } from '@/app/api/location
 import { DELETE as deleteLocation, PUT as updateLocation } from '@/app/api/locations/[id]/route';
 import { GET as listCategories, POST as createCategory } from '@/app/api/categories/route';
 import { DELETE as deleteCategory } from '@/app/api/categories/[id]/route';
-import { createDb, FakePostgrest } from './helpers/fakePostgrest';
+import { createDb, FakePostgrest, RpcError } from './helpers/fakePostgrest';
 import { ctx, makeUser, req, TestUser } from './helpers/http';
 
 let db: FakePostgrest;
@@ -67,37 +67,66 @@ describe('locations', () => {
     }
   );
 
-  describe('PUT /api/locations/[id]', () => {
+  describe('PUT /api/locations/[id] (one database transaction: update_location)', () => {
     let id: number;
+    const rpcCalls = () => db.calls.filter((c) => c.table === 'rpc/update_location');
     beforeEach(() => {
       id = db.insert('locations', { owner_id: alice.id, name: 'L1', capacity: 5 }).id;
-      db.insert('locations', { owner_id: alice.id, name: 'L2', capacity: 5 });
+      db.rpc.update_location = () => ({ id, owner_id: alice.id, name: 'Renamed', capacity: 5, description: null });
     });
-    const put = (body: Record<string, unknown>, who = alice, target = id) =>
+    const put = (body: Record<string, unknown>, who = alice, target: number | string = id) =>
       updateLocation(req('PUT', body, { token: who.token }), ctx(target));
 
-    it('updates capacity and description', async () => {
-      expect((await put({ capacity: 77, description: 'x' })).status).toBe(200);
-      expect(db.tables.locations[0]).toMatchObject({ capacity: 77, description: 'x' });
+    it('sends the session user and only the whitelisted fields, and returns the row', async () => {
+      const res = await put({ name: '  Renamed ', capacity: 77, description: 'x', owner_id: bob.id, id: 999 });
+      expect(res.status).toBe(200);
+      expect((await res.json()).name).toBe('Renamed');
+      expect(rpcCalls()).toHaveLength(1);
+      expect(rpcCalls()[0].body).toEqual({
+        p_user_id: alice.id,
+        p_location_id: id,
+        p_patch: { name: 'Renamed', capacity: 77, description: 'x' },
+      });
     });
 
-    it('cannot move a location to another tenant by sending owner_id', async () => {
-      await put({ owner_id: bob.id, capacity: 9 });
-      expect(db.tables.locations[0].owner_id).toBe(alice.id);
+    it('sends a partial patch untouched', async () => {
+      await put({ capacity: 9 });
+      expect(rpcCalls()[0].body.p_patch).toEqual({ capacity: 9 });
     });
 
-    it('rejects renaming onto an existing name (409)', async () => {
-      expect((await put({ name: 'L2' })).status).toBe(409);
-      expect(db.tables.locations[0].name).toBe('L1');
+    it('reports a name that is already taken as 409', async () => {
+      db.rpc.update_location = () => {
+        throw new RpcError(409, { code: '23505', message: 'duplicate key value violates unique constraint "uq_locations_owner_name"', details: null, hint: null });
+      };
+      const res = await put({ name: 'L2' });
+      expect(res.status).toBe(409);
+      expect((await res.json()).detail).toBe('A location with this name already exists');
     });
 
-    it("cannot edit another owner's location (404)", async () => {
-      expect((await put({ capacity: 1 }, bob)).status).toBe(404);
-      expect(db.tables.locations[0].capacity).toBe(5);
+    it("reports a location that is not the caller's (or missing) as 404", async () => {
+      db.rpc.update_location = () => {
+        throw new RpcError(404, { code: 'PT404', message: 'Location not found', details: null, hint: null });
+      };
+      const res = await put({ capacity: 1 }, bob);
+      expect(res.status).toBe(404);
+      expect(rpcCalls()[0].body.p_user_id).toBe(bob.id);
     });
 
-    it.each([[{}], [{ name: '' }], [{ capacity: -1 }], [{ description: 'd'.repeat(256) }]])('rejects %j', async (body) => {
+    it('answers 503 when the database function is missing (migration 0009 not applied)', async () => {
+      db.rpc.update_location = () => {
+        throw new RpcError(404, { code: 'PGRST202', message: 'Could not find the function public.update_location', details: null, hint: null });
+      };
+      expect((await put({ capacity: 1 })).status).toBe(503);
+    });
+
+    it.each([[{}], [{ name: '' }], [{ capacity: -1 }], [{ description: 'd'.repeat(256) }]])('rejects %j before calling the database', async (body) => {
       expect([400, 422]).toContain((await put(body)).status);
+      expect(rpcCalls()).toHaveLength(0);
+    });
+
+    it.each(['abc', '0', '-1', '1.5'])('rejects the id %s', async (bad) => {
+      expect((await put({ capacity: 1 }, alice, bad)).status).toBe(400);
+      expect(rpcCalls()).toHaveLength(0);
     });
   });
 
