@@ -1,5 +1,6 @@
 import { createHash } from 'crypto';
 import { SignJWT, jwtVerify } from 'jose';
+import { isSameOriginRequest, readSessionCookie } from '@/lib/session';
 
 /**
  * Required server-side configuration. Read lazily (at request time) so that
@@ -118,8 +119,14 @@ export function clearAuthCache(userId?: number) {
 }
 
 export async function getAuthUser(req: Request): Promise<AuthUser | null> {
+  // An explicit Authorization header wins (API clients, tests). Otherwise the session
+  // cookie is used, and then a request that changes data must be same-origin (CSRF).
   const authHeader = req.headers.get('Authorization') || '';
-  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  let token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  if (!token) {
+    token = readSessionCookie(req) ?? '';
+    if (token && !isSameOriginRequest(req)) return null;
+  }
   if (!token) return null;
 
   const payload = await verifySessionToken(token);

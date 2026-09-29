@@ -53,17 +53,19 @@ export default function ClientLayout({
   }
 
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    // The session itself is an httpOnly cookie JavaScript cannot see; `user` is the hint that
+    // someone signed in here. The API answers 401 when the session is gone, which clears it.
     const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+    const signedIn = !!userStr;
 
     // Authentication Guard
-    if (!token && !isLoginPage && !isRootPage && !isResetPage) {
+    if (!signedIn && !isLoginPage && !isRootPage && !isResetPage) {
       router.replace('/login');
       return;
     }
 
     // Redirect already authenticated users from login page to dashboard
-    if (token && isLoginPage) {
+    if (signedIn && isLoginPage) {
       router.replace('/dashboard');
       return;
     }

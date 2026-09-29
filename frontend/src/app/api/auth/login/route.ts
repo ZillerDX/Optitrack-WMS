@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/rateLimit';
 import bcrypt from 'bcryptjs';
 import { supabaseRest, createSessionToken } from '@/lib/supabase';
+import { setSessionCookie } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,15 +81,14 @@ export async function POST(req: NextRequest) {
       is_active: user.is_active,
     };
 
-    return NextResponse.json({
-      access_token,
-      token_type: 'bearer',
-      user: userResponse,
-    });
+    // The token goes into an httpOnly cookie and is deliberately not in the body, so page
+    // scripts never see it.
+    return setSessionCookie(NextResponse.json({ token_type: 'cookie', user: userResponse }), access_token);
   } catch (error: any) {
     console.error('[Login API Error]:', error);
-    let detail = error?.message || 'Internal server error during login.';
-    if (detail === 'fetch failed' || detail.includes('ENOTFOUND') || detail.includes('ECONNREFUSED')) {
+    let detail = 'Internal server error during login.';
+    const raw = String(error?.message ?? '');
+    if (raw === 'fetch failed' || raw.includes('ENOTFOUND') || raw.includes('ECONNREFUSED')) {
       detail = 'Database connection error: Service temporarily unreachable. Please try again shortly.';
     }
     return NextResponse.json(

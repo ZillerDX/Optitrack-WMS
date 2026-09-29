@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, getAuthUser, clearAuthCache } from '@/lib/supabase';
+import { clearSessionCookie } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,5 +27,5 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error('[Logout Error]:', err);
   }
-  return NextResponse.json({ success: true, message: 'Logged out successfully' });
+  return clearSessionCookie(NextResponse.json({ success: true, message: 'Logged out successfully' }));
 }

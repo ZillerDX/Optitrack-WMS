@@ -292,7 +292,6 @@ export function Sidebar({ userRole, user }: SidebarProps) {
             } catch (e) {
               console.error('Logout failed:', e);
             }
-            localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = '/login';
           }}

@@ -8,19 +8,19 @@ export async function GET(req: NextRequest) {
   try {
     const user = await getAuthUser(req);
     if (!user) {
-      return NextResponse.json([]);
+      return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
     }
 
     const res = await supabaseRest(`products?owner_id=eq.${user.id}&select=*&order=id.desc`);
     if (!res.ok) {
       console.error('[Supabase Products Error]:', await res.text());
-      return NextResponse.json([]);
+      return NextResponse.json({ detail: 'Failed to load data' }, { status: 500 });
     }
     const data = await res.json();
     return NextResponse.json(Array.isArray(data) ? data : []);
   } catch (err: any) {
     console.error('[GET Products Error]:', err);
-    return NextResponse.json([]);
+    return NextResponse.json({ detail: 'Failed to load data' }, { status: 500 });
   }
 }
 

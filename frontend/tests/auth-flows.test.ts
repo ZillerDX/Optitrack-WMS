@@ -18,7 +18,7 @@ import { POST as google } from '@/app/api/auth/google/route';
 import { POST as forgot } from '@/app/api/auth/forgot-password/route';
 import { POST as reset } from '@/app/api/auth/reset-password/route';
 import { createDb, FakePostgrest } from './helpers/fakePostgrest';
-import { PASSWORD, hash, makeUser, req } from './helpers/http';
+import { PASSWORD, hash, makeUser, req, sessionFrom } from './helpers/http';
 
 let db: FakePostgrest;
 let ipCounter = 0;
@@ -79,7 +79,7 @@ describe('POST /api/auth/login', () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(JSON.stringify(data)).not.toContain('password_hash');
-    expect(await getAuthUser(req('GET', undefined, { token: data.access_token }))).toMatchObject({ email: 'a@x.com' });
+    expect(await getAuthUser(req('GET', undefined, { token: sessionFrom(res) }))).toMatchObject({ email: 'a@x.com' });
   });
 
   it('answers wrong password and unknown email identically (401)', async () => {
@@ -126,9 +126,8 @@ describe('POST /api/auth/google', () => {
     google_returns(200, claims());
     const res = await signIn();
     expect(res.status).toBe(200);
-    const data = await res.json();
     expect(db.tables.users[0]).toMatchObject({ email: 'g@x.com', role: 'ADMIN' });
-    expect(await getAuthUser(req('GET', undefined, { token: data.access_token }))).not.toBeNull();
+    expect(await getAuthUser(req('GET', undefined, { token: sessionFrom(res) }))).not.toBeNull();
   });
 
   it('logs an existing user in without creating another row', async () => {

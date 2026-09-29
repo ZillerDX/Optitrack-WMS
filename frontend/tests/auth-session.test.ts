@@ -5,7 +5,7 @@ import { POST as login } from '@/app/api/auth/login/route';
 import { POST as logout } from '@/app/api/auth/logout/route';
 import { GET as getMe, PUT as putMe } from '@/app/api/auth/me/route';
 import { createDb, FakePostgrest } from './helpers/fakePostgrest';
-import { PASSWORD, makeUser, req } from './helpers/http';
+import { PASSWORD, makeUser, req, sessionFrom } from './helpers/http';
 
 let db: FakePostgrest;
 
@@ -80,8 +80,7 @@ describe('session revocation (B2)', () => {
 
     const res = await login(req('POST', { email: 'a@x.com', password: PASSWORD }));
     expect(res.status).toBe(200);
-    const { access_token } = await res.json();
-    expect(await getAuthUser(req('GET', undefined, { token: access_token }))).not.toBeNull();
+    expect(await getAuthUser(req('GET', undefined, { token: sessionFrom(res) }))).not.toBeNull();
   });
 
   it('logout without a session is harmless', async () => {

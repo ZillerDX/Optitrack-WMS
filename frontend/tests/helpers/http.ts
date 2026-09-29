@@ -41,4 +41,11 @@ export function req(
   });
 }
 
+/** The session token the server put in the Set-Cookie header (page scripts never see it). */
+export function sessionFrom(res: Response): string {
+  const cookie = res.headers.getSetCookie().find((c) => /^(__Host-)?session=/.test(c));
+  if (!cookie) throw new Error('response has no session cookie');
+  return decodeURIComponent(cookie.split(';')[0].split('=').slice(1).join('='));
+}
+
 export const ctx = (id: number | string) => ({ params: Promise.resolve({ id: String(id) }) });

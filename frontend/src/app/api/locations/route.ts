@@ -12,10 +12,10 @@ const DEFAULT_ZONES = [
 export async function GET(req: NextRequest) {
   try {
     const user = await getAuthUser(req);
-    if (!user) return NextResponse.json([]);
+    if (!user) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
 
     const res = await supabaseRest(`locations?owner_id=eq.${user.id}&select=*&order=name.asc`);
-    if (!res.ok) return NextResponse.json([]);
+    if (!res.ok) return NextResponse.json({ detail: 'Failed to load data' }, { status: 500 });
     let data = await res.json();
 
     // Auto-seed standard warehouse zones for this user if they don't have any yet
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(Array.isArray(data) ? data : []);
   } catch {
-    return NextResponse.json([]);
+    return NextResponse.json({ detail: 'Failed to load data' }, { status: 500 });
   }
 }
 

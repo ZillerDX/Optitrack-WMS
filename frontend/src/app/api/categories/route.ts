@@ -8,10 +8,10 @@ const DEFAULT_CATEGORIES = ['Electronics', 'Machinery', 'Raw Materials', 'Appare
 export async function GET(req: NextRequest) {
   try {
     const user = await getAuthUser(req);
-    if (!user) return NextResponse.json([]);
+    if (!user) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
 
     const res = await supabaseRest(`categories?owner_id=eq.${user.id}&select=*&order=name.asc`);
-    if (!res.ok) return NextResponse.json([]);
+    if (!res.ok) return NextResponse.json({ detail: 'Failed to load data' }, { status: 500 });
     let data = await res.json();
 
     // Auto-seed standard categories for user if none exist
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(Array.isArray(data) ? data : []);
   } catch {
-    return NextResponse.json([]);
+    return NextResponse.json({ detail: 'Failed to load data' }, { status: 500 });
   }
 }
 

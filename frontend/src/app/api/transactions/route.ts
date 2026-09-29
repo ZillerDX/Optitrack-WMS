@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   try {
     const user = await getAuthUser(req);
-    if (!user) return NextResponse.json([]);
+    if (!user) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
     const location = searchParams.get('location');
@@ -20,13 +20,13 @@ export async function GET(req: NextRequest) {
     const res = await supabaseRest(path);
     if (!res.ok) {
       console.error('[Supabase Transactions Error]:', await res.text());
-      return NextResponse.json([]);
+      return NextResponse.json({ detail: 'Failed to load data' }, { status: 500 });
     }
     const data = await res.json();
     return NextResponse.json(Array.isArray(data) ? data : []);
   } catch (err: any) {
     console.error('[GET Transactions Error]:', err);
-    return NextResponse.json([]);
+    return NextResponse.json({ detail: 'Failed to load data' }, { status: 500 });
   }
 }
 

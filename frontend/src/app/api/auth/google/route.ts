@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { supabaseRest, createSessionToken } from '@/lib/supabase';
 import { isSignupAllowed, SIGNUP_RESTRICTED_MESSAGE } from '@/lib/signup';
+import { setSessionCookie } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -175,10 +176,10 @@ export async function POST(req: NextRequest) {
       tv: Number(user.token_version) || 0,
     });
 
-    return NextResponse.json({
-      access_token,
-      token_type: 'bearer',
-      user: {
+    return setSessionCookie(
+      NextResponse.json({
+        token_type: 'cookie',
+        user: {
         id: user.id,
         email: user.email,
         first_name: user.first_name,
@@ -187,11 +188,14 @@ export async function POST(req: NextRequest) {
         image_url: user.image_url,
         is_active: user.is_active,
       },
-    });
+      }),
+      access_token
+    );
   } catch (error: any) {
     console.error('[Google API Error]:', error);
-    let detail = error?.message || 'Internal server error during Google login.';
-    if (detail === 'fetch failed' || detail.includes('ENOTFOUND') || detail.includes('ECONNREFUSED')) {
+    let detail = 'Internal server error during Google login.';
+    const raw = String(error?.message ?? '');
+    if (raw === 'fetch failed' || raw.includes('ENOTFOUND') || raw.includes('ECONNREFUSED')) {
       detail = 'Database connection error: Service temporarily unreachable. Please try again shortly.';
     }
     return NextResponse.json(

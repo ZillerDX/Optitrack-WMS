@@ -192,7 +192,7 @@ export interface LoginRequest {
 }
 
 export interface TokenResponse {
-  access_token: string;
+  /** 'cookie': the session is an httpOnly cookie and is not part of the response. */
   token_type: string;
   user: User;
 }
