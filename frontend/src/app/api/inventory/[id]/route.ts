@@ -21,12 +21,13 @@ async function ownsInventory(inventoryId: number, userId: number): Promise<boole
   return Array.isArray(rows) && rows.length > 0;
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id: routeId } = await params;
     const user = await getAuthUser(req);
     if (!user) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
 
-    const id = parseId(params.id);
+    const id = parseId(routeId);
     if (id === null) return NextResponse.json({ detail: 'Invalid inventory id' }, { status: 400 });
 
     // Same response for "missing" and "not yours" so ids cannot be probed.
@@ -73,12 +74,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id: routeId } = await params;
     const user = await getAuthUser(req);
     if (!user) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
 
-    const id = parseId(params.id);
+    const id = parseId(routeId);
     if (id === null) return NextResponse.json({ detail: 'Invalid inventory id' }, { status: 400 });
 
     if (!(await ownsInventory(id, user.id))) {

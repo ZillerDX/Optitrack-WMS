@@ -78,7 +78,7 @@ export default function ClientLayout({
         console.error('Failed to parse user:', e);
       }
     }
-  }, [pathname, router, isLoginPage, isRootPage]);
+  }, [pathname, router, isLoginPage, isRootPage, isResetPage]);
 
   if (isStandalonePage) {
     return (

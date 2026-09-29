@@ -3,8 +3,9 @@ import { supabaseRest, getAuthUser } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id: routeId } = await params;
     const user = await getAuthUser(req);
     if (!user) {
       return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
@@ -14,7 +15,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     // Never let a client reassign ownership or primary key.
     delete body.id;
     delete body.owner_id;
-    const id = params.id;
+    const id = routeId;
     const res = await supabaseRest(`products?id=eq.${id}&owner_id=eq.${user.id}`, {
       method: 'PATCH',
       body: JSON.stringify(body),
@@ -30,14 +31,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id: routeId } = await params;
     const user = await getAuthUser(req);
     if (!user) {
       return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
     }
 
-    const id = params.id;
+    const id = routeId;
     const res = await supabaseRest(`products?id=eq.${id}&owner_id=eq.${user.id}`, {
       method: 'DELETE',
     });
