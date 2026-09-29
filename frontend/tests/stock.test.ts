@@ -1,12 +1,18 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { clearAuthCache } from '@/lib/supabase';
-import { applyStockMovement } from '@/lib/stock';
 import { POST as createTransaction } from '@/app/api/transactions/route';
 import { POST as approveReorder } from '@/app/api/ai/reorder/approve/route';
 import { GET as listInventory, POST as createInventory } from '@/app/api/inventory/route';
 import { DELETE as deleteInventory, PUT as updateInventory } from '@/app/api/inventory/[id]/route';
-import { createDb, FakePostgrest } from './helpers/fakePostgrest';
+import { createDb, FakePostgrest, RpcError } from './helpers/fakePostgrest';
 import { ctx, makeUser, req, TestUser } from './helpers/http';
+
+/*
+ * The stock RULES (ownership, no clamping, capacity, pricing, rollback, concurrency) are in the
+ * database functions and are tested against real PostgreSQL by supabase/tests/stock_movements.sql and
+ * stock_concurrency.sh. What is tested here is the API side of that contract: what is sent, what is
+ * refused before the database is called, and how the database's answers are reported.
+ */
 
 let db: FakePostgrest;
 let alice: TestUser;
@@ -15,6 +21,13 @@ let product: any; // alice's: cost 5, sell 9, min stock 3
 let bobsProduct: any;
 
 const stockAt = (owner: number, name: string) => db.tables.inventory.find((i) => i.product_id === (owner === alice.id ? product.id : bobsProduct.id) && i.location === name);
+const rpcCalls = (name: string) => db.calls.filter((c) => c.table === `rpc/${name}`);
+
+/** What the real function returns on success. */
+const movementResult = (over: Record<string, unknown> = {}) => ({
+  transaction: { id: 1, ref_code: 'TXN-20260101-ABC123', type: 'INBOUND', quantity: 2, unit_price: 5, total_price: 10, status: 'COMPLETED', location: 'A1', ...over },
+  inventory: { id: 1, product_id: 1, location: 'A1', quantity: 10, status: 'IN_STOCK' },
+});
 
 beforeEach(async () => {
   db = createDb();
@@ -26,99 +39,44 @@ beforeEach(async () => {
   db.insert('locations', { owner_id: alice.id, name: 'A1', capacity: 20 });
   db.insert('locations', { owner_id: bob.id, name: 'B1', capacity: 100 });
   db.insert('inventory', { product_id: product.id, location: 'A1', quantity: 8, status: 'IN_STOCK' });
+  db.rpc.apply_stock_movement = () => movementResult();
+  db.rpc.approve_reorder = () => ({ ...movementResult({ ref_code: 'PO-1' }), purchase_order: { id: 9, po_number: 'PO-1', status: 'APPROVED' } });
 });
 
-describe('applyStockMovement', () => {
-  const move = (over: Record<string, unknown> = {}) =>
-    applyStockMovement({ userId: alice.id, productId: product.id, location: 'A1', type: 'INBOUND', quantity: 1, ...over } as any);
-
-  it("refuses another owner's product (404) and leaves stock untouched", async () => {
-    const r = await move({ productId: bobsProduct.id });
-    expect(r).toMatchObject({ ok: false, status: 404 });
-    expect(db.tables.inventory).toHaveLength(1);
-  });
-
-  it("refuses another owner's location", async () => {
-    expect(await move({ location: 'B1' })).toMatchObject({ ok: false, status: 400 });
-    expect(await move({ location: 'nowhere' })).toMatchObject({ ok: false, status: 400 });
-  });
-
-  it('rejects OUTBOUND beyond available stock instead of clamping to zero', async () => {
-    expect(await move({ type: 'OUTBOUND', quantity: 9 })).toMatchObject({ ok: false, status: 400 });
-    expect(stockAt(alice.id, 'A1')!.quantity).toBe(8);
-  });
-
-  it('rejects OUTBOUND where there is no stock row at all', async () => {
-    db.insert('locations', { owner_id: alice.id, name: 'A2', capacity: 5 });
-    expect(await move({ type: 'OUTBOUND', location: 'A2' })).toMatchObject({ ok: false, status: 400 });
-  });
-
-  it('enforces location capacity for INBOUND and ADJUST', async () => {
-    expect(await move({ quantity: 13 })).toMatchObject({ ok: false, status: 400 }); // 8 + 13 > 20
-    expect(await move({ type: 'ADJUST', quantity: 21 })).toMatchObject({ ok: false, status: 400 });
-    expect(await move({ quantity: 12 })).toMatchObject({ ok: true });
-    expect(stockAt(alice.id, 'A1')!.quantity).toBe(20);
-  });
-
-  it('prices INBOUND/ADJUST at cost and OUTBOUND at the sell price, from the product', async () => {
-    expect(await move({ type: 'INBOUND' })).toMatchObject({ unitPrice: 5 });
-    expect(await move({ type: 'OUTBOUND' })).toMatchObject({ unitPrice: 9 });
-    expect(await move({ type: 'ADJUST', quantity: 4 })).toMatchObject({ unitPrice: 5 });
-  });
-
-  it('derives the stock status from the quantity and the product minimum', async () => {
-    await move({ type: 'OUTBOUND', quantity: 6 }); // 2 < min 3
-    expect(stockAt(alice.id, 'A1')!.status).toBe('LOW_STOCK');
-    await move({ type: 'OUTBOUND', quantity: 2 });
-    expect(stockAt(alice.id, 'A1')!.status).toBe('OUT_OF_STOCK');
-    await move({ quantity: 10 });
-    expect(stockAt(alice.id, 'A1')!.status).toBe('IN_STOCK');
-  });
-
-  it('revert() restores the previous quantity, or removes a row it created', async () => {
-    const changed = await move({ quantity: 5 });
-    expect(stockAt(alice.id, 'A1')!.quantity).toBe(13);
-    if (changed.ok) await changed.revert();
-    expect(stockAt(alice.id, 'A1')!.quantity).toBe(8);
-
-    db.insert('locations', { owner_id: alice.id, name: 'A2', capacity: 50 });
-    const created = await move({ location: 'A2', quantity: 4 });
-    expect(stockAt(alice.id, 'A2')).toBeDefined();
-    if (created.ok) await created.revert();
-    expect(stockAt(alice.id, 'A2')).toBeUndefined();
-  });
-
-  it('answers 409 when another writer changed the row in between (compare-and-swap)', async () => {
-    const realFetch = globalThis.fetch;
-    globalThis.fetch = (async (url: any, init: any) => {
-      if ((init?.method ?? 'GET') === 'PATCH' && String(url).includes('inventory')) {
-        db.tables.inventory[0].quantity += 1; // the concurrent writer wins first
-      }
-      return realFetch(url, init);
-    }) as any;
-    expect(await move({ quantity: 1 })).toMatchObject({ ok: false, status: 409 });
-    expect(db.tables.inventory[0].quantity).toBe(9); // only the other writer's change
-  });
-});
+const dbError = (status: number, code: string, message: string) => {
+  throw new RpcError(status, { code, message, details: null, hint: null });
+};
 
 describe('POST /api/transactions', () => {
   const tx = (over: Record<string, unknown> = {}, who = alice) =>
     createTransaction(req('POST', { type: 'INBOUND', quantity: 2, product_id: product.id, location: 'A1', ...over }, { token: who.token }));
 
-  it('records the movement with server-side price, status and reference', async () => {
-    const res = await tx({ unit_price: 0.01, total_price: 0.01, status: 'CANCELLED', ref_code: 'MINE' });
+  it('sends the session user and only the movement fields to the database, and returns 201 with the row', async () => {
+    const res = await tx({ notes: 'cycle count', created_at: '2024-01-02T03:04:05Z' });
     expect(res.status).toBe(201);
-    const saved = db.tables.transactions[0];
-    expect(saved).toMatchObject({ unit_price: 5, total_price: 10, status: 'COMPLETED', user_id: alice.id });
-    expect(saved.ref_code).toMatch(/^TXN-\d{8}-[0-9A-F]{6}$/);
-    expect(stockAt(alice.id, 'A1')!.quantity).toBe(10);
+    expect((await res.json()).ref_code).toBe('TXN-20260101-ABC123');
+    expect(rpcCalls('apply_stock_movement')).toHaveLength(1);
+    expect(rpcCalls('apply_stock_movement')[0].body).toEqual({
+      p_user_id: alice.id,
+      p_product_id: product.id,
+      p_location: 'A1',
+      p_type: 'INBOUND',
+      p_quantity: 2,
+      p_notes: 'cycle count',
+      p_created_at: '2024-01-02T03:04:05.000Z',
+    });
   });
 
-  it("cannot move another owner's product or use their location", async () => {
-    expect((await tx({ product_id: bobsProduct.id })).status).toBe(404);
-    expect((await tx({ location: 'B1' })).status).toBe(400);
-    expect((await tx({}, bob)).status).toBe(404); // alice's product from bob's session
-    expect(db.tables.transactions).toHaveLength(0);
+  it('never forwards a user id, price, status or reference sent by the client', async () => {
+    await tx({ user_id: bob.id, p_user_id: bob.id, unit_price: 0.01, total_price: 0.01, status: 'CANCELLED', ref_code: 'MINE' });
+    const sent = rpcCalls('apply_stock_movement')[0].body;
+    expect(sent.p_user_id).toBe(alice.id);
+    expect(Object.keys(sent).sort()).toEqual(['p_created_at', 'p_location', 'p_notes', 'p_product_id', 'p_quantity', 'p_type', 'p_user_id']);
+  });
+
+  it('requires a session', async () => {
+    expect((await createTransaction(req('POST', {}))).status).toBe(401);
+    expect(rpcCalls('apply_stock_movement')).toHaveLength(0);
   });
 
   it.each([
@@ -130,62 +88,89 @@ describe('POST /api/transactions', () => {
     [{ location: '' }],
     [{ notes: 'n'.repeat(501) }],
     [{ created_at: 'not a date' }],
-  ])('rejects invalid input %j with 400/422 and writes nothing', async (over) => {
+  ])('refuses invalid input %j before calling the database', async (over) => {
     expect([400, 422]).toContain((await tx(over)).status);
-    expect(db.tables.transactions).toHaveLength(0);
-    expect(stockAt(alice.id, 'A1')!.quantity).toBe(8);
+    expect(rpcCalls('apply_stock_movement')).toHaveLength(0);
   });
 
-  it('undoes the stock change when the transaction cannot be recorded', async () => {
-    const realFetch = globalThis.fetch;
-    globalThis.fetch = (async (url: any, init: any) => {
-      if (String(url).includes('/transactions') && init?.method === 'POST') {
-        return { ok: false, status: 500, json: async () => ({}), text: async () => 'boom' } as any;
-      }
-      return realFetch(url, init);
-    }) as any;
-    const res = await tx({ quantity: 4 });
+  it("reports the database's refusals with their status and message", async () => {
+    db.rpc.apply_stock_movement = () => dbError(400, 'PT400', 'Insufficient stock. Available: 8, Requested: 9');
+    const res = await tx({ type: 'OUTBOUND', quantity: 9 });
+    expect(res.status).toBe(400);
+    expect((await res.json()).detail).toBe('Insufficient stock. Available: 8, Requested: 9');
+
+    db.rpc.apply_stock_movement = () => dbError(404, 'PT404', `Product with ID ${bobsProduct.id} not found or access denied`);
+    expect((await tx({ product_id: bobsProduct.id })).status).toBe(404);
+  });
+
+  it('turns a unique violation into a generic 409', async () => {
+    db.rpc.apply_stock_movement = () => dbError(409, '23505', 'duplicate key value violates unique constraint "transactions_ref_code_key"');
+    const res = await tx();
+    expect(res.status).toBe(409);
+    expect(JSON.stringify(await res.json())).not.toMatch(/constraint|transactions_ref_code/);
+  });
+
+  it('answers 503 (not a stack trace) when the migration has not been applied', async () => {
+    db.rpc.apply_stock_movement = () => dbError(404, 'PGRST202', 'Could not find the function public.apply_stock_movement');
+    const res = await tx();
+    expect(res.status).toBe(503);
+    expect(JSON.stringify(await res.json())).not.toMatch(/PGRST202|function/i);
+  });
+
+  it('hides unexpected database errors', async () => {
+    db.rpc.apply_stock_movement = () => dbError(500, 'XX000', 'relation "secret_table" is corrupted');
+    const res = await tx();
     expect(res.status).toBe(500);
-    expect(stockAt(alice.id, 'A1')!.quantity).toBe(8);
-    expect(JSON.stringify(await res.json())).not.toContain('boom');
+    expect(JSON.stringify(await res.json())).not.toMatch(/secret_table|corrupted|XX000/);
   });
 
-  it('requires a session', async () => {
-    expect((await createTransaction(req('POST', {}))).status).toBe(401);
+  it('does not touch the tables itself any more (one call, no follow-up writes)', async () => {
+    await tx();
+    expect(db.calls.filter((c) => c.method !== 'GET' && !c.table.startsWith('rpc/')).length).toBe(0);
   });
 });
 
 describe('POST /api/ai/reorder/approve', () => {
   const approve = (over: Record<string, unknown> = {}, who = alice) =>
-    approveReorder(req('POST', { product_id: product.id, reorder_qty: 3, target_location: 'A1', unit_cost: 0.01, total_amount: 0.03, ...over }, { token: who.token }));
+    approveReorder(req('POST', { product_id: product.id, reorder_qty: 3, target_location: 'A1', po_number: 'PO-1', unit_cost: 0.01, total_amount: 0.03, supplier: 'Acme', ...over }, { token: who.token }));
 
-  it('receives stock at the product cost (client cost ignored) and stores the PO', async () => {
-    const res = await approve({ po_number: 'PO-1' });
+  it('sends the session user and ignores a client-supplied cost', async () => {
+    const res = await approve({ user_id: bob.id });
     expect(res.status).toBe(200);
-    expect(stockAt(alice.id, 'A1')!.quantity).toBe(11);
-    expect(db.tables.transactions[0]).toMatchObject({ ref_code: 'PO-1', type: 'INBOUND', unit_price: 5, total_price: 15 });
-    expect(db.tables.purchase_orders[0]).toMatchObject({ po_number: 'PO-1', total_amount: 15, user_id: alice.id });
+    const data = await res.json();
+    expect(data).toMatchObject({ success: true, purchase_order: { po_number: 'PO-1' }, transaction: { ref_code: 'PO-1' } });
+    const sent = rpcCalls('approve_reorder')[0].body;
+    expect(sent).toMatchObject({ p_user_id: alice.id, p_product_id: product.id, p_location: 'A1', p_quantity: 3, p_po_number: 'PO-1', p_supplier: 'Acme' });
+    expect(JSON.stringify(sent)).not.toMatch(/0\.01|0\.03|unit_cost|total/);
   });
 
-  it("refuses another owner's product and location", async () => {
-    expect((await approve({ product_id: bobsProduct.id })).status).toBe(404);
-    expect((await approve({ target_location: 'B1' })).status).toBe(400);
-    expect(db.tables.transactions).toHaveLength(0);
+  it('makes up a PO number when none is given', async () => {
+    await approve({ po_number: undefined });
+    expect(rpcCalls('approve_reorder')[0].body.p_po_number).toMatch(/^PO-\d+$/);
   });
 
-  it('undoes the stock when the PO number is already used', async () => {
-    await approve({ po_number: 'PO-1' });
-    const again = await approve({ po_number: 'PO-1' });
-    expect(again.status).toBe(409);
-    expect(stockAt(alice.id, 'A1')!.quantity).toBe(11); // only the first receipt
-  });
-
-  it.each([[{ reorder_qty: 0 }], [{ reorder_qty: -1 }], [{ reorder_qty: 'x' }], [{ target_location: '' }]])(
-    'rejects invalid input %j',
+  it.each([[{ reorder_qty: 0 }], [{ reorder_qty: -1 }], [{ reorder_qty: 'x' }], [{ target_location: '' }], [{ product_id: 0 }]])(
+    'refuses invalid input %j before calling the database',
     async (over) => {
       expect((await approve(over)).status).toBe(400);
+      expect(rpcCalls('approve_reorder')).toHaveLength(0);
     }
   );
+
+  it('reports refusals, duplicate PO numbers and outages like the transactions route', async () => {
+    db.rpc.approve_reorder = () => dbError(404, 'PT404', 'Product with ID 1 not found or access denied');
+    expect((await approve()).status).toBe(404);
+    db.rpc.approve_reorder = () => dbError(409, '23505', 'duplicate key value violates unique constraint "purchase_orders_po_number_key"');
+    const dup = await approve();
+    expect(dup.status).toBe(409);
+    expect(JSON.stringify(await dup.json())).not.toMatch(/purchase_orders_po_number_key/);
+    db.rpc.approve_reorder = () => dbError(500, 'XX000', 'boom');
+    expect((await approve()).status).toBe(500);
+  });
+
+  it('requires a session', async () => {
+    expect((await approveReorder(req('POST', {}))).status).toBe(401);
+  });
 });
 
 describe('/api/inventory', () => {

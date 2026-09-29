@@ -350,7 +350,8 @@ What protects the data, and what to verify. See `ARCHITECTURE_SUMMARY.md` for de
    guarantee.
 
 Automated checks in CI: `npm run lint`, `tsc --noEmit`, `npm test`, `npm audit --omit=dev --audit-level=high`,
-`next build`, and the SQL migrations applied twice to a real PostgreSQL.
+`next build`, the SQL migrations applied twice to a real PostgreSQL, the SQL and concurrency tests of the stock
+functions, and the API integration tests against PostgreSQL + PostgREST.
 
 ---
 
@@ -408,7 +409,7 @@ Optitrack-WMS/
 │   └── package.json
 │
 ├── supabase/
-│   └── migrations/                     # 0000_baseline ... 0007_rate_limits (run in order, idempotent)
+│   └── migrations/                     # 0000_baseline ... 0008_stock_movements (run in order, idempotent)
 │
 ├── frontend/
 │   ├── tests/                          # Vitest: API handlers against an in-memory PostgREST double
@@ -426,7 +427,7 @@ Optitrack-WMS/
 * A Supabase project (or any PostgreSQL behind PostgREST)
 
 ### 10.2 Database
-Apply the SQL files in `supabase/migrations/` **in order** (`0000` ... `0007`) with the Supabase SQL editor or
+Apply the SQL files in `supabase/migrations/` **in order** (`0000` ... `0008`) with the Supabase SQL editor or
 `psql`. They are idempotent; run newer ones before deploying code that needs them.
 
 ### 10.3 Run the app
@@ -441,6 +442,9 @@ npm run dev                     # http://localhost:3000
 ```bash
 npm run lint && npx tsc --noEmit && npm test && npm run build
 npm audit --omit=dev --audit-level=high
+
+# Against a real PostgreSQL + PostgREST (needs Docker): see frontend/tests-integration/README.md
+eval "$(bash ../supabase/tests/integration-stack.sh up)" && npm run test:integration
 ```
 
 ### 10.5 Production

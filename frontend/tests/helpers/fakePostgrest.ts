@@ -24,6 +24,13 @@ export interface Call {
 
 type RpcHandler = (args: any, db: FakePostgrest) => any;
 
+/** Throw from an rpc handler to answer like PostgREST does for a raised database error. */
+export class RpcError extends Error {
+  constructor(public status: number, public body: Record<string, unknown>) {
+    super(String(body.message ?? 'rpc error'));
+  }
+}
+
 const RESERVED = new Set(['select', 'order', 'limit', 'offset', 'on_conflict']);
 
 export class FakePostgrest {
@@ -151,7 +158,12 @@ export class FakePostgrest {
     if (path.startsWith('rpc/')) {
       const handler = this.rpc[path.slice(4)];
       if (!handler) return this.response({ message: 'function not found' }, 404);
-      return this.response(handler(body, this));
+      try {
+        return this.response(handler(body, this));
+      } catch (err) {
+        if (err instanceof RpcError) return this.response(err.body, err.status);
+        throw err;
+      }
     }
 
     const table = path;

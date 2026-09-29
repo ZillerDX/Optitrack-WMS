@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
-import { applyStockMovement, MOVEMENT_TYPES, MovementType } from '@/lib/stock';
+import { recordStockMovement, MOVEMENT_TYPES, MovementType } from '@/lib/stock';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,40 +68,21 @@ export async function POST(req: NextRequest) {
       createdAt = parsed.toISOString();
     }
 
-    // Ownership, capacity and stock rules; also applies the inventory change.
-    const movement = await applyStockMovement({ userId: user.id, productId, location, type, quantity });
-    if (!movement.ok) {
-      return NextResponse.json({ detail: movement.detail }, { status: movement.status });
-    }
-
-    const day = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const txPayload: Record<string, unknown> = {
-      ref_code: `TXN-${day}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`,
+    // One database transaction: ownership, capacity and stock rules, the stock change and the
+    // transaction row. The user comes from the session; price, status and reference from the DB.
+    const result = await recordStockMovement({
+      userId: user.id,
+      productId,
+      location,
       type,
       quantity,
-      unit_price: movement.unitPrice,
-      total_price: movement.unitPrice * quantity,
-      status: 'COMPLETED',
-      location,
       notes,
-      user_id: user.id,
-      product_id: productId,
-    };
-    if (createdAt) txPayload.created_at = createdAt;
-
-    const res = await supabaseRest('transactions', {
-      method: 'POST',
-      body: JSON.stringify(txPayload),
+      createdAt,
     });
-
-    if (!res.ok) {
-      // Keep stock and history consistent: undo the inventory change.
-      await movement.revert();
-      console.error('[Create Transaction Error]:', await res.text());
-      return NextResponse.json({ detail: 'Failed to record transaction' }, { status: 500 });
+    if (!result.ok) {
+      return NextResponse.json({ detail: result.detail }, { status: result.status });
     }
-    const created = await res.json();
-    return NextResponse.json(created[0], { status: 201 });
+    return NextResponse.json(result.data.transaction, { status: 201 });
   } catch (err: any) {
     console.error('[POST Transactions Error]:', err);
     return NextResponse.json({ detail: 'Failed to create transaction' }, { status: 500 });

@@ -1,7 +1,7 @@
 # OptiTrack WMS - Database Schema
 
 This document describes the database used by the Next.js API (`frontend/src/app/api`). The schema is defined
-by the SQL files in `supabase/migrations/` (`0000_baseline.sql` ... `0007_rate_limits.sql`, applied in order and
+by the SQL files in `supabase/migrations/` (`0000_baseline.sql` ... `0008_stock_movements.sql`, applied in order and
 idempotent), which are the source of truth. The business rules below are enforced by the Route Handlers.
 
 ## Database Engine
@@ -12,6 +12,9 @@ idempotent), which are the source of truth. The business rules below are enforce
   cannot read or write anything; tenant isolation is done by the handlers (`owner_id` / `user_id` filters)
 - **Schema changes:** add a numbered file to `supabase/migrations/`; CI applies all of them twice to an empty
   PostgreSQL to prove they run and are idempotent
+- **Functions (RPC):** `apply_stock_movement` and `approve_reorder` (`0008`) change stock, write the transaction
+  (and PO) in one database transaction; `rate_limit_hit` (`0007`) is the shared rate limiter. All are executable by
+  `service_role` only.
 - **Additional tables/columns added after the baseline:** `users.token_version` (session revocation),
   `rate_limits` (shared rate limiter), unique constraints on locations, categories and product SKUs
 
