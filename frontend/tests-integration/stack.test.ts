@@ -5,6 +5,7 @@ import { POST as register } from '@/app/api/auth/register/route';
 import { POST as login } from '@/app/api/auth/login/route';
 import { POST as logout } from '@/app/api/auth/logout/route';
 import { GET as listProducts, POST as createProduct } from '@/app/api/products/route';
+import { DELETE as deleteProduct } from '@/app/api/products/[id]/route';
 import { GET as listLocations, POST as createLocation } from '@/app/api/locations/route';
 import { GET as listCategories, POST as createCategory } from '@/app/api/categories/route';
 import { GET as listInventory, POST as createInventory } from '@/app/api/inventory/route';
@@ -324,6 +325,32 @@ describe('inventory endpoints against the real database', () => {
     // the stock is still usable under the new name
     expect((await move(a.token, pa, 'OUTBOUND', 2, 'Zone 1')).status).toBe(201);
     expect((await rows(`inventory?product_id=eq.${pa}`))[0].quantity).toBe(6);
+  });
+
+  it('deleting a product keeps its history, zeroes its stock, frees the SKU and the shelf', async () => {
+    const u = await signup('a@x.com');
+    const b = await signup('b@x.com');
+    const p = await seedWarehouse(u.token, 'P1', 'A1', 20);
+    await move(u.token, p, 'INBOUND', 12);
+    await move(u.token, p, 'OUTBOUND', 2);
+    const del = (id: number, token = u.token) => deleteProduct(call('DELETE', undefined, token), ctx(id));
+
+    expect((await del(p, b.token)).status).toBe(404); // not Bob's
+    expect((await del(p)).status).toBe(200);
+    expect((await del(p)).status).toBe(404); // already deleted
+
+    // gone from the list and from the stock, but the row and the history remain
+    expect((await (await listProducts(call('GET', undefined, u.token))).json()).map((x: any) => x.id)).not.toContain(p);
+    expect(await rows(`inventory?product_id=eq.${p}`)).toHaveLength(0);
+    expect((await rows(`products?id=eq.${p}`))[0]).toMatchObject({ name: 'P1', sku: `P1-deleted${p}` });
+    const types = (await rows(`transactions?product_id=eq.${p}&order=id.asc`)).map((t) => `${t.type}:${t.quantity}`);
+    expect(types).toEqual(['INBOUND:12', 'OUTBOUND:2', 'ADJUST:0']);
+
+    // no more movements on it, the SKU can be reused, and the shelf is empty again
+    expect((await move(u.token, p, 'INBOUND', 1)).status).toBe(404);
+    const again = await createProduct(call('POST', { sku: 'P1', name: 'New P1', cost_price: 5, sell_price: 9, min_stock_level: 3 }, u.token));
+    expect(again.status).toBe(200);
+    expect((await move(u.token, (await again.json()).id, 'INBOUND', 20)).status).toBe(201);
   });
 
   it('POST /api/inventory: negative quantity refused, duplicate 409, capacity enforced', async () => {

@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
     // 1. Fetch real-time products, inventory, transactions, and existing POs in parallel
     const [prodRes, invRes, txRes, poRes] = await Promise.all([
-      supabaseRest(`products?owner_id=eq.${user.id}&select=*&order=name.asc`),
+      supabaseRest(`products?owner_id=eq.${user.id}&deleted_at=is.null&select=*&order=name.asc`),
       supabaseRest(`inventory?select=*,product:products!inner(*)&product.owner_id=eq.${user.id}`),
       supabaseRest(`transactions?user_id=eq.${user.id}&type=eq.OUTBOUND&order=created_at.desc&limit=200`),
       supabaseRest(`purchase_orders?user_id=eq.${user.id}&order=created_at.desc&limit=50`),

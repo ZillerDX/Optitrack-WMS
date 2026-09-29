@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
 
     // 1. Fetch live warehouse data snapshot
     const [productsRes, inventoryRes, txRes, locRes] = await Promise.all([
-      supabaseRest(`products?owner_id=eq.${user.id}&select=*&order=id.desc`),
+      supabaseRest(`products?owner_id=eq.${user.id}&deleted_at=is.null&select=*&order=id.desc`),
       supabaseRest(`inventory?select=*,product:products!inner(*)&product.owner_id=eq.${user.id}&order=id.desc`),
       supabaseRest(`transactions?user_id=eq.${user.id}&select=*,product:products(*)&order=created_at.desc&limit=50`),
       supabaseRest(`locations?owner_id=eq.${user.id}&select=*`),
