@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
+import { parseProductInput } from '@/lib/productInput';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,23 +12,61 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await req.json();
-    // Never let a client reassign ownership or primary key.
-    delete body.id;
-    delete body.owner_id;
-    const id = routeId;
+    const parsed = parseProductInput(await req.json(), { partial: true });
+    if (!parsed.ok) {
+      return NextResponse.json({ detail: parsed.detail }, { status: 422 });
+    }
+    const update = parsed.data;
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json({ detail: 'No editable fields provided' }, { status: 422 });
+    }
+    const id = Number(routeId);
+    if (!Number.isInteger(id) || id <= 0) {
+      return NextResponse.json({ detail: 'Invalid product id' }, { status: 400 });
+    }
+
+    // sell_price >= cost_price must hold for the values that will be stored, so an update
+    // of only one of the two is compared with the stored other one.
+    if ((update.cost_price !== undefined) !== (update.sell_price !== undefined)) {
+      const curRes = await supabaseRest(`products?id=eq.${id}&owner_id=eq.${user.id}&select=cost_price,sell_price`);
+      const cur = curRes.ok ? (await curRes.json())[0] : null;
+      if (!cur) return NextResponse.json({ detail: 'Product not found' }, { status: 404 });
+      const cost = update.cost_price ?? Number(cur.cost_price);
+      const sell = update.sell_price ?? Number(cur.sell_price);
+      if (sell < cost) {
+        return NextResponse.json({ detail: `sell_price (${sell}) must be >= cost_price (${cost})` }, { status: 422 });
+      }
+    }
+
+    if (update.sku !== undefined) {
+      const dupRes = await supabaseRest(
+        `products?owner_id=eq.${user.id}&sku=eq.${encodeURIComponent(update.sku)}&id=neq.${id}&select=id`
+      );
+      const dups = dupRes.ok ? await dupRes.json() : [];
+      if (Array.isArray(dups) && dups.length > 0) {
+        return NextResponse.json({ detail: `Product with SKU '${update.sku}' already exists` }, { status: 409 });
+      }
+    }
+
     const res = await supabaseRest(`products?id=eq.${id}&owner_id=eq.${user.id}`, {
       method: 'PATCH',
-      body: JSON.stringify(body),
+      body: JSON.stringify(update),
     });
-
+    if (res.status === 409) {
+      return NextResponse.json({ detail: `Product with SKU '${update.sku}' already exists` }, { status: 409 });
+    }
     if (!res.ok) {
-      return NextResponse.json({ detail: await res.text() }, { status: 400 });
+      console.error('[Update Product Error]:', await res.text());
+      return NextResponse.json({ detail: 'Failed to update product' }, { status: 400 });
     }
     const updated = await res.json();
-    return NextResponse.json(updated[0] || body);
+    if (!Array.isArray(updated) || updated.length === 0) {
+      return NextResponse.json({ detail: 'Product not found' }, { status: 404 });
+    }
+    return NextResponse.json(updated[0]);
   } catch (err: any) {
-    return NextResponse.json({ detail: err.message }, { status: 500 });
+    console.error('[Product Route Error]:', err);
+    return NextResponse.json({ detail: 'Request failed' }, { status: 500 });
   }
 }
 
@@ -45,10 +84,12 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     });
 
     if (!res.ok) {
-      return NextResponse.json({ detail: await res.text() }, { status: 400 });
+      console.error('[Delete Product Error]:', await res.text());
+      return NextResponse.json({ detail: 'Failed to delete product' }, { status: 400 });
     }
     return NextResponse.json({ message: 'Deleted successfully' });
   } catch (err: any) {
-    return NextResponse.json({ detail: err.message }, { status: 500 });
+    console.error('[Product Route Error]:', err);
+    return NextResponse.json({ detail: 'Request failed' }, { status: 500 });
   }
 }

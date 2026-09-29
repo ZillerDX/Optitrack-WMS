@@ -3,6 +3,7 @@ import { rateLimit } from '@/lib/rateLimit';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { supabaseRest, createSessionToken } from '@/lib/supabase';
+import { isSignupAllowed, SIGNUP_RESTRICTED_MESSAGE } from '@/lib/signup';
 
 export const dynamic = 'force-dynamic';
 
@@ -116,7 +117,10 @@ export async function POST(req: NextRequest) {
         }
       }
     } else {
-      // Auto-register new user
+      // Auto-register new user (subject to the optional domain allowlist)
+      if (!isSignupAllowed(email)) {
+        return NextResponse.json({ detail: SIGNUP_RESTRICTED_MESSAGE }, { status: 403 });
+      }
       const randomPassword = crypto.randomBytes(32).toString('hex');
       const password_hash = bcrypt.hashSync(randomPassword, 10);
 

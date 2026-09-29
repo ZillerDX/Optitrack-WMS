@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/rateLimit';
 import bcrypt from 'bcryptjs';
 import { supabaseRest } from '@/lib/supabase';
+import { isSignupAllowed, SIGNUP_RESTRICTED_MESSAGE } from '@/lib/signup';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,10 @@ export async function POST(req: NextRequest) {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+
+    if (!isSignupAllowed(normalizedEmail)) {
+      return NextResponse.json({ detail: SIGNUP_RESTRICTED_MESSAGE }, { status: 403 });
+    }
 
     if (password.length < 6) {
       return NextResponse.json(
