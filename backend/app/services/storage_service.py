@@ -17,12 +17,29 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-ALLOWED_IMAGE_CONTENT_TYPES = {
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-    "image/gif",
+# Extension is derived from the *verified* content type, never from the
+# client-supplied filename (a ".html" name would otherwise be served as HTML
+# from the API origin by the static mount => stored XSS).
+IMAGE_EXTENSIONS = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
 }
+ALLOWED_IMAGE_CONTENT_TYPES = set(IMAGE_EXTENSIONS)
+
+
+def detect_image_type(data: bytes) -> Optional[str]:
+    """Return the image MIME type from magic bytes, or None if not a supported image."""
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if data[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return None
 
 
 class StorageError(Exception):
@@ -54,13 +71,9 @@ class StorageService:
         return kwargs
 
     @staticmethod
-    def _generate_key(prefix: str, filename: Optional[str]) -> str:
-        """Build a collision-free object key."""
-        ext = ""
-        if filename:
-            ext = os.path.splitext(filename)[1].lower()
-        if not ext:
-            ext = ".bin"
+    def _generate_key(prefix: str, content_type: str) -> str:
+        """Build a collision-free object key with a server-chosen extension."""
+        ext = IMAGE_EXTENSIONS[content_type]
         return f"{prefix.strip('/')}/{uuid.uuid4().hex}{ext}"
 
     def _public_url_for(self, key: str) -> str:
@@ -135,7 +148,14 @@ class StorageService:
                 ),
             )
 
-        key = self._generate_key(prefix=prefix, filename=upload.filename)
+        detected_type = detect_image_type(data)
+        if detected_type is None or detected_type != content_type:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File content does not match a supported image type",
+            )
+
+        key = self._generate_key(prefix=prefix, content_type=detected_type)
 
         try:
             if settings.STORAGE_BACKEND == "local":

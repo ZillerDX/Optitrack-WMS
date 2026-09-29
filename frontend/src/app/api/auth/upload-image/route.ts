@@ -36,7 +36,22 @@ export async function POST(req: NextRequest) {
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const dataUrl = `data:${file.type};base64,${buffer.toString('base64')}`;
+
+    // The declared MIME type is client-controlled: confirm the bytes really are that image.
+    const startsWith = (...bytes: number[]) => bytes.every((b, i) => buffer[i] === b);
+    const detected =
+      startsWith(0xff, 0xd8, 0xff) ? 'image/jpeg' :
+      startsWith(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a) ? 'image/png' :
+      buffer.subarray(0, 3).toString('latin1') === 'GIF' ? 'image/gif' :
+      buffer.subarray(0, 4).toString('latin1') === 'RIFF' && buffer.subarray(8, 12).toString('latin1') === 'WEBP' ? 'image/webp' :
+      null;
+    if (detected !== file.type) {
+      return NextResponse.json(
+        { detail: 'File content does not match a supported image type.' },
+        { status: 400 }
+      );
+    }
+    const dataUrl = `data:${detected};base64,${buffer.toString('base64')}`;
 
     // Update user image_url in Supabase
     const updateRes = await supabaseRest(`users?id=eq.${authUser.id}`, {
