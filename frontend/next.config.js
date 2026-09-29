@@ -7,12 +7,10 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   images: {
-    domains: ['localhost'],
+    // Avatars are Google profile pictures or data URLs (see src/lib/validation.ts);
+    // the optimizer must not be a proxy for arbitrary hosts.
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
+      { protocol: 'https', hostname: '*.googleusercontent.com' },
     ],
   },
   async rewrites() {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/rateLimit';
 import { timingSafeEqual } from 'crypto';
 import bcrypt from 'bcryptjs';
-import { supabaseRest, verifyPasswordResetToken, passwordFingerprint } from '@/lib/supabase';
+import { supabaseRest, verifyPasswordResetToken, passwordFingerprint, clearAuthCache } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(INVALID_LINK, { status: 400 });
     }
 
-    const userRes = await supabaseRest(`users?id=eq.${userId}&select=id,password_hash,is_active`);
+    const userRes = await supabaseRest(`users?id=eq.${userId}&select=id,password_hash,is_active,token_version`);
     if (!userRes.ok) {
       return NextResponse.json({ detail: 'Could not reset password. Please try again.' }, { status: 500 });
     }
@@ -58,7 +58,11 @@ export async function POST(req: NextRequest) {
     // Guard on the old hash so two concurrent uses of one link cannot both win.
     const patch = await supabaseRest(
       `users?id=eq.${userId}&password_hash=eq.${encodeURIComponent(user.password_hash)}`,
-      { method: 'PATCH', body: JSON.stringify({ password_hash }) }
+      {
+        method: 'PATCH',
+        // A new password ends every existing session.
+        body: JSON.stringify({ password_hash, token_version: (Number(user.token_version) || 0) + 1 }),
+      }
     );
     if (!patch.ok) {
       console.error('[Reset Password DB Error]:', await patch.text());
@@ -69,6 +73,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(INVALID_LINK, { status: 400 });
     }
 
+    clearAuthCache(userId);
     return NextResponse.json({ message: 'Password has been reset. You can now sign in.' });
   } catch (err: any) {
     console.error('[Reset Password Error]:', err);

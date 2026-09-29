@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
       sub: String(user.id),
       email: user.email,
       role: user.role,
+      tv: Number(user.token_version) || 0,
     });
 
     const userResponse = {

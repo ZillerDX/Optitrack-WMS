@@ -43,7 +43,7 @@ export async function supabaseRest(path: string, options: RequestInit = {}) {
   return response;
 }
 
-export async function createSessionToken(payload: { sub: string; email: string; role: string }) {
+export async function createSessionToken(payload: { sub: string; email: string; role: string; tv?: number }) {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -99,6 +99,24 @@ export interface AuthUser {
   role: string;
 }
 
+interface CachedUser {
+  at: number;
+  user: AuthUser | null;
+  tokenVersion: number;
+}
+
+// Sessions are re-checked against the database so that deactivating a user or
+// bumping `token_version` (password reset, logout) revokes them. A few seconds of
+// cache keeps that to one query per user, not per request; the trade-off is that
+// another serverless instance may accept a revoked token for up to this long.
+const AUTH_CACHE_TTL_MS = 5_000;
+const authCache = new Map<number, CachedUser>();
+
+export function clearAuthCache(userId?: number) {
+  if (userId === undefined) authCache.clear();
+  else authCache.delete(userId);
+}
+
 export async function getAuthUser(req: Request): Promise<AuthUser | null> {
   const authHeader = req.headers.get('Authorization') || '';
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
@@ -107,9 +125,25 @@ export async function getAuthUser(req: Request): Promise<AuthUser | null> {
   const payload = await verifySessionToken(token);
   if (!payload || !payload.sub) return null;
 
-  return {
-    id: Number(payload.sub),
-    email: (payload.email as string) || '',
-    role: 'ADMIN',
-  };
+  const id = Number(payload.sub);
+  if (!Number.isInteger(id) || id <= 0) return null;
+
+  let entry = authCache.get(id);
+  if (!entry || Date.now() - entry.at > AUTH_CACHE_TTL_MS) {
+    const res = await supabaseRest(`users?id=eq.${id}&select=id,email,is_active,token_version`);
+    if (!res.ok) return null; // fail closed
+    const rows = await res.json();
+    const row = Array.isArray(rows) ? rows[0] : null;
+    entry = {
+      at: Date.now(),
+      user: row && row.is_active ? { id: row.id, email: row.email, role: 'ADMIN' } : null,
+      tokenVersion: Number(row?.token_version) || 0,
+    };
+    authCache.set(id, entry);
+  }
+
+  if (!entry.user) return null;
+  // Tokens issued before token_version existed carry no `tv`: treat them as version 0.
+  if ((Number(payload.tv) || 0) !== entry.tokenVersion) return null;
+  return entry.user;
 }
