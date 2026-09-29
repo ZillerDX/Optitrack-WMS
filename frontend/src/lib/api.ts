@@ -89,12 +89,12 @@ export const api = {
 
   // สินค้า
   getProducts: async () => {
-    const response = await apiClient.get('/api/products/', { params: { limit: 1000 } });
+    const response = await apiClient.get('/api/products', { params: { limit: 1000 } });
     return response.data;
   },
 
   createProduct: async (data: any) => {
-    const response = await apiClient.post('/api/products/', data);
+    const response = await apiClient.post('/api/products', data);
     return response.data;
   },
 
@@ -114,7 +114,7 @@ export const api = {
     if (location && location !== 'ALL') {
       params.location = location;
     }
-    const response = await apiClient.get('/api/inventory/', { params });
+    const response = await apiClient.get('/api/inventory', { params });
     return response.data;
   },
 
@@ -124,12 +124,12 @@ export const api = {
   },
 
   getLocationDetails: async () => {
-    const response = await apiClient.get('/api/locations/');
+    const response = await apiClient.get('/api/locations');
     return response.data;
   },
 
   createLocation: async (data: { name: string; description?: string; capacity: number }) => {
-    const response = await apiClient.post('/api/locations/', data);
+    const response = await apiClient.post('/api/locations', data);
     return response.data;
   },
 
@@ -155,7 +155,7 @@ export const api = {
     quantity?: number;
     status?: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
   }) => {
-    const response = await apiClient.post('/api/inventory/', data);
+    const response = await apiClient.post('/api/inventory', data);
     return response.data;
   },
 
@@ -170,7 +170,7 @@ export const api = {
     if (location && location !== 'ALL') {
       params.location = location;
     }
-    const response = await apiClient.get('/api/transactions/', { params });
+    const response = await apiClient.get('/api/transactions', { params });
     return response.data;
   },
 
@@ -184,7 +184,7 @@ export const api = {
     notes?: string;
     created_at?: string;
   }) => {
-    const response = await apiClient.post('/api/transactions/', data);
+    const response = await apiClient.post('/api/transactions', data);
     return response.data;
   },
 
@@ -199,12 +199,12 @@ export const api = {
 
   // หมวดหมู่
   getCategories: async () => {
-    const response = await apiClient.get('/api/categories/');
+    const response = await apiClient.get('/api/categories');
     return response.data;
   },
 
   createCategory: async (name: string) => {
-    const response = await apiClient.post('/api/categories/', { name });
+    const response = await apiClient.post('/api/categories', { name });
     return response.data;
   },
 

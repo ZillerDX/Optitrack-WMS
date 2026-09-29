@@ -18,8 +18,8 @@ together. Data lives in a hosted PostgreSQL database (Supabase). There is no sep
 | Auth | Email + password (bcrypt) and Google Sign-In; HS256 JWT in an httpOnly cookie |
 | Email | SMTP through `nodemailer` (password reset) |
 | AI | Gemini, then Groq, then a deterministic analytics fallback (server-side keys only) |
-| Tests | Vitest (API handlers against an in-memory PostgREST double); integration tests of the same handlers against a real PostgreSQL + PostgREST; SQL tests of the stock functions, including concurrent sessions |
-| CI | GitHub Actions: lint, `tsc`, tests, `npm audit`, build; a job that applies the migrations twice and runs the SQL / concurrency tests on PostgreSQL; a job that runs the integration tests against PostgreSQL + PostgREST |
+| Tests | Vitest (API handlers against an in-memory PostgREST double); integration tests of the same handlers against a real PostgreSQL + PostgREST; SQL tests of the stock functions, including concurrent sessions; Playwright browser tests of the production build against the same database stack |
+| CI | GitHub Actions: lint, `tsc`, tests, `npm audit`, build; a job that applies the migrations twice and runs the SQL / concurrency tests on PostgreSQL; a job that runs the integration tests against PostgreSQL + PostgREST; a job that runs the browser tests |
 
 ## Request flow
 
@@ -117,5 +117,5 @@ loudly instead of falling back to a default.
 - Locations are still referenced by name (renaming is safe: `update_location` moves the stock and history in one transaction), not by id.
 - Sessions last 24 h and are revoked per user, not per device.
 - The CSP allows inline scripts (see above); the app has no nonce-based CSP.
-- There is no browser end-to-end suite: the Route Handlers, the SQL and the stack under them are tested, the React screens are not.
+- The browser tests (`frontend/e2e`) cover the session cookie, login/sign-out, CSRF and that the main pages load an account's own data; most other screens and their forms are still not covered.
 - `DELETE /api/inventory/{id}` removes a stock row without a transaction row (`PUT` is recorded as an ADJUST movement).

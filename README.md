@@ -445,6 +445,9 @@ npm audit --omit=dev --audit-level=high
 
 # Against a real PostgreSQL + PostgREST (needs Docker): see frontend/tests-integration/README.md
 eval "$(bash ../supabase/tests/integration-stack.sh up)" && npm run test:integration
+
+# Browser tests of the production build (Playwright): see frontend/e2e/README.md
+npm run build && npm run test:e2e
 ```
 
 ### 10.5 Production
