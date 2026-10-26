@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
-import { inventoryStatus } from '@/lib/stock';
+import { inventoryStatus, recordStockMovement } from '@/lib/stock';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,28 +70,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ detail: `Inventory for this product at '${location}' already exists` }, { status: 409 });
     }
 
-    // Same capacity rule as stock movements: the location total must not exceed its capacity.
-    const stockRes = await supabaseRest(
-      `inventory?location=eq.${encodeURIComponent(location)}&select=quantity,product:products!inner(owner_id)&product.owner_id=eq.${user.id}`
-    );
-    const stock = stockRes.ok ? await stockRes.json() : [];
-    const current = (Array.isArray(stock) ? stock : []).reduce((sum: number, r: any) => sum + (Number(r.quantity) || 0), 0);
-    const capacity = Number(locs[0].capacity) || 0;
-    if (current + quantity > capacity) {
-      return NextResponse.json(
-        { detail: `Location '${location}' capacity exceeded. Capacity: ${capacity}, Current stock: ${current}, Projected stock: ${current + quantity}` },
-        { status: 400 }
-      );
+    // Stock that is created with units on it is an INBOUND movement like any other: one database
+    // transaction takes the location lock, checks the capacity, creates the stock row and writes the
+    // transaction, so the units are in the history and two requests cannot both fill the last space.
+    if (quantity > 0) {
+      const moved = await recordStockMovement({
+        userId: user.id,
+        productId,
+        location,
+        type: 'INBOUND',
+        quantity,
+        notes: 'Initial stock',
+      });
+      if (!moved.ok) {
+        return NextResponse.json({ detail: moved.detail }, { status: moved.status });
+      }
+      return NextResponse.json(moved.data.inventory, { status: 201 });
     }
 
-    // The status is derived from the quantity, never taken from the client.
+    // An empty stock row has no units to record and cannot affect the capacity.
     const res = await supabaseRest('inventory', {
       method: 'POST',
       body: JSON.stringify({
         product_id: productId,
         location,
-        quantity,
-        status: inventoryStatus(quantity, Number(prods[0].min_stock_level) || 0),
+        quantity: 0,
+        status: inventoryStatus(0, Number(prods[0].min_stock_level) || 0),
       }),
     });
     if (res.status === 409) {

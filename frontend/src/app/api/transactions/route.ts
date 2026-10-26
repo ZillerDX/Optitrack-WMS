@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
 import { recordStockMovement, MOVEMENT_TYPES, MovementType } from '@/lib/stock';
+import { parseMovementDate } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,11 +62,9 @@ export async function POST(req: NextRequest) {
     }
     let createdAt: string | undefined;
     if (body.created_at) {
-      const parsed = new Date(body.created_at);
-      if (Number.isNaN(parsed.getTime())) {
-        return NextResponse.json({ detail: 'created_at is not a valid date' }, { status: 400 });
-      }
-      createdAt = parsed.toISOString();
+      const date = parseMovementDate(body.created_at);
+      if (!date.ok) return NextResponse.json({ detail: date.detail }, { status: 400 });
+      createdAt = date.iso;
     }
 
     // One database transaction: ownership, capacity and stock rules, the stock change and the
