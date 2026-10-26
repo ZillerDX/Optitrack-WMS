@@ -5,7 +5,7 @@ Production-ready Next.js 14 frontend for OptiTrack Warehouse Management System.
 ## Features
 
 - **Next.js 14** with App Router
-- **Dual Language Support** (Thai/English) with next-intl
+- **English-only UI** (no locale segment: `/dashboard`, `/login`, ...; old `/en/...` and `/th/...` links are redirected)
 - **Progressive Web App** (PWA) support
 - **Responsive Design** with Tailwind CSS
 - **AI Chat Interface** for warehouse analytics
@@ -21,7 +21,6 @@ Production-ready Next.js 14 frontend for OptiTrack Warehouse Management System.
 - **UI Components**: Shadcn/UI, Radix UI
 - **Icons**: Lucide React
 - **Charts**: Recharts
-- **i18n**: next-intl
 - **PWA**: next-pwa
 - **HTTP Client**: Axios
 
@@ -66,25 +65,20 @@ The app will be available at `http://localhost:3000`
 frontend/
 ├── src/
 │   ├── app/
-│   │   ├── [locale]/          # Localized routes
-│   │   │   ├── dashboard/     # Admin dashboard
-│   │   │   ├── mobile/        # Staff mobile interface
-│   │   │   ├── login/         # Login page
-│   │   │   └── layout.tsx     # Main layout
+│   │   ├── dashboard/         # Dashboard
+│   │   ├── inventory/ products/ transactions/ profile/
+│   │   ├── login/ signup/ reset-password/
+│   │   ├── api/               # Route Handlers (the HTTP API)
+│   │   ├── layout.tsx         # Root layout
 │   │   └── globals.css        # Global styles
 │   ├── components/
 │   │   ├── ui/                # Shadcn/UI components
 │   │   ├── Sidebar.tsx        # Navigation sidebar
-│   │   ├── LanguageSwitcher.tsx
 │   │   └── AIChatWidget.tsx   # AI assistant
 │   ├── lib/
 │   │   ├── api.ts             # API client
 │   │   └── utils.ts           # Utility functions
-│   ├── messages/
-│   │   ├── en.json            # English translations
-│   │   └── th.json            # Thai translations
-│   ├── i18n.ts                # i18n configuration
-│   └── middleware.ts          # Next.js middleware
+│   └── middleware.ts          # Redirects old /en/... and /th/... links
 ├── public/
 │   └── manifest.json          # PWA manifest
 ├── next.config.js

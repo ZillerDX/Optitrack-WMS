@@ -1,27 +1,19 @@
-import createMiddleware from 'next-intl/middleware';
 import { NextRequest, NextResponse } from 'next/server';
 
-const intlMiddleware = createMiddleware({
-  // รายการภาษาท้องถิ่นทั้งหมดที่รองรับ
-  locales: ['en'],
- 
-  // ใช้เมื่อไม่มีภาษาท้องถิ่นที่ตรงกัน
-  defaultLocale: 'en',
-  localePrefix: 'never'
-});
-
+/**
+ * The app is English only and has no locale segment. Old links that carry one (/en/login, /th/dashboard)
+ * are sent to the same page without it.
+ */
 export default function middleware(request: NextRequest) {
-  const localePrefixMatch = request.nextUrl.pathname.match(/^\/(?:en|th)(\/.*)?$/);
-
-  if (localePrefixMatch) {
+  const prefixed = request.nextUrl.pathname.match(/^\/(?:en|th)(\/.*)?$/);
+  if (prefixed) {
     const url = request.nextUrl.clone();
-    url.pathname = localePrefixMatch[1] || '/';
+    url.pathname = prefixed[1] || '/';
     return NextResponse.redirect(url);
   }
-
-  return intlMiddleware(request);
+  return NextResponse.next();
 }
- 
+
 export const config = {
-  matcher: ['/((?!api|livez|_next|_vercel|manifest\\.json|manifest\\.webmanifest|sw\\.js|icons|favicon\\.ico|.*\\..*).*)']
+  matcher: ['/en', '/en/:path*', '/th', '/th/:path*'],
 };

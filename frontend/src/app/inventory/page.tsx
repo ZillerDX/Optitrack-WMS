@@ -5,7 +5,18 @@
  * ดูและจัดการสินค้าคงคลังในคลังสินค้า
  */
 
-import { useTranslations } from '@/lib/translations';
+const LABELS: Record<string, string> = {
+  'product.sku': 'SKU',
+  'product.name': 'Name',
+  'product.category': 'Category',
+  'product.location': 'Location',
+  'product.quantity': 'Quantity',
+  'product.status': 'Status',
+  'status.inStock': 'In Stock',
+  'status.lowStock': 'Low Stock',
+  'status.outOfStock': 'Out of Stock',
+};
+const t = (key: string): string => LABELS[key] ?? key;
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
@@ -84,7 +95,6 @@ interface NotificationState {
 }
 
 export default function InventoryPage() {
-  const t = useTranslations();
   const { formatCurrency } = useCurrencyFormatter();
   const { selectedLocation, fetchLocations, setSelectedLocation } = useLocationStore();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);

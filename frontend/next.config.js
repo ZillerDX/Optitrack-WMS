@@ -1,7 +1,5 @@
 /** @type {import('next').NextConfig} */
-const createNextIntlPlugin = require('next-intl/plugin');
 
-const withNextIntl = createNextIntlPlugin('./src/i18n.ts');
 
 const isDev = process.env.NODE_ENV !== 'production';
 // Vercel's preview toolbar/comments need vercel.live; never allow it in production.
@@ -81,4 +79,4 @@ const nextConfig = {
   },
 };
 
-module.exports = withNextIntl(nextConfig);
+module.exports = nextConfig;

@@ -12,7 +12,7 @@ together. Data lives in a hosted PostgreSQL database (Supabase). There is no sep
 
 | Concern | Choice |
 |---|---|
-| UI | Next.js 15 (App Router), React 19, TypeScript (strict), Tailwind, Radix UI, Recharts, next-intl, PWA |
+| UI | Next.js 15 (App Router), React 19, TypeScript (strict), Tailwind, Radix UI, Recharts, PWA (English only; no locale segment in the routes) |
 | API | Next.js Route Handlers (`src/app/api/**/route.ts`) |
 | Database | PostgreSQL on Supabase, reached through PostgREST with the **service-role key** (server side only) |
 | Auth | Email + password (bcrypt) and Google Sign-In; HS256 JWT in an httpOnly cookie |

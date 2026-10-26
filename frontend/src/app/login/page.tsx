@@ -10,13 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Package, Lock, Mail, Boxes, TrendingUp, Shield, Zap, CheckCircle2, AlertCircle } from 'lucide-react';
-import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/modals';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 
 export default function LoginPage() {
   const router = useRouter();
-  const t = useTranslations('auth');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
