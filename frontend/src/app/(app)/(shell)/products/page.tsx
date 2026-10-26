@@ -166,7 +166,38 @@ export default function ProductsPage() {
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <ul className="divide-y divide-border sm:hidden" aria-label="Products">
+            {rows.map((p) => (
+              <li key={p.id} className="space-y-3 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold">{p.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      SKU {p.sku}
+                      {p.category ? ` · ${p.category}` : ''}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-right">
+                    <span className="block text-xl font-bold tabular-nums">{stock.isPending ? '...' : formatNumber(onHand.get(p.id) ?? 0)}</span>
+                    <span className="text-xs text-muted-foreground">in stock</span>
+                  </p>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Cost {format(Number(p.cost_price))} · Price {format(Number(p.sell_price))} · Minimum {formatNumber(p.min_stock_level)}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => setEditing({ open: true, product: p })} aria-label={`Edit ${p.name}`}>
+                    Edit
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setDeleting(p)} aria-label={`Delete ${p.name}`}>
+                    Delete
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full min-w-[720px] text-sm">
               <caption className="sr-only">Products</caption>
               <thead>
@@ -224,6 +255,7 @@ export default function ProductsPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         {rows.length > 0 && (

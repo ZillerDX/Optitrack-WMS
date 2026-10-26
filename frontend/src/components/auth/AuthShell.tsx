@@ -29,7 +29,7 @@ export function AuthShell({ title, description, children, footer }: { title: str
       </aside>
 
       <main id="content" className="flex min-h-screen flex-col px-5 py-8 sm:px-8">
-        <Link href="/login" aria-label="OptiTrack WMS" className="mb-8 w-fit rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden">
+        <Link href="/login" aria-label="OptiTrack Warehouse" className="mb-8 w-fit rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden">
           <Logo />
         </Link>
         <div className="mx-auto flex w-full max-w-[400px] flex-1 flex-col justify-center pb-10">

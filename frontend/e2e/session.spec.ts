@@ -120,7 +120,7 @@ test('pages load the account\'s real data through the cookie, and only its own',
 
   for (const path of ['/products', '/inventory', '/transactions']) {
     await page.goto(path);
-    await expect(page.getByText(product).first(), path).toBeVisible();
+    await expect(page.getByText(product).filter({ visible: true }).first(), path).toBeVisible();
   }
 
   // account B, in a separate browser context, sees none of it

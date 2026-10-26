@@ -151,7 +151,38 @@ export default function StockPage() {
         ) : visible.length === 0 ? (
           <p className="p-10 text-center text-sm text-muted-foreground">Nothing matches. Clear the search or the filters.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <ul className="divide-y divide-border sm:hidden" aria-label="Stock">
+            {visible.map((r) => (
+              <li key={r.id} className="space-y-3 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold">{r.product.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      SKU {r.product.sku} · {r.location}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-xl font-bold tabular-nums">{formatNumber(r.quantity)}</p>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <StatusBadge quantity={r.quantity} minimum={r.product.min_stock_level} />
+                  <span className="text-xs text-muted-foreground">Minimum {formatNumber(r.product.min_stock_level)}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => openMovement(rowPreset(r, 'INBOUND'))} aria-label={`Receive ${r.product.name} at ${r.location}`}>
+                    Receive
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => openMovement(rowPreset(r, 'OUTBOUND'))} aria-label={`Ship ${r.product.name} from ${r.location}`}>
+                    Ship
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => openMovement(rowPreset(r, 'ADJUST'))} aria-label={`Adjust ${r.product.name} at ${r.location}`}>
+                    Adjust
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full min-w-[640px] text-sm">
               <caption className="sr-only">Stock by product and location</caption>
               <thead>
@@ -207,6 +238,7 @@ export default function StockPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         {stock.data?.truncated && (

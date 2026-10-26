@@ -121,7 +121,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* desktop sidebar */}
       <aside className="sticky top-0 hidden h-screen w-[232px] shrink-0 flex-col border-r border-border bg-card px-3.5 py-5 lg:flex">
-        <Link href="/dashboard" aria-label="OptiTrack WMS home" className="mb-4 rounded-lg px-2.5 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <Link href="/dashboard" aria-label="OptiTrack Warehouse home" className="mb-4 rounded-lg px-2.5 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <Logo />
         </Link>
         <div className="mb-4 space-y-2">
@@ -176,7 +176,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         {/* phone top bar */}
         <div className="flex items-center justify-between gap-3 border-b border-border bg-card px-4 py-3 lg:hidden">
-          <Link href="/dashboard" aria-label="OptiTrack WMS home" className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <Link href="/dashboard" aria-label="OptiTrack Warehouse home" className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <Logo />
           </Link>
           <div className="flex items-center gap-1">

@@ -75,7 +75,7 @@ test('locations: add, rename, and a location with stock cannot be deleted', asyn
   const tx = await page.request.post('/api/transactions', { headers: { Origin: baseURL! }, data: { type: 'INBOUND', quantity: 3, product_id: products[0].id, location: 'Shelf-A' } });
   expect(tx.status(), await tx.text()).toBe(201);
   await page.reload();
-  await expect(page.getByText(product).first()).toBeVisible();
+  await expect(page.getByText(product).filter({ visible: true }).first()).toBeVisible();
 
   await page.getByRole('button', { name: 'Locations', exact: true }).click();
   const sheet = page.getByRole('dialog', { name: 'Locations' });

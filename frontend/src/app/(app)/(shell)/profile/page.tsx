@@ -82,7 +82,7 @@ export default function ProfilePage() {
           <CardContent className="flex flex-wrap items-center gap-4">
             <Avatar user={user} size={64} />
             <div>
-              <input ref={fileRef} id="profile-image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={onFile} className="sr-only" />
+              <input ref={fileRef} id="profile-image" aria-hidden="true" tabIndex={-1} type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={onFile} className="sr-only" />
               <Button type="button" variant="outline" onClick={() => fileRef.current?.click()} disabled={upload.isPending}>
                 {upload.isPending ? 'Uploading...' : 'Choose a picture'}
               </Button>
