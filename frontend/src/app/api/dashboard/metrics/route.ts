@@ -7,10 +7,7 @@ export async function GET(req: NextRequest) {
   try {
     const user = await getAuthUser(req);
     if (!user) {
-      return NextResponse.json({
-        warehouse_capacity_pct: 0,
-        warehouse_capacity_label: '0 / 0 (0%)',
-      });
+      return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -28,6 +25,12 @@ export async function GET(req: NextRequest) {
       supabaseRest(invPath),
       supabaseRest(locPath),
     ]);
+
+    // A failed read is an error, not an empty warehouse.
+    if (!invRes.ok || !locRes.ok) {
+      console.error('[Metrics Error]:', !invRes.ok ? await invRes.text() : await locRes.text());
+      return NextResponse.json({ detail: 'Failed to load data' }, { status: 500 });
+    }
 
     let totalQty = 0;
     let totalCap = 0;
@@ -54,9 +57,6 @@ export async function GET(req: NextRequest) {
       warehouse_capacity_label: label,
     });
   } catch {
-    return NextResponse.json({
-      warehouse_capacity_pct: 0,
-      warehouse_capacity_label: '0 / 0 (0%)',
-    });
+    return NextResponse.json({ detail: 'Failed to load data' }, { status: 500 });
   }
 }

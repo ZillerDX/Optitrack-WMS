@@ -1,38 +1,17 @@
-﻿Write-Output "Starting backend and frontend background services..."
+# Start the production build of the app (UI + API) for the desktop wrapper / local smoke tests.
+# Requires the environment described in frontend/.env.example (SECRET_KEY, SUPABASE_*).
+$root = Split-Path -Parent $PSScriptRoot
+$server = Join-Path $root "frontend\.next\standalone"
 
-# Start Backend API
-$backendProcess = Start-Process -FilePath "cmd.exe" -ArgumentList "/c cd /d C:\Users\bostz\.gemini\antigravity\scratch\Optitrack-WMS\backend && uv run --with-requirements requirements.txt uvicorn main:app --host 127.0.0.1 --port 8000" -PassThru -WindowStyle Hidden
-Write-Output "Backend started with PID $($backendProcess.Id)"
+Write-Output "Starting OptiTrack WMS..."
+$env:PORT = "3000"
+$env:HOSTNAME = "0.0.0.0"
+$proc = Start-Process -FilePath "node" -ArgumentList "server.js" -WorkingDirectory $server -PassThru -WindowStyle Hidden
+Write-Output "Started with PID $($proc.Id)"
 
-# Start Frontend Standalone Server
-$frontendProcess = Start-Process -FilePath "cmd.exe" -ArgumentList "/c cd /d C:\Users\bostz\.gemini\antigravity\scratch\Optitrack-WMS\frontend\.next\standalone && set PORT=3000 && set HOSTNAME=0.0.0.0 && node server.js" -PassThru -WindowStyle Hidden
-Write-Output "Frontend started with PID $($frontendProcess.Id)"
-
-# Wait for healthy
-Start-Sleep -Seconds 3
-
-# Check Backend
-for ($i = 0; $i -lt 10; $i++) {
+for ($i = 0; $i -lt 15; $i++) {
     try {
-        $res = Invoke-RestMethod -Uri "http://127.0.0.1:8000/livez" -TimeoutSec 2
-        if ($res.status -eq "alive") {
-            Write-Output "Backend is LIVE!"
-            break
-        }
-    } catch {
-        Start-Sleep -Seconds 1
-    }
-}
-
-# Check Frontend
-for ($i = 0; $i -lt 10; $i++) {
-    try {
-        $res = Invoke-WebRequest -Uri "http://localhost:3000/" -TimeoutSec 2
-        if ($res.StatusCode -eq 200) {
-            Write-Output "Frontend is LIVE!"
-            break
-        }
-    } catch {
-        Start-Sleep -Seconds 1
-    }
+        $res = Invoke-RestMethod -Uri "http://localhost:3000/livez" -TimeoutSec 2
+        if ($res.status -eq "alive") { Write-Output "OptiTrack WMS is LIVE on http://localhost:3000"; break }
+    } catch { Start-Sleep -Seconds 1 }
 }

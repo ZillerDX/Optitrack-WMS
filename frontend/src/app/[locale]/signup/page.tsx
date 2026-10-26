@@ -35,7 +35,6 @@ export default function SignUpPage() {
         last_name: lastName,
         email,
         password,
-        role: 'ADMIN' // Default role
       });
 
       // Navigate to login page with success param

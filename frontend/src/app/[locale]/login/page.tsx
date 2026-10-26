@@ -38,8 +38,7 @@ export default function LoginPage() {
       // Call Login API
       const response = await api.login(email, password);
 
-      // Save token and user info
-      localStorage.setItem('token', response.access_token);
+      // The session cookie was set by the server; keep only the profile for the UI.
       localStorage.setItem('user', JSON.stringify(response.user));
 
       // Redirect to dashboard

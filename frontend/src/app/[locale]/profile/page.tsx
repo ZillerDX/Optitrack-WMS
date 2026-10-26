@@ -58,7 +58,6 @@ export default function ProfilePage() {
   const { currency, setCurrency } = useCurrencyStore();
   const { selectedLocation, setSelectedLocation, locations, fetchLocations } = useLocationStore();
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
   const getErrorMessage = (err: unknown, fallback: string) => {
     const apiError = err as ApiError;
@@ -141,8 +140,7 @@ export default function ProfilePage() {
 
   const getImageUrl = (path: string) => {
     if (!path) return null;
-    if (path.startsWith('http') || path.startsWith('data:')) return path;
-    return API_BASE_URL ? `${API_BASE_URL}${path}` : path;
+    return path;
   };
 
   const fullName = `${user.first_name} ${user.last_name}`.trim() || user.email;

@@ -8,8 +8,8 @@ export default function RootPage() {
 
   useEffect(() => {
     // Check if operator is already authenticated
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (token) {
+    const signedIn = typeof window !== 'undefined' && !!localStorage.getItem('user');
+    if (signedIn) {
       router.replace('/dashboard');
     } else {
       router.replace('/login');

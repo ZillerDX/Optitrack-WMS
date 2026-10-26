@@ -45,10 +45,13 @@ npm install
 cp .env.example .env.local
 ```
 
-3. Update `.env.local`:
+3. Update `.env.local` (see `.env.example` for every variable):
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:8000
+SECRET_KEY=<at least 32 random characters>
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<service role key>
 ```
+   Then apply `supabase/migrations/*.sql` to that project, in order.
 
 4. Run the development server:
 ```bash
@@ -129,7 +132,7 @@ Click the chat icon to interact with the AI assistant. Ask questions about:
 
 ## Environment Variables
 
-- `NEXT_PUBLIC_API_URL` - Backend API URL (default: http://localhost:8000)
+See `.env.example`. `SECRET_KEY`, `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are required; everything else is optional. There is no separate API URL: the API is part of this app.
 
 ## Building for Production
 

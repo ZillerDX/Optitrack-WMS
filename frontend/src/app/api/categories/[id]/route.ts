@@ -3,12 +3,13 @@ import { supabaseRest, getAuthUser } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id: routeId } = await params;
     const user = await getAuthUser(req);
     if (!user) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
 
-    const res = await supabaseRest(`categories?id=eq.${params.id}&owner_id=eq.${user.id}`, { method: 'DELETE' });
+    const res = await supabaseRest(`categories?id=eq.${routeId}&owner_id=eq.${user.id}`, { method: 'DELETE' });
     if (!res.ok) return NextResponse.json({ detail: await res.text() }, { status: 400 });
     return NextResponse.json({ message: 'Category deleted' });
   } catch (err: any) {

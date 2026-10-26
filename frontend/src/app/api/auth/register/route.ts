@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit } from '@/lib/rateLimit';
 import bcrypt from 'bcryptjs';
 import { supabaseRest } from '@/lib/supabase';
+import { isSignupAllowed, SIGNUP_RESTRICTED_MESSAGE } from '@/lib/signup';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, password, first_name, last_name, role } = body;
+
+    const limited = await rateLimit(req, { name: 'register', limit: 5, windowSeconds: 60 });
+    if (limited) return limited;
+    const { email, password, first_name, last_name } = body;
 
     if (!email || !password || !first_name || !last_name) {
       return NextResponse.json(
@@ -17,6 +22,10 @@ export async function POST(req: NextRequest) {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+
+    if (!isSignupAllowed(normalizedEmail)) {
+      return NextResponse.json({ detail: SIGNUP_RESTRICTED_MESSAGE }, { status: 403 });
+    }
 
     if (password.length < 6) {
       return NextResponse.json(
@@ -48,7 +57,7 @@ export async function POST(req: NextRequest) {
         password_hash,
         first_name: first_name.trim(),
         last_name: last_name.trim(),
-        role: role || 'ADMIN',
+        role: 'ADMIN', // single-role system; never trust a client-supplied role
         is_active: true,
       }),
     });
@@ -76,8 +85,9 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error('[Register API Error]:', error);
-    let detail = error?.message || 'Internal server error during registration.';
-    if (detail === 'fetch failed' || detail.includes('ENOTFOUND') || detail.includes('ECONNREFUSED')) {
+    let detail = 'Internal server error during registration.';
+    const raw = String(error?.message ?? '');
+    if (raw === 'fetch failed' || raw.includes('ENOTFOUND') || raw.includes('ECONNREFUSED')) {
       detail = 'Database connection error: Service temporarily unreachable. Please try again shortly.';
     }
     return NextResponse.json(
