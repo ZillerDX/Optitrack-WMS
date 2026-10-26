@@ -124,14 +124,14 @@ BEGIN
     ---------------------------------------------------------------------------------------------
     -- the day is cut in the caller's time zone
     ---------------------------------------------------------------------------------------------
-    -- an OUTBOUND at 20:30 UTC yesterday is 03:30 TODAY in Bangkok (UTC+7) and 12:30 yesterday in Los Angeles
+    -- an OUTBOUND at 20:30 UTC yesterday is 03:30 on the current UTC date in Bangkok (UTC+7) and 12:30 yesterday in Los Angeles
     INSERT INTO public.transactions (ref_code, type, quantity, unit_price, total_price, status, location, user_id, product_id, created_at)
     VALUES ('TZ-OUT', 'OUTBOUND', 4, 5, 20, 'COMPLETED', 'W1', a, a2,
             date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC' - interval '3 hours 30 minutes');
     m := (public.dashboard_summary(a, NULL, 3, 'UTC') -> 'movement');
     ASSERT (SELECT e ->> 'day' FROM jsonb_array_elements(m) e WHERE (e ->> 'outbound_units')::int = 4)::date = (now() AT TIME ZONE 'UTC')::date - 1, 'UTC day: yesterday';
     m := (public.dashboard_summary(a, NULL, 3, 'Asia/Bangkok') -> 'movement');
-    ASSERT (SELECT e ->> 'day' FROM jsonb_array_elements(m) e WHERE (e ->> 'outbound_units')::int = 4)::date = (now() AT TIME ZONE 'Asia/Bangkok' - interval '3 hours 30 minutes' + interval '7 hours')::date,
+    ASSERT (SELECT e ->> 'day' FROM jsonb_array_elements(m) e WHERE (e ->> 'outbound_units')::int = 4)::date = (now() AT TIME ZONE 'UTC')::date,
         'Bangkok day follows the local clock';
     m := (public.dashboard_summary(a, NULL, 3, 'America/Los_Angeles') -> 'movement');
     ASSERT (SELECT sum((e ->> 'outbound_units')::int) FROM jsonb_array_elements(m) e) = 4, 'the receipt is inside the window in every zone';
