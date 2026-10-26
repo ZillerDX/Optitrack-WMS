@@ -10,7 +10,7 @@ import { GET as listLocations, POST as createLocation } from '@/app/api/location
 import { GET as listCategories, POST as createCategory } from '@/app/api/categories/route';
 import { GET as listInventory, POST as createInventory } from '@/app/api/inventory/route';
 import { DELETE as deleteInventory, PUT as updateInventory } from '@/app/api/inventory/[id]/route';
-import { PUT as updateLocation } from '@/app/api/locations/[id]/route';
+import { DELETE as deleteLocation, PUT as updateLocation } from '@/app/api/locations/[id]/route';
 import { POST as createTransaction } from '@/app/api/transactions/route';
 import { POST as approveReorder } from '@/app/api/ai/reorder/approve/route';
 
@@ -231,23 +231,46 @@ describe('stock movements end to end', () => {
     expect((await rows(`inventory?product_id=eq.${p}`))[0].quantity).toBe(12);
   });
 
-  it('reorder approval writes stock, transaction and PO together; a repeated PO number changes nothing', async () => {
+  it('reorder approval writes stock, transaction and PO together; the PO number is made by the server', async () => {
     const u = await signup('a@x.com');
     const p = await seedWarehouse(u.token);
-    const approve = (po: string) =>
-      approveReorder(call('POST', { product_id: p, reorder_qty: 3, target_location: 'A1', po_number: po, unit_cost: 0.01, supplier: 'Acme' }, u.token));
+    const approve = (po?: string, token = u.token, product = p) =>
+      approveReorder(call('POST', { product_id: product, reorder_qty: 3, target_location: 'A1', po_number: po, unit_cost: 0.01, supplier: 'Acme' }, token));
 
-    const ok = await approve('PO-1');
+    const ok = await approve('PO-CHOSEN-BY-CLIENT');
     expect(ok.status).toBe(200);
     const data = await ok.json();
-    expect(data.purchase_order).toMatchObject({ po_number: 'PO-1', status: 'APPROVED', total_amount: 15, supplier: 'Acme' });
-    expect(data.transaction).toMatchObject({ ref_code: 'PO-1', unit_price: 5 });
+    expect(data.purchase_order.po_number).toMatch(/^PO-\d{8}-[0-9A-F]{8}$/);
+    expect(data.purchase_order).toMatchObject({ status: 'APPROVED', total_amount: 15, supplier: 'Acme' });
+    expect(data.transaction).toMatchObject({ ref_code: data.purchase_order.po_number, unit_price: 5 });
 
-    const dup = await approve('PO-1');
-    expect(dup.status).toBe(409);
-    expect((await rows(`inventory?product_id=eq.${p}`))[0].quantity).toBe(3);
-    expect(await rows('purchase_orders?select=id')).toHaveLength(1);
-    expect(await rows('transactions?select=id')).toHaveLength(1);
+    // approving the same draft again is a second purchase order, not a 409 (the client cannot pick or probe numbers)
+    const again = await approve('PO-CHOSEN-BY-CLIENT');
+    expect(again.status).toBe(200);
+    expect((await again.json()).purchase_order.po_number).not.toBe(data.purchase_order.po_number);
+    expect((await rows(`inventory?product_id=eq.${p}`))[0].quantity).toBe(6);
+    expect(await rows('purchase_orders?select=id')).toHaveLength(2);
+    expect(await rows('transactions?select=id')).toHaveLength(2);
+    expect(await rows('purchase_orders?po_number=eq.PO-CHOSEN-BY-CLIENT')).toHaveLength(0);
+  });
+
+  it('PO numbers and reference codes are per tenant: the same number in two tenants is fine, twice in one is refused', async () => {
+    const a = await signup('a@x.com');
+    const b = await signup('b@x.com');
+    const pa = await seedWarehouse(a.token);
+    const pb = await seedWarehouse(b.token);
+    // the same reference code, sent to the movement endpoint's database function through the shared RPC client
+    const rpc = (user: number, product: number, ref: string) =>
+      supabaseRest('rpc/apply_stock_movement', {
+        method: 'POST',
+        body: JSON.stringify({ p_user_id: user, p_product_id: product, p_location: 'A1', p_type: 'INBOUND', p_quantity: 1, p_ref_code: ref }),
+      });
+    const ua = (await rows(`users?email=eq.a@x.com`))[0].id;
+    const ub = (await rows(`users?email=eq.b@x.com`))[0].id;
+    expect((await rpc(ua, pa, 'SAME-REF')).status).toBe(200);
+    expect((await rpc(ub, pb, 'SAME-REF')).status).toBe(200);
+    expect((await rpc(ua, pa, 'SAME-REF')).status).toBe(409);
+    expect(await rows('transactions?ref_code=eq.SAME-REF')).toHaveLength(2);
   });
 });
 
@@ -281,7 +304,7 @@ describe('inventory endpoints against the real database', () => {
     expect((await rows(`inventory?id=eq.${row.id}`))[0]).toMatchObject({ quantity: 0, status: 'OUT_OF_STOCK' });
 
     const adjusts = (await rows(`transactions?product_id=eq.${p}&type=eq.ADJUST&order=id.asc`)).map((t) => t.quantity);
-    expect(adjusts).toEqual([12, 2, 0]);
+    expect(adjusts).toEqual([7, -10, -2]); // the signed change: 5 -> 12, 12 -> 2, 2 -> 0
 
     // over capacity is refused and changes nothing
     const over = await put({ quantity: 21 });
@@ -344,7 +367,7 @@ describe('inventory endpoints against the real database', () => {
     expect(await rows(`inventory?product_id=eq.${p}`)).toHaveLength(0);
     expect((await rows(`products?id=eq.${p}`))[0]).toMatchObject({ name: 'P1', sku: `P1-deleted${p}` });
     const types = (await rows(`transactions?product_id=eq.${p}&order=id.asc`)).map((t) => `${t.type}:${t.quantity}`);
-    expect(types).toEqual(['INBOUND:12', 'OUTBOUND:2', 'ADJUST:0']);
+    expect(types).toEqual(['INBOUND:12', 'OUTBOUND:2', 'ADJUST:-10']);
 
     // no more movements on it, the SKU can be reused, and the shelf is empty again
     expect((await move(u.token, p, 'INBOUND', 1)).status).toBe(404);
@@ -367,10 +390,38 @@ describe('inventory endpoints against the real database', () => {
     expect((await del(a.token, row.id)).status).toBe(200);
     expect(await rows(`inventory?id=eq.${row.id}`)).toHaveLength(0);
     const history = (await rows(`transactions?product_id=eq.${p}&order=id.asc`)).map((t) => `${t.type}:${t.quantity}`);
-    expect(history).toEqual(['INBOUND:12', 'ADJUST:0']);
+    expect(history).toEqual(['INBOUND:12', 'ADJUST:-12']); // the history adds up to zero stock
 
     expect((await del(a.token, row.id)).status).toBe(404); // already gone
     expect((await move(a.token, p, 'INBOUND', 20)).status).toBe(201); // the shelf is free again
+  });
+
+  it('DELETE /api/locations/[id] is refused while stock is on it; once empty it goes, the history keeps the name', async () => {
+    const a = await signup('a@x.com');
+    const b = await signup('b@x.com');
+    const p = await seedWarehouse(a.token, 'P1', 'A1', 20);
+    await move(a.token, p, 'INBOUND', 6);
+    const loc = (await rows('locations?name=eq.A1&order=id.asc'))[0];
+    const del = (token: string) => deleteLocation(call('DELETE', undefined, token), ctx(loc.id));
+
+    expect((await del(b.token)).status).toBe(404); // not Bob's, and he cannot tell it exists
+    const refused = await del(a.token);
+    expect(refused.status).toBe(409);
+    expect((await refused.json()).detail).toMatch(/still holds 6 units/);
+    expect(await rows(`locations?id=eq.${loc.id}`)).toHaveLength(1);
+    expect((await rows(`inventory?product_id=eq.${p}`))[0].quantity).toBe(6);
+
+    const row = (await rows(`inventory?product_id=eq.${p}`))[0];
+    expect((await updateInventory(call('PUT', { quantity: 0 }, a.token), ctx(row.id))).status).toBe(200);
+    expect((await del(a.token)).status).toBe(200);
+    expect(await rows(`locations?id=eq.${loc.id}`)).toHaveLength(0);
+    expect(await rows(`inventory?product_id=eq.${p}`)).toHaveLength(0);
+    const history = (await rows(`transactions?product_id=eq.${p}&order=id.asc`)).map((t) => `${t.type}:${t.quantity}@${t.location}`);
+    expect(history).toEqual(['INBOUND:6@A1', 'ADJUST:-6@A1']);
+
+    // a new location with the same name starts empty
+    expect((await createLocation(call('POST', { name: 'A1', capacity: 20 }, a.token))).status).toBe(200);
+    expect(await rows(`inventory?product_id=eq.${p}`)).toHaveLength(0);
   });
 
   it('POST /api/inventory: negative quantity refused, duplicate 409, capacity enforced', async () => {

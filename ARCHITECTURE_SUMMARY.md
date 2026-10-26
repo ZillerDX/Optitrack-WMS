@@ -45,7 +45,7 @@ Browser ──(same origin, session cookie)──▶ Next.js Route Handler ─�
 - Location and inventory rows reference locations **by name**, not by id. Uniqueness is enforced by the
   database: `(owner_id, name)` on locations and categories, `(owner_id, sku)` on products,
   `(product_id, location)` on inventory.
-- Schema changes are hand-run SQL files in `supabase/migrations/`, numbered `0000`–`0011`, all idempotent.
+- Schema changes are hand-run SQL files in `supabase/migrations/`, numbered `0000`–`0012`, all idempotent.
   CI applies them to an empty PostgreSQL twice.
 
 ## Sessions
@@ -83,6 +83,8 @@ Deleting a product is a soft delete (`delete_product`, `0010_soft_delete_product
 `DELETE /api/inventory/{id}` (`delete_inventory`, `0011_delete_inventory.sql`) takes the same locks as a movement and, if the row still holds stock, first records an ADJUST to 0, then removes the row, so no unit disappears without a transaction.
 
 `PUT /api/inventory/{id}` (manual correction) is an ADJUST movement too: only `quantity` is editable, the status follows it, and the location cannot be changed.
+
+`0012_server_fixes.sql`: an ADJUST stores the **signed change** (new level − old level) as its `quantity`, and every movement records the level it left behind in `transactions.stock_after`, so the history adds up to the stock (older ADJUST rows, with `stock_after IS NULL`, keep their old meaning: the target level). PO numbers and transaction reference codes are unique **per tenant** (`purchase_orders (user_id, po_number)`, `transactions (user_id, ref_code)`); the reorder endpoint generates the PO number on the server. A location is deleted through `delete_location`, which refuses (409) while stock is still on it. `delete_product` copes with an already-taken `<sku>-deleted<id>`. Rollback: `supabase/rollback/rollback_0012.sql`.
 
 `src/lib/stock.ts` is only the RPC client. The rules are tested where they live: `supabase/tests/stock_movements.sql`
 (rules, atomicity, privileges) and `supabase/tests/stock_concurrency.sh` (dozens of simultaneous connections:

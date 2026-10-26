@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/supabase';
 import { approveReorder } from '@/lib/stock';
 import { rateLimit } from '@/lib/rateLimit';
+import { randomBytes } from 'node:crypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,10 +25,9 @@ export async function POST(req: NextRequest) {
     const qty = Number(body.reorder_qty);
     const prodId = Number(body.product_id);
     const loc = typeof body.target_location === 'string' ? body.target_location.trim() : '';
-    const poNum =
-      typeof body.po_number === 'string' && body.po_number.trim() && body.po_number.length <= 100
-        ? body.po_number.trim()
-        : `PO-${Date.now()}`;
+    // Generated here, never taken from the client: a client-chosen number could be used to probe or
+    // block numbers. Unique per tenant in the database (0012), random so retries do not collide.
+    const poNum = `PO-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${randomBytes(4).toString('hex').toUpperCase()}`;
     const text = (v: unknown, max: number) => (typeof v === 'string' && v.length <= max ? v : null);
 
     if (!Number.isInteger(qty) || qty <= 0) {
