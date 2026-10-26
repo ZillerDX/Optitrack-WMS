@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
+import { MAX_LOCATION_CAPACITY } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,8 +60,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ detail: 'name is required (max 50 characters)' }, { status: 422 });
     }
     const capacity = Number(body.capacity ?? 0);
-    if (!Number.isInteger(capacity) || capacity < 0) {
-      return NextResponse.json({ detail: 'capacity must be a non-negative integer' }, { status: 422 });
+    if (!Number.isInteger(capacity) || capacity < 0 || capacity > MAX_LOCATION_CAPACITY) {
+      return NextResponse.json({ detail: `capacity must be an integer from 0 to ${MAX_LOCATION_CAPACITY}` }, { status: 422 });
     }
     const description = typeof body.description === 'string' && body.description.trim() ? body.description.trim() : null;
     if (description && description.length > 255) {

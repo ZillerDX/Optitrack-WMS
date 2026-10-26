@@ -46,6 +46,28 @@ describe('POST /api/auth/register', () => {
     expect(bcrypt.compareSync('longenough1', db.tables.users[0].password_hash)).toBe(true);
   });
 
+  it.each([
+    [{ email: 123 }],
+    [{ email: { $ne: '' } }],
+    [{ password: 123456789 }],
+    [{ first_name: ['A'] }],
+    [{ last_name: 'x'.repeat(101) }],
+    [{ email: 'not-an-email' }],
+    [{ email: 'a b@x.com' }],
+    [{ email: `${'a'.repeat(250)}@x.com` }],
+  ])('rejects malformed input %j with 400 (never a 500)', async (over) => {
+    expect((await register(req('POST', { ...body, ...over }, fresh()))).status).toBe(400);
+    expect(db.tables.users).toHaveLength(0);
+  });
+
+  it('caps the password at 72 bytes (bcrypt ignores the rest), counting bytes not characters', async () => {
+    expect((await register(req('POST', { ...body, email: 'ok72@x.com', password: 'a'.repeat(72) }, fresh()))).status).toBe(200);
+    expect((await register(req('POST', { ...body, email: 'long@x.com', password: 'a'.repeat(73) }, fresh()))).status).toBe(400);
+    // 25 three-byte characters = 75 bytes but only 25 characters
+    expect((await register(req('POST', { ...body, email: 'bytes@x.com', password: '\u20ac'.repeat(25) }, fresh()))).status).toBe(400);
+    expect(db.tables.users).toHaveLength(1);
+  });
+
   it('rejects a duplicate email, a short password and missing fields', async () => {
     await register(req('POST', body, fresh()));
     expect((await register(req('POST', body, fresh()))).status).toBe(400);
@@ -73,6 +95,13 @@ describe('POST /api/auth/register', () => {
 });
 
 describe('POST /api/auth/login', () => {
+  it.each([[{ email: 123, password: 'x' }], [{ email: 'a@x.com', password: 123 }], [{ email: { a: 1 }, password: 'x' }], [{ email: 'a@x.com', password: ['x'] }], [{ email: '  ', password: 'x' }]])(
+    'answers 400, not 500, for non-text credentials %j',
+    async (body) => {
+      expect((await login(req('POST', body, fresh()))).status).toBe(400);
+    }
+  );
+
   it('returns a token for a session that works, and never the password hash', async () => {
     await makeUser(db, 'a@x.com');
     const res = await login(req('POST', { email: 'A@x.com', password: PASSWORD }, fresh()));

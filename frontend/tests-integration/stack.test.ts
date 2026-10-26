@@ -382,4 +382,61 @@ describe('inventory endpoints against the real database', () => {
     expect((await make(4)).status).toBe(201);
     expect((await make(1)).status).toBe(409);
   });
+
+  it('POST /api/inventory with units is an INBOUND movement: it is in the history and cannot overfill the location', async () => {
+    const u = await signup('a@x.com');
+    const p = await seedWarehouse(u.token, 'P1', 'A1', 10);
+    const res = await createInventory(call('POST', { product_id: p, location: 'A1', quantity: 4 }, u.token));
+    expect(res.status).toBe(201);
+    expect(await res.json()).toMatchObject({ product_id: p, location: 'A1', quantity: 4, status: 'IN_STOCK' });
+    const history = await rows(`transactions?product_id=eq.${p}&order=id.asc`);
+    expect(history.map((t) => `${t.type}:${t.quantity}`)).toEqual(['INBOUND:4']);
+    expect(history[0].notes).toBe('Initial stock');
+
+    // an empty row has nothing to record
+    const q = (await (await createProduct(call('POST', { sku: 'P2', name: 'P2', cost_price: 1, sell_price: 2, min_stock_level: 0 }, u.token))).json()).id;
+    expect((await createInventory(call('POST', { product_id: q, location: 'A1', quantity: 0 }, u.token))).status).toBe(201);
+    expect(await rows(`transactions?product_id=eq.${q}`)).toHaveLength(0);
+
+    // 8 sessions each try to put 3 units of different products into the 6 free places: the lock lets two through
+    const ids: number[] = [];
+    for (let i = 0; i < 8; i++) {
+      ids.push((await (await createProduct(call('POST', { sku: `C${i}`, name: `C${i}`, cost_price: 1, sell_price: 2, min_stock_level: 0 }, u.token))).json()).id);
+    }
+    const codes = (await Promise.all(ids.map((id) => createInventory(call('POST', { product_id: id, location: 'A1', quantity: 3 }, u.token))))).map((r) => r.status);
+    expect(codes.filter((c) => c === 201)).toHaveLength(2);
+    const total = (await rows('inventory?select=quantity')).reduce((sum, r) => sum + r.quantity, 0);
+    expect(total).toBe(10);
+  });
+});
+
+describe('input limits against the real database', () => {
+  it('a value too large for the money column is a clear 400, not a 500', async () => {
+    const u = await signup('a@x.com');
+    expect((await createLocation(call('POST', { name: 'BIG', capacity: 999_999_999 }, u.token))).status).toBe(200);
+    expect((await createLocation(call('POST', { name: 'TOO-BIG', capacity: 1_000_000_000 }, u.token))).status).toBe(422);
+    const p = (await (await createProduct(call('POST', { sku: 'GOLD', name: 'Gold bar', cost_price: 99_999_999, sell_price: 99_999_999, min_stock_level: 0 }, u.token))).json()).id;
+    const res = await move(u.token, p, 'INBOUND', 500_000, 'BIG');
+    expect(res.status).toBe(400);
+    expect((await res.json()).detail).toMatch(/too large/);
+    expect(await rows('transactions?select=id')).toHaveLength(0);
+    expect(await rows(`inventory?product_id=eq.${p}`)).toHaveLength(0);
+  });
+
+  it('created_at outside the believable window is refused; one inside is stored', async () => {
+    const u = await signup('a@x.com');
+    const p = await seedWarehouse(u.token, 'P1', 'A1', 100);
+    const at = (iso: string) => createTransaction(call('POST', { type: 'INBOUND', quantity: 1, product_id: p, location: 'A1', created_at: iso }, u.token));
+    expect((await at('1970-01-01T00:00:00Z')).status).toBe(400);
+    expect((await at('9999-12-31T00:00:00Z')).status).toBe(400);
+    const when = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+    expect((await at(when)).status).toBe(201);
+    expect(new Date((await rows(`transactions?product_id=eq.${p}`))[0].created_at).toISOString()).toBe(when);
+  });
+
+  it('login and register answer 400 for malformed input instead of 500', async () => {
+    expect((await login(call('POST', { email: 123, password: { x: 1 } }))).status).toBe(400);
+    expect((await register(call('POST', { email: 'nope', password: 'longenough1', first_name: 'A', last_name: 'B' }))).status).toBe(400);
+    expect((await register(call('POST', { email: 'a@x.com', password: 'p'.repeat(73), first_name: 'A', last_name: 'B' }))).status).toBe(400);
+  });
 });

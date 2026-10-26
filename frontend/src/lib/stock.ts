@@ -49,6 +49,10 @@ async function callRpc<T>(
   if (body.code && /^PT4\d\d$/.test(body.code) && body.message) {
     return { ok: false, status: Number(body.code.slice(2)), detail: body.message };
   }
+  if (body.code === '22003') {
+    // numeric_value_out_of_range: price x quantity does not fit the money column, or the stock would overflow
+    return { ok: false, status: 400, detail: 'The quantity or the value of this movement is too large' };
+  }
   if (res.status === 409) {
     // unique violation (transactions.ref_code, purchase_orders.po_number, locations (owner_id, name))
     return { ok: false, status: 409, detail: conflictDetail };

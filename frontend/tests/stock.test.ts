@@ -52,7 +52,8 @@ describe('POST /api/transactions', () => {
     createTransaction(req('POST', { type: 'INBOUND', quantity: 2, product_id: product.id, location: 'A1', ...over }, { token: who.token }));
 
   it('sends the session user and only the movement fields to the database, and returns 201 with the row', async () => {
-    const res = await tx({ notes: 'cycle count', created_at: '2024-01-02T03:04:05Z' });
+    const when = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+    const res = await tx({ notes: 'cycle count', created_at: when });
     expect(res.status).toBe(201);
     expect((await res.json()).ref_code).toBe('TXN-20260101-ABC123');
     expect(rpcCalls('apply_stock_movement')).toHaveLength(1);
@@ -63,8 +64,38 @@ describe('POST /api/transactions', () => {
       p_type: 'INBOUND',
       p_quantity: 2,
       p_notes: 'cycle count',
-      p_created_at: '2024-01-02T03:04:05.000Z',
+      p_created_at: when,
     });
+  });
+
+  describe('created_at must be believable (it feeds velocity forecasts and reports)', () => {
+    const days = (n: number) => new Date(Date.now() + n * 24 * 60 * 60 * 1000).toISOString();
+
+    it.each([[days(-365)], [days(-1)], [days(0.5)]])('accepts %s', async (when) => {
+      expect((await tx({ created_at: when })).status).toBe(201);
+    });
+
+    it.each([['1970-01-01T00:00:00Z'], [days(-400)], ['9999-12-31T00:00:00Z'], [days(3)], ['not a date'], [{ x: 1 }]])(
+      'refuses %j with 400 before calling the database',
+      async (when) => {
+        const res = await tx({ created_at: when as any });
+        expect(res.status).toBe(400);
+        expect((await res.json()).detail).toMatch(/created_at/);
+        expect(rpcCalls('apply_stock_movement')).toHaveLength(0);
+      }
+    );
+
+    it('uses the database clock when created_at is omitted', async () => {
+      await tx();
+      expect(rpcCalls('apply_stock_movement')[0].body.p_created_at).toBeNull();
+    });
+  });
+
+  it('reports a value too large for the database as a clear 400, not a generic 500', async () => {
+    db.rpc.apply_stock_movement = () => dbError(400, '22003', 'numeric field overflow');
+    const res = await tx({ quantity: 2_000_000_000 });
+    expect(res.status).toBe(400);
+    expect((await res.json()).detail).toMatch(/too large/);
   });
 
   it('never forwards a user id, price, status or reference sent by the client', async () => {
@@ -181,10 +212,31 @@ describe('/api/inventory', () => {
     db.insert('locations', { owner_id: alice.id, name: 'A2', capacity: 10 });
   });
 
-  it('creates a row and derives the status server-side (client status ignored)', async () => {
-    const res = await create({ status: 'OUT_OF_STOCK' });
+  it('records initial stock as an INBOUND movement for the session user (client status and user ignored)', async () => {
+    db.rpc.apply_stock_movement = () => ({
+      ...movementResult({ location: 'A2', quantity: 4 }),
+      inventory: { id: 77, product_id: product.id, location: 'A2', quantity: 4, status: 'IN_STOCK' },
+    });
+    const res = await create({ status: 'OUT_OF_STOCK', user_id: bob.id });
     expect(res.status).toBe(201);
-    expect(stockAt(alice.id, 'A2')).toMatchObject({ quantity: 4, status: 'IN_STOCK' });
+    expect(await res.json()).toMatchObject({ id: 77, quantity: 4, status: 'IN_STOCK' });
+    expect(rpcCalls('apply_stock_movement')).toHaveLength(1);
+    expect(rpcCalls('apply_stock_movement')[0].body).toMatchObject({
+      p_user_id: alice.id,
+      p_product_id: product.id,
+      p_location: 'A2',
+      p_type: 'INBOUND',
+      p_quantity: 4,
+      p_notes: 'Initial stock',
+    });
+    expect(db.tables.inventory.filter((i) => i.location === 'A2')).toHaveLength(0); // never written directly
+  });
+
+  it('an empty stock row (quantity 0) is created directly: nothing to record, status derived server-side', async () => {
+    const res = await create({ quantity: 0, status: 'IN_STOCK' });
+    expect(res.status).toBe(201);
+    expect(rpcCalls('apply_stock_movement')).toHaveLength(0);
+    expect(stockAt(alice.id, 'A2')).toMatchObject({ quantity: 0, status: 'OUT_OF_STOCK' });
   });
 
   it.each([[{ quantity: -5 }], [{ quantity: 1.2 }], [{ quantity: 'lots' }], [{ location: '' }], [{ product_id: 0 }]])(
@@ -200,12 +252,17 @@ describe('/api/inventory', () => {
     expect((await create({ location: 'B1' })).status).toBe(400);
   });
 
-  it('answers 409 for an existing row and enforces capacity', async () => {
-    expect((await create()).status).toBe(201);
+  it('answers 409 for an existing row before moving any stock', async () => {
+    db.insert('inventory', { product_id: product.id, location: 'A2', quantity: 1, status: 'LOW_STOCK' });
     expect((await create()).status).toBe(409);
-    db.insert('products', { owner_id: alice.id, sku: 'P2', name: 'P2', cost_price: 1, sell_price: 2, min_stock_level: 0 });
-    const over = await createInventory(req('POST', { product_id: db.tables.products.at(-1)!.id, location: 'A2', quantity: 7 }, { token: alice.token }));
-    expect(over.status).toBe(400); // 4 + 7 > 10
+    expect(rpcCalls('apply_stock_movement')).toHaveLength(0);
+  });
+
+  it('passes the database refusal (capacity exceeded, checked under the location lock) to the user', async () => {
+    db.rpc.apply_stock_movement = () => dbError(400, 'PT400', "Location 'A2' capacity exceeded. Capacity: 10, Current stock: 4, Projected stock: 11");
+    const over = await create({ quantity: 7 });
+    expect(over.status).toBe(400);
+    expect((await over.json()).detail).toMatch(/capacity exceeded/);
   });
 
   it('lists only the caller\'s rows', async () => {

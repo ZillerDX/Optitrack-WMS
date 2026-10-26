@@ -60,7 +60,7 @@ describe('locations', () => {
     expect((await create({ name: 'Dock 9', capacity: 10 }, bob)).status).toBe(200);
   });
 
-  it.each([[{ name: '' }], [{ name: 'x'.repeat(51) }], [{ name: 'ok', capacity: -1 }], [{ name: 'ok', capacity: 1.5 }], [{}]])(
+  it.each([[{ name: '' }], [{ name: 'x'.repeat(51) }], [{ name: 'ok', capacity: -1 }], [{ name: 'ok', capacity: 1.5 }], [{ name: 'ok', capacity: 1_000_000_000 }], [{}]])(
     'rejects %j with 422',
     async (body) => {
       expect((await create(body)).status).toBe(422);
