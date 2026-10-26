@@ -68,6 +68,9 @@ BEGIN
     -- ADJUST sets the quantity and is priced at cost
     r := public.apply_stock_movement(a, pa, 'A1', 'ADJUST', 4);
     ASSERT pg_temp.qty(pa, 'A1') = 4 AND (r -> 'transaction' ->> 'unit_price')::numeric = 5, 'adjust sets the quantity';
+    -- the history stores the change (4 - 10), the level left behind, and values the change at cost
+    ASSERT (r -> 'transaction' ->> 'quantity')::int = -6 AND (r -> 'transaction' ->> 'stock_after')::int = 4
+       AND (r -> 'transaction' ->> 'total_price')::numeric = 30, 'adjust stores the signed change';
 
     -- ADJUST to 0 empties the shelf; 0 is not a valid amount for INBOUND / OUTBOUND
     r := public.apply_stock_movement(a, pa, 'A1', 'ADJUST', 0);

@@ -171,13 +171,18 @@ describe('POST /api/ai/reorder/approve', () => {
     const data = await res.json();
     expect(data).toMatchObject({ success: true, purchase_order: { po_number: 'PO-1' }, transaction: { ref_code: 'PO-1' } });
     const sent = rpcCalls('approve_reorder')[0].body;
-    expect(sent).toMatchObject({ p_user_id: alice.id, p_product_id: product.id, p_location: 'A1', p_quantity: 3, p_po_number: 'PO-1', p_supplier: 'Acme' });
+    expect(sent).toMatchObject({ p_user_id: alice.id, p_product_id: product.id, p_location: 'A1', p_quantity: 3, p_supplier: 'Acme' });
     expect(JSON.stringify(sent)).not.toMatch(/0\.01|0\.03|unit_cost|total/);
   });
 
-  it('makes up a PO number when none is given', async () => {
+  it('generates the PO number on the server and ignores one sent by the client', async () => {
+    await approve({ po_number: 'PO-CHOSEN-BY-CLIENT' });
     await approve({ po_number: undefined });
-    expect(rpcCalls('approve_reorder')[0].body.p_po_number).toMatch(/^PO-\d+$/);
+    const numbers = rpcCalls('approve_reorder').map((c) => c.body.p_po_number);
+    expect(numbers).toHaveLength(2);
+    for (const n of numbers) expect(n).toMatch(/^PO-\d{8}-[0-9A-F]{8}$/);
+    expect(numbers).not.toContain('PO-CHOSEN-BY-CLIENT');
+    expect(new Set(numbers).size).toBe(2); // random: approving the same draft twice does not collide
   });
 
   it.each([[{ reorder_qty: 0 }], [{ reorder_qty: -1 }], [{ reorder_qty: 'x' }], [{ target_location: '' }], [{ product_id: 0 }]])(

@@ -16,6 +16,13 @@ beforeEach(async () => {
   clearAuthCache();
   alice = await makeUser(db, 'alice@x.com');
   bob = await makeUser(db, 'bob@x.com');
+  // delete_location (0012): the rules are tested against real PostgreSQL in supabase/tests/server_fixes_0012.sql
+  db.rpc.delete_location = ({ p_user_id, p_location_id }) => {
+    const row = db.tables.locations.find((l) => l.id === p_location_id && l.owner_id === p_user_id);
+    if (!row) throw new RpcError(404, { code: 'PT404', message: 'Location not found', details: null, hint: null });
+    db.tables.locations.splice(db.tables.locations.indexOf(row), 1);
+    return { id: row.id, name: row.name };
+  };
 });
 
 describe('first-load seeding (used to create duplicates when requests overlapped)', () => {
@@ -130,10 +137,49 @@ describe('locations', () => {
     });
   });
 
-  it("cannot delete another owner's location", async () => {
-    const id = db.insert('locations', { owner_id: alice.id, name: 'L1', capacity: 5 }).id;
-    await deleteLocation(req('DELETE', undefined, { token: bob.token }), ctx(id));
-    expect(db.tables.locations).toHaveLength(1);
+  describe('DELETE /api/locations/[id] (one database transaction: delete_location)', () => {
+    const rpcCalls = () => db.calls.filter((c) => c.table === 'rpc/delete_location');
+    const del = (id: string | number, who = alice) => deleteLocation(req('DELETE', undefined, { token: who.token }), ctx(id));
+
+    it('sends the session user and the id to the database function', async () => {
+      const id = db.insert('locations', { owner_id: alice.id, name: 'L1', capacity: 5 }).id;
+      const res = await del(id);
+      expect(res.status).toBe(200);
+      expect(rpcCalls()[0].body).toEqual({ p_user_id: alice.id, p_location_id: id });
+      expect(db.tables.locations).toHaveLength(0);
+    });
+
+    it("cannot delete another owner's location", async () => {
+      const id = db.insert('locations', { owner_id: alice.id, name: 'L1', capacity: 5 }).id;
+      expect((await del(id, bob)).status).toBe(404);
+      expect(db.tables.locations).toHaveLength(1);
+    });
+
+    it('answers 409 with the database message while stock is still on the location', async () => {
+      const id = db.insert('locations', { owner_id: alice.id, name: 'L1', capacity: 5 }).id;
+      db.rpc.delete_location = () => {
+        throw new RpcError(409, { code: 'PT409', message: "Location 'L1' still holds 3 units. Move or adjust the stock first.", details: null, hint: null });
+      };
+      const res = await del(id);
+      expect(res.status).toBe(409);
+      expect((await res.json()).detail).toMatch(/still holds 3 units/);
+      expect(db.tables.locations).toHaveLength(1);
+    });
+
+    it.each(['abc', '0', '-1', '1.5'])('rejects the id %s before calling the database', async (bad) => {
+      expect((await del(bad)).status).toBe(400);
+      expect(rpcCalls()).toHaveLength(0);
+    });
+
+    it('never returns database error text for an unexpected failure', async () => {
+      const id = db.insert('locations', { owner_id: alice.id, name: 'L1', capacity: 5 }).id;
+      db.rpc.delete_location = () => {
+        throw new RpcError(500, { code: 'XX000', message: 'relation "secret_table" exploded', details: null, hint: null });
+      };
+      const res = await del(id);
+      expect(res.status).toBe(500);
+      expect(JSON.stringify(await res.json())).not.toMatch(/secret_table/);
+    });
   });
 });
 

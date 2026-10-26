@@ -56,7 +56,7 @@ BEGIN
 
     -- its history survives: the original receipts plus one ADJUST-to-0 per shelf that held stock
     ASSERT (SELECT count(*) FROM public.transactions WHERE product_id = doomed AND type = 'INBOUND') = 2, 'inbound history kept';
-    ASSERT (SELECT count(*) FROM public.transactions WHERE product_id = doomed AND type = 'ADJUST' AND quantity = 0
+    ASSERT (SELECT count(*) FROM public.transactions WHERE product_id = doomed AND type = 'ADJUST' AND quantity < 0 AND stock_after = 0
             AND notes = 'Product deleted') = 2, 'one zeroing adjustment per shelf';
     ASSERT NOT EXISTS (SELECT 1 FROM public.inventory WHERE product_id = doomed), 'stock rows removed';
 

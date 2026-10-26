@@ -95,12 +95,9 @@ echo "6. Deleting stock rows while receipts arrive: no unit may vanish without a
 U=$(new_user s6); new_location "$U" BIN 100000; P=$(new_product "$U" S6)
 sql "SELECT public.apply_stock_movement($U, $P, 'BIN', 'ADJUST', 5)" >/dev/null
 fire 60 "SELECT CASE WHEN @I@ % 4 = 0 THEN public.delete_inventory($U, (SELECT id FROM public.inventory WHERE product_id = $P LIMIT 1)) ELSE public.apply_stock_movement($U, $P, 'BIN', 'INBOUND', 1) END"
-# replay the ledger in commit order (ids are handed out under the location lock): the last ADJUST
-# sets the quantity, receipts after it add to it. A row deleted while it still held stock, without
-# its ADJUST, would leave the replay higher than what is on the shelf.
-EXPECTED=$(sql "WITH last_adjust AS (SELECT COALESCE(max(id), 0) AS id FROM public.transactions WHERE product_id = $P AND type = 'ADJUST')
-SELECT COALESCE((SELECT quantity FROM public.transactions WHERE id = (SELECT id FROM last_adjust)), 0)
-     + COALESCE((SELECT sum(quantity) FROM public.transactions WHERE product_id = $P AND type = 'INBOUND' AND id > (SELECT id FROM last_adjust)), 0)")
+# the ledger must add up to the shelf: receipts and adjustments are signed, shipments subtract. A row
+# deleted while it still held stock, without its ADJUST, would leave the sum higher than the shelf.
+EXPECTED=$(sql "SELECT COALESCE(sum(CASE type WHEN 'OUTBOUND' THEN -quantity ELSE quantity END), 0) FROM public.transactions WHERE product_id = $P")
 ACTUAL=$(sql "SELECT COALESCE(sum(quantity), 0) FROM public.inventory WHERE product_id = $P")
 check "shelf quantity = ledger replay" "$EXPECTED" "$ACTUAL"
 DELETED=$(sql "SELECT count(*) FROM public.transactions WHERE product_id = $P AND notes = 'Inventory record deleted'")

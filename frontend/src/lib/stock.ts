@@ -140,6 +140,17 @@ export function deleteInventory(params: { userId: number; inventoryId: number })
 }
 
 /**
+ * Delete a location in one database transaction (0012_server_fixes.sql). Refused (409) while stock is
+ * still on it, so units never end up pointing at a location that no longer exists.
+ */
+export function deleteLocation(params: { userId: number; locationId: number }): Promise<RpcResult<{ id: number; name: string }>> {
+  return callRpc<{ id: number; name: string }>('delete_location', {
+    p_user_id: params.userId,
+    p_location_id: params.locationId,
+  });
+}
+
+/**
  * Update a location, including a rename, in one database transaction (0009_update_location.sql).
  * Inventory and transactions reference a location by name, so a rename moves them with it.
  * `patch` may hold name, capacity and description only.

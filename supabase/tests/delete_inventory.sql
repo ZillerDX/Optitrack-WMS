@@ -46,7 +46,7 @@ BEGIN
     ASSERT (r ->> 'removed_quantity')::int = 12 AND r ->> 'location' = 'A1', 'reports what was removed';
     ASSERT NOT EXISTS (SELECT 1 FROM public.inventory WHERE id = inv), 'row removed';
     ASSERT (SELECT count(*) FROM public.transactions WHERE product_id = pa AND location = 'A1' AND type = 'ADJUST'
-            AND quantity = 0 AND notes = 'Inventory record deleted') = 1, 'the removal is recorded';
+            AND quantity = -12 AND stock_after = 0 AND notes = 'Inventory record deleted') = 1, 'the removal is recorded as a change of -12';
     ASSERT (SELECT count(*) FROM public.transactions WHERE product_id = pa AND location = 'A1' AND type = 'INBOUND') = 1, 'history kept';
 
     -- neighbours untouched
