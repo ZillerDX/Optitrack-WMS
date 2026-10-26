@@ -55,8 +55,13 @@ export async function POST(req: NextRequest) {
     if (!MOVEMENT_TYPES.includes(type)) {
       return NextResponse.json({ detail: 'type must be INBOUND, OUTBOUND or ADJUST' }, { status: 400 });
     }
-    if (!Number.isInteger(quantity) || quantity <= 0) {
-      return NextResponse.json({ detail: 'quantity must be a positive integer' }, { status: 400 });
+    // ADJUST carries the counted level, so 0 (an empty shelf) is valid; receiving or shipping 0 is not
+    const minimum = type === 'ADJUST' ? 0 : 1;
+    if (!Number.isInteger(quantity) || quantity < minimum) {
+      return NextResponse.json(
+        { detail: type === 'ADJUST' ? 'quantity must be a whole number, 0 or more' : 'quantity must be a positive integer' },
+        { status: 400 }
+      );
     }
     if (!Number.isInteger(productId) || productId <= 0) {
       return NextResponse.json({ detail: 'product_id must be a positive integer' }, { status: 400 });

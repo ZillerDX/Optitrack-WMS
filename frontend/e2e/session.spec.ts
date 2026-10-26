@@ -81,7 +81,7 @@ test('signing out ends the session: the old cookie is refused by the API', async
   expect((await page.request.get('/api/auth/me')).status()).toBe(200);
 
   await page.getByRole('button', { name: /log ?out|sign ?out/i }).click();
-  await page.waitForURL('**/login');
+  await expect(page).toHaveURL(/\/login$/); // not waitForURL: it can see the navigation aborted when it is replaced
 
   // replay the cookie the browser held before signing out: the server revoked it, not just the browser
   const replay = await request.get('/api/auth/me', { headers: { Cookie: `${COOKIE}=${before.value}` } });
@@ -120,7 +120,7 @@ test('pages load the account\'s real data through the cookie, and only its own',
 
   for (const path of ['/products', '/inventory', '/transactions']) {
     await page.goto(path);
-    await expect(page.getByText(product).first(), path).toBeVisible();
+    await expect(page.getByText(product).filter({ visible: true }).first(), path).toBeVisible();
   }
 
   // account B, in a separate browser context, sees none of it

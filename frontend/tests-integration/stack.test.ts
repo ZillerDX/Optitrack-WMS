@@ -569,6 +569,19 @@ describe('lists and dashboard over more than 1000 rows (real PostgREST)', () => 
     expect(res.headers.get('x-total-count')).toBe('0');
   });
 
+  it('POST /api/transactions: ADJUST accepts 0 (an empty shelf), INBOUND and OUTBOUND do not', async () => {
+    const u = await signup('adjust0@x.com');
+    const p = await seedWarehouse(u.token, 'P1', 'A1', 100);
+    const send = (type: string, quantity: number) => createTransaction(call('POST', { type, quantity, product_id: p, location: 'A1' }, u.token));
+    expect((await send('INBOUND', 8)).status).toBe(201);
+    expect((await send('INBOUND', 0)).status).toBe(400);
+    expect((await send('OUTBOUND', 0)).status).toBe(400);
+    expect((await send('ADJUST', -1)).status).toBe(400);
+    const emptied = await send('ADJUST', 0);
+    expect(emptied.status).toBe(201);
+    expect(await emptied.json()).toMatchObject({ type: 'ADJUST', quantity: -8, stock_after: 0 });
+  });
+
   it('GET /api/transactions: type, product and date filters, paging and a stable order', async () => {
     const u = await signup('tx@x.com');
     const p = await seedWarehouse(u.token, 'P1', 'A1', 100000);

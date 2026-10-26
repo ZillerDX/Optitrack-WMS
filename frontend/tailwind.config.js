@@ -16,6 +16,10 @@ module.exports = {
       },
     },
     extend: {
+      fontFamily: {
+        // --font-sans is set by the redesigned pages (Inter); the others keep the system font
+        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -24,7 +28,18 @@ module.exports = {
         foreground: "hsl(var(--foreground))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--foreground))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        success: { DEFAULT: "hsl(var(--success))", bg: "hsl(var(--success-bg))" },
+        warning: { DEFAULT: "hsl(var(--warning))", bg: "hsl(var(--warning-bg))" },
+        danger: { DEFAULT: "hsl(var(--danger))", bg: "hsl(var(--danger-bg))" },
+        chart: {
+          1: "hsl(var(--chart-1))",
+          2: "hsl(var(--chart-2))",
+          3: "hsl(var(--chart-3))",
+          4: "hsl(var(--chart-4))",
+          5: "hsl(var(--chart-5))",
+          grid: "hsl(var(--chart-grid))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",

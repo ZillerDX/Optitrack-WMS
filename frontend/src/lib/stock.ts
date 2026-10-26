@@ -4,11 +4,8 @@ export type MovementType = 'INBOUND' | 'OUTBOUND' | 'ADJUST';
 
 export const MOVEMENT_TYPES: readonly MovementType[] = ['INBOUND', 'OUTBOUND', 'ADJUST'];
 
-export function inventoryStatus(quantity: number, minStockLevel: number): string {
-  if (quantity === 0) return 'OUT_OF_STOCK';
-  if (quantity < minStockLevel) return 'LOW_STOCK';
-  return 'IN_STOCK';
-}
+// the rule lives in stockStatus.ts so that the browser can use it too
+export { inventoryStatus } from '@/lib/stockStatus';
 
 export type RpcResult<T> = { ok: true; data: T } | { ok: false; status: number; detail: string };
 

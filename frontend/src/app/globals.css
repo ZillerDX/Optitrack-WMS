@@ -3,30 +3,88 @@
 @tailwind utilities;
 
 @layer base {
+  /*
+   * Design tokens of the redesigned pages (see the preview in PLAN.md): light by default, one accent
+   * colour, status colours only for stock status. HSL triplets, used as hsl(var(--name)).
+   * Text on its own surface is at least 4.5:1 (checked in tests/theme-contrast.test.ts).
+   */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 220 20% 97%;
+    --foreground: 221 39% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 221 39% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.75rem;
+    --popover-foreground: 221 39% 11%;
+    --primary: 223 70% 49%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 221 39% 11%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 217 12% 38%;
+    --accent: 223 70% 94%;
+    --accent-foreground: 223 74% 33%;
+    --destructive: 5 76% 41%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 218 14% 82%;
+    --ring: 223 70% 49%;
+    --radius: 0.625rem;
+
+    /* stock status: text on its own tinted background */
+    --success: 147 66% 23%;
+    --success-bg: 147 45% 93%;
+    --warning: 37 100% 24%;
+    --warning-bg: 41 100% 92%;
+    --danger: 5 70% 38%;
+    --danger-bg: 5 80% 95%;
+
+    /* charts: one palette for the whole app */
+    --chart-1: 223 70% 49%;
+    --chart-2: 218 20% 66%;
+    --chart-3: 172 77% 27%;
+    --chart-4: 262 58% 51%;
+    --chart-5: 24 90% 41%;
+    --chart-grid: 220 14% 93%;
   }
 
   .dark {
+    --background: 222 32% 8%;
+    --foreground: 214 32% 94%;
+    --card: 222 28% 11%;
+    --card-foreground: 214 32% 94%;
+    --popover: 222 28% 11%;
+    --popover-foreground: 214 32% 94%;
+    --primary: 220 90% 66%;
+    --primary-foreground: 222 47% 8%;
+    --secondary: 222 20% 17%;
+    --secondary-foreground: 214 32% 94%;
+    --muted: 222 20% 17%;
+    --muted-foreground: 217 15% 70%;
+    --accent: 222 40% 20%;
+    --accent-foreground: 218 100% 85%;
+    --destructive: 4 85% 62%;
+    --destructive-foreground: 222 47% 8%;
+    --border: 222 18% 20%;
+    --input: 222 16% 28%;
+    --ring: 220 90% 66%;
+
+    --success: 147 55% 60%;
+    --success-bg: 147 40% 14%;
+    --warning: 40 95% 62%;
+    --warning-bg: 38 60% 14%;
+    --danger: 5 90% 72%;
+    --danger-bg: 5 50% 16%;
+
+    --chart-1: 220 90% 66%;
+    --chart-2: 218 20% 80%;
+    --chart-3: 172 60% 50%;
+    --chart-4: 262 80% 74%;
+    --chart-5: 24 90% 62%;
+    --chart-grid: 222 16% 18%;
+  }
+
+  /* The pages not yet redesigned keep exactly the dark values they had (their layout adds both classes). */
+  .legacy-dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
     --card: 222.2 84% 4.9%;
@@ -34,7 +92,7 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
     --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
@@ -46,6 +104,7 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 48%;
+    --radius: 0.75rem;
   }
 }
 
