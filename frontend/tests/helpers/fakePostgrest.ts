@@ -66,11 +66,12 @@ export class FakePostgrest {
     return this.tables[table].filter((r) => Object.entries(where).every(([k, v]) => r[k] === v));
   }
 
-  private response(body: any, status = 200) {
+  private response(body: any, status = 200, headers: Record<string, string> = {}) {
     const text = body === undefined ? '' : JSON.stringify(body);
     return {
       ok: status >= 200 && status < 300,
       status,
+      headers: new Headers(headers),
       json: async () => (text ? JSON.parse(text) : null),
       text: async () => text,
     };
@@ -176,7 +177,15 @@ export class FakePostgrest {
 
     if (method === 'GET') {
       const rows = this.tables[table].filter((r) => this.matchesFilters(r, url, table));
-      return this.response(this.embed(rows, table, url));
+      // limit / offset like PostgREST, and Content-Range when the caller asks for a count
+      const limit = url.searchParams.get('limit');
+      const offset = Number(url.searchParams.get('offset') ?? 0);
+      const page = limit === null ? rows.slice(offset) : rows.slice(offset, offset + Number(limit));
+      const headers: Record<string, string> = {};
+      if (prefer.includes('count=exact')) {
+        headers['content-range'] = page.length ? `${offset}-${offset + page.length - 1}/${rows.length}` : `*/${rows.length}`;
+      }
+      return this.response(this.embed(page, table, url), 200, headers);
     }
 
     if (method === 'POST') {

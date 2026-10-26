@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
 import { recordStockMovement, MOVEMENT_TYPES, MovementType } from '@/lib/stock';
 import { parseMovementDate } from '@/lib/validation';
+import { COUNT_HEADERS, listResponse, pagingPath, parsePaging, transactionFilters } from '@/lib/listQuery';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,20 +11,26 @@ export async function GET(req: NextRequest) {
     const user = await getAuthUser(req);
     if (!user) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
 
+    // Optional: location, type, product_id, from, to, limit, offset. The body is an array;
+    // X-Total-Count has the number of matching rows and X-Truncated says the default cap cut the answer.
     const { searchParams } = new URL(req.url);
+    const paging = parsePaging(searchParams);
+    if (!paging.ok) return NextResponse.json({ detail: paging.detail }, { status: 400 });
+    const filters = transactionFilters(searchParams);
+    if (!filters.ok) return NextResponse.json({ detail: filters.detail }, { status: 400 });
     const location = searchParams.get('location');
-    let path = `transactions?user_id=eq.${user.id}&select=*,product:products(*),user:users(id,first_name,last_name,email)&order=created_at.desc`;
+    let path = `transactions?user_id=eq.${user.id}&select=*,product:products(*),user:users(id,first_name,last_name,email)&order=created_at.desc,id.desc${filters.value}`;
     if (location && location !== 'ALL') {
       path += `&location=eq.${encodeURIComponent(location)}`;
     }
+    path += pagingPath(paging.value);
 
-    const res = await supabaseRest(path);
+    const res = await supabaseRest(path, { headers: COUNT_HEADERS });
     if (!res.ok) {
       console.error('[Supabase Transactions Error]:', await res.text());
       return NextResponse.json({ detail: 'Failed to load data' }, { status: 500 });
     }
-    const data = await res.json();
-    return NextResponse.json(Array.isArray(data) ? data : []);
+    return listResponse(res, await res.json(), paging.value);
   } catch (err: any) {
     console.error('[GET Transactions Error]:', err);
     return NextResponse.json({ detail: 'Failed to load data' }, { status: 500 });

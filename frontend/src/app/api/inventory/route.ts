@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
 import { inventoryStatus, recordStockMovement } from '@/lib/stock';
+import { COUNT_HEADERS, inventoryFilters, listResponse, pagingPath, parsePaging } from '@/lib/listQuery';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,20 +12,26 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
     }
 
+    // Optional: location, product_id, limit, offset. The body is an array; X-Total-Count has the
+    // number of matching rows and X-Truncated says the default cap cut the answer.
     const { searchParams } = new URL(req.url);
+    const paging = parsePaging(searchParams);
+    if (!paging.ok) return NextResponse.json({ detail: paging.detail }, { status: 400 });
+    const filters = inventoryFilters(searchParams);
+    if (!filters.ok) return NextResponse.json({ detail: filters.detail }, { status: 400 });
     const location = searchParams.get('location');
-    let path = `inventory?select=*,product:products!inner(*)&product.owner_id=eq.${user.id}&order=id.desc`;
+    let path = `inventory?select=*,product:products!inner(*)&product.owner_id=eq.${user.id}&order=id.desc${filters.value}`;
     if (location && location !== 'ALL') {
       path += `&location=eq.${encodeURIComponent(location)}`;
     }
+    path += pagingPath(paging.value);
 
-    const res = await supabaseRest(path);
+    const res = await supabaseRest(path, { headers: COUNT_HEADERS });
     if (!res.ok) {
       console.error('[Supabase Inventory Error]:', await res.text());
       return NextResponse.json({ detail: 'Failed to load data' }, { status: 500 });
     }
-    const data = await res.json();
-    return NextResponse.json(Array.isArray(data) ? data : []);
+    return listResponse(res, await res.json(), paging.value);
   } catch (err: any) {
     console.error('[GET Inventory Error]:', err);
     return NextResponse.json({ detail: 'Failed to load data' }, { status: 500 });

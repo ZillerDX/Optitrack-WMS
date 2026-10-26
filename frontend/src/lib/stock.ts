@@ -140,6 +140,25 @@ export function deleteInventory(params: { userId: number; inventoryId: number })
 }
 
 /**
+ * The dashboard figures, computed by the database over all rows of the caller (0013_dashboard_summary.sql):
+ * totals, stock status, usage per location, inbound / outbound per local day, adjustments, categories and
+ * top movers. `location` null or 'ALL' means every location; `tz` is the zone the days are cut in.
+ */
+export function getDashboardSummary(params: {
+  userId: number;
+  location?: string | null;
+  days: number;
+  tz: string;
+}): Promise<RpcResult<Record<string, any>>> {
+  return callRpc<Record<string, any>>('dashboard_summary', {
+    p_user_id: params.userId,
+    p_location: params.location ?? null,
+    p_days: params.days,
+    p_tz: params.tz,
+  });
+}
+
+/**
  * Delete a location in one database transaction (0012_server_fixes.sql). Refused (409) while stock is
  * still on it, so units never end up pointing at a location that no longer exists.
  */
