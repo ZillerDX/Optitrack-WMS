@@ -45,7 +45,7 @@ Browser ──(same origin, session cookie)──▶ Next.js Route Handler ─�
 - Location and inventory rows reference locations **by name**, not by id. Uniqueness is enforced by the
   database: `(owner_id, name)` on locations and categories, `(owner_id, sku)` on products,
   `(product_id, location)` on inventory.
-- Schema changes are hand-run SQL files in `supabase/migrations/`, numbered `0000`–`0012`, all idempotent.
+- Schema changes are hand-run SQL files in `supabase/migrations/`, numbered `0000`–`0013`, all idempotent.
   CI applies them to an empty PostgreSQL twice.
 
 ## Sessions
@@ -85,6 +85,8 @@ Deleting a product is a soft delete (`delete_product`, `0010_soft_delete_product
 `PUT /api/inventory/{id}` (manual correction) is an ADJUST movement too: only `quantity` is editable, the status follows it, and the location cannot be changed.
 
 `0012_server_fixes.sql`: an ADJUST stores the **signed change** (new level − old level) as its `quantity`, and every movement records the level it left behind in `transactions.stock_after`, so the history adds up to the stock (older ADJUST rows, with `stock_after IS NULL`, keep their old meaning: the target level). PO numbers and transaction reference codes are unique **per tenant** (`purchase_orders (user_id, po_number)`, `transactions (user_id, ref_code)`); the reorder endpoint generates the PO number on the server. A location is deleted through `delete_location`, which refuses (409) while stock is still on it. `delete_product` copes with an already-taken `<sku>-deleted<id>`. Rollback: `supabase/rollback/rollback_0012.sql`.
+
+`0013_dashboard_summary.sql`: `dashboard_summary(user, location, days, tz)` computes the dashboard figures in one query over **all** rows of the caller (totals, stock status, usage per location, inbound / outbound per local day, adjustments, categories, top movers); `GET /api/dashboard/summary` and `GET /api/dashboard/metrics` use it, so nothing is added up in the browser from a list cut at 1000 rows. The list endpoints (`GET /api/products|inventory|transactions`) take `limit` (1-1000), `offset` and filters (products: `q`, `category`; transactions: `type`, `product_id`, `from`, `to`; inventory: `product_id`), return a plain array, and say `X-Total-Count` (matching rows) and `X-Truncated: true` when the default cap of 1000 cut the answer. Rollback: `supabase/rollback/rollback_0013.sql`.
 
 `src/lib/stock.ts` is only the RPC client. The rules are tested where they live: `supabase/tests/stock_movements.sql`
 (rules, atomicity, privileges) and `supabase/tests/stock_concurrency.sh` (dozens of simultaneous connections:
