@@ -384,13 +384,12 @@ Optitrack-WMS/
 ├── frontend/
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── [locale]/
-│   │   │   │   ├── dashboard/page.tsx  # Executive dashboard & trend charts
-│   │   │   │   ├── inventory/page.tsx  # Zone capacity meters & stock ledger
-│   │   │   │   ├── products/page.tsx   # Product catalog & barcode manager
-│   │   │   │   ├── transactions/page.tsx # Inbound/Outbound movement journal
-│   │   │   │   ├── login/page.tsx      # Enterprise login & Google OAuth
-│   │   │   │   └── signup/page.tsx     # Operator registration
+│   │   │   ├── dashboard/page.tsx  # Executive dashboard & trend charts
+│   │   │   ├── inventory/page.tsx  # Zone capacity meters & stock ledger
+│   │   │   ├── products/page.tsx   # Product catalog & barcode manager
+│   │   │   ├── transactions/page.tsx # Inbound/Outbound movement journal
+│   │   │   ├── login/page.tsx      # Enterprise login & Google OAuth
+│   │   │   ├── signup/page.tsx     # Operator registration
 │   │   │   └── api/
 │   │   │       ├── ai/chat/route.ts    # Zero-config AI Copilot endpoint
 │   │   │       ├── ai/report/route.ts  # Executive operations report generator

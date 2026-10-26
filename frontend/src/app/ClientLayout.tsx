@@ -10,14 +10,9 @@ import { CommandMenu } from '@/components/ui/CommandMenu';
 import { Menu, Package } from 'lucide-react';
 import { useUIStore } from '@/store/useUIStore';
 import { cn } from '@/lib/utils';
-import '../globals.css';
+import './globals.css';
 
-export default function ClientLayout({
-  children
-}: {
-  children: React.ReactNode;
-  params: {locale: string};
-}) {
+export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [userRole, setUserRole] = useState<'ADMIN'>('ADMIN');
