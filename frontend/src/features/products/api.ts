@@ -40,6 +40,14 @@ export function useProducts(params: { q: string; category: string; page: number 
   });
 }
 
+/** Every product (up to the API's 1000), for figures that need the whole catalogue. */
+export function useAllProducts() {
+  return useQuery({
+    queryKey: ['products', 'all'] as const,
+    queryFn: ({ signal }) => apiFetch<Product[]>('/api/products?limit=1000', { signal }).then((r) => r.data),
+  });
+}
+
 export function useCategories() {
   return useQuery({
     queryKey: productKeys.categories,

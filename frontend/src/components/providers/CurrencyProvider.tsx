@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { formatMoney } from '@/lib/format';
+import { formatCompactMoney, formatMoney } from '@/lib/format';
 import { FALLBACK_USD_RATES } from '@/lib/currency';
 import { DEFAULT_CURRENCY, fetchRates, readStoredCurrency, storeCurrency, type SupportedCurrency } from '@/lib/currencyPreference';
 
@@ -11,6 +11,8 @@ interface CurrencyContextValue {
   setCurrency: (currency: SupportedCurrency) => void;
   /** An amount stored in USD, shown in the chosen currency. */
   format: (amountUsd: number) => string;
+  /** The same, short for chart axes: $1.2K. */
+  formatCompact: (amountUsd: number) => string;
   /** False while only the built-in fallback rate is available. */
   liveRates: boolean;
 }
@@ -42,6 +44,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
       currency,
       setCurrency,
       format: (amountUsd) => formatMoney(amountUsd, currency, table[currency]),
+      formatCompact: (amountUsd) => formatCompactMoney(amountUsd, currency, table[currency]),
       liveRates: currency === 'USD' || Boolean(rates.data),
     };
   }, [currency, rates.data, setCurrency]);

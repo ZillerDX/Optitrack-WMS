@@ -81,7 +81,7 @@ test('signing out ends the session: the old cookie is refused by the API', async
   expect((await page.request.get('/api/auth/me')).status()).toBe(200);
 
   await page.getByRole('button', { name: /log ?out|sign ?out/i }).click();
-  await page.waitForURL('**/login');
+  await expect(page).toHaveURL(/\/login$/); // not waitForURL: it can see the navigation aborted when it is replaced
 
   // replay the cookie the browser held before signing out: the server revoked it, not just the browser
   const replay = await request.get('/api/auth/me', { headers: { Cookie: `${COOKIE}=${before.value}` } });
