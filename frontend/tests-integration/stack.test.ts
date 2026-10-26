@@ -16,6 +16,9 @@ import { POST as approveReorder } from '@/app/api/ai/reorder/approve/route';
 import { GET as predictive } from '@/app/api/ai/predictive/route';
 import { POST as aiReport } from '@/app/api/ai/report/route';
 import { POST as aiChat } from '@/app/api/ai/chat/route';
+import { GET as dashboardSummary } from '@/app/api/dashboard/summary/route';
+import { GET as dashboardMetrics } from '@/app/api/dashboard/metrics/route';
+import { GET as listTransactions } from '@/app/api/transactions/route';
 
 let ip = 0;
 const headers = (extra: Record<string, string> = {}) => ({
@@ -501,6 +504,145 @@ describe('inventory endpoints against the real database', () => {
     expect(codes.filter((c) => c === 201)).toHaveLength(2);
     const total = (await rows('inventory?select=quantity')).reduce((sum, r) => sum + r.quantity, 0);
     expect(total).toBe(10);
+  });
+});
+
+describe('lists and dashboard over more than 1000 rows (real PostgREST)', () => {
+  const bulk = async (table: string, rowsToInsert: unknown[]) => {
+    const res = await supabaseRest(table, { method: 'POST', body: JSON.stringify(rowsToInsert), headers: { Prefer: 'return=minimal' } });
+    if (!res.ok) throw new Error(`bulk ${table}: ${res.status} ${await res.text()}`);
+  };
+  const userId = async (email: string) => (await rows(`users?email=eq.${email}`))[0].id as number;
+
+  /** 1,100 products with 2 units each at one location (cost 3, price 5). */
+  async function bigWarehouse(email = 'big@x.com') {
+    const u = await signup(email);
+    const owner = await userId(email);
+    expect((await createLocation(call('POST', { name: 'BIG', capacity: 100000 }, u.token))).status).toBe(200);
+    await bulk(
+      'products',
+      Array.from({ length: 1100 }, (_, n) => ({
+        owner_id: owner, sku: `S${n}`, name: n === 7 ? '50%_off bolt' : `Product ${n}`, category: n % 2 ? 'Odd' : 'Even',
+        cost_price: 3, sell_price: 5, min_stock_level: n % 10 === 0 ? 5 : 1,
+      }))
+    );
+    const ids = (await rows(`products?owner_id=eq.${owner}&select=id&order=id.asc&limit=2000`)).map((p) => p.id as number);
+    await bulk('inventory', ids.map((id) => ({ product_id: id, location: 'BIG', quantity: 2, status: 'IN_STOCK' })));
+    return { u, owner, ids };
+  }
+
+  it('GET /api/products: default cap, X-Total-Count, X-Truncated, paging, search and category', async () => {
+    const { u } = await bigWarehouse();
+    const all = await listProducts(call('GET', undefined, u.token));
+    expect((await all.json()).length).toBe(1000);
+    expect(all.headers.get('x-total-count')).toBe('1100');
+    expect(all.headers.get('x-truncated')).toBe('true');
+
+    const page = await listProducts(new NextRequest('http://app.test/api/products?limit=50&offset=1060', { headers: headers({ authorization: `Bearer ${u.token}` }) }));
+    expect((await page.json()).length).toBe(40);
+    expect(page.headers.get('x-total-count')).toBe('1100');
+    expect(page.headers.get('x-truncated')).toBeNull();
+
+    const get = async (query: string) => {
+      const res = await listProducts(new NextRequest(`http://app.test/api/products${query}`, { headers: headers({ authorization: `Bearer ${u.token}` }) }));
+      return { res, body: (await res.json()) as any[] };
+    };
+    // SKU search, name search, and wildcards typed by the user are literal
+    expect((await get('?q=S1099')).body.map((p) => p.sku)).toEqual(['S1099']);
+    expect((await get('?q=product%201099')).res.headers.get('x-total-count')).toBe('1'); // "Product 1099", case-insensitive
+    expect((await get('?q=product%2055')).res.headers.get('x-total-count')).toBe('11'); // "contains": Product 55 and 550-559
+    expect((await get(`?q=${encodeURIComponent('50%_off')}`)).body.map((p) => p.sku)).toEqual(['S7']);
+    expect((await get(`?q=${encodeURIComponent('%')}`)).res.headers.get('x-total-count')).toBe('1'); // only the one name with a real %
+    expect((await get(`?q=${encodeURIComponent('_')}`)).res.headers.get('x-total-count')).toBe('1');
+    expect((await get(`?q=${encodeURIComponent('x"),sku.eq.S1,(y')}`)).res.status).toBe(200); // cannot break the filter
+    expect((await get('?category=Even')).res.headers.get('x-total-count')).toBe('550');
+    expect((await get('?category=Even&q=S10')).res.headers.get('x-total-count')).toBe(String(
+      Array.from({ length: 1100 }, (_, n) => n).filter((n) => n % 2 === 0 && `S${n}`.includes('S10')).length
+    ));
+  });
+
+  it('another tenant sees none of it, and its counts are its own', async () => {
+    await bigWarehouse('big@x.com');
+    const other = await signup('small@x.com');
+    const res = await listProducts(call('GET', undefined, other.token));
+    expect(await res.json()).toEqual([]);
+    expect(res.headers.get('x-total-count')).toBe('0');
+  });
+
+  it('GET /api/transactions: type, product and date filters, paging and a stable order', async () => {
+    const u = await signup('tx@x.com');
+    const p = await seedWarehouse(u.token, 'P1', 'A1', 100000);
+    const q = await (await createProduct(call('POST', { sku: 'P2', name: 'P2', cost_price: 1, sell_price: 2, min_stock_level: 0 }, u.token))).json();
+    const day = (n: number) => new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
+    const make = (type: string, quantity: number, product: number, created_at: string) =>
+      createTransaction(call('POST', { type, quantity, product_id: product, location: 'A1', created_at }, u.token));
+    for (let i = 0; i < 12; i++) expect((await make('INBOUND', 10, p, day(5))).status).toBe(201); // same instant: order must still be stable
+    expect((await make('OUTBOUND', 3, p, day(2))).status).toBe(201);
+    expect((await make('INBOUND', 4, q.id, day(1))).status).toBe(201);
+    expect((await make('ADJUST', 50, p, day(0.5))).status).toBe(201);
+
+    const get = async (query: string) => {
+      const res = await listTransactions(new NextRequest(`http://app.test/api/transactions${query}`, { headers: headers({ authorization: `Bearer ${u.token}` }) }));
+      return { res, body: (await res.json()) as any[] };
+    };
+    expect((await get('')).res.headers.get('x-total-count')).toBe('15');
+    expect((await get('?type=OUTBOUND')).body).toHaveLength(1);
+    expect((await get('?type=ADJUST')).body[0]).toMatchObject({ type: 'ADJUST', stock_after: 50 });
+    expect((await get(`?product_id=${q.id}`)).body).toHaveLength(1);
+    const since = day(3).slice(0, 10);
+    expect((await get(`?from=${since}`)).res.headers.get('x-total-count')).toBe('3'); // OUTBOUND, q's receipt, the ADJUST
+    expect((await get(`?from=${since}&type=INBOUND`)).body).toHaveLength(1);
+    expect((await get(`?to=${day(4).slice(0, 10)}`)).res.headers.get('x-total-count')).toBe('12');
+
+    // paging walks the same rows without gaps or repeats, even for rows with the same created_at
+    const seen: number[] = [];
+    for (const offset of [0, 5, 10]) {
+      const { body } = await get(`?limit=5&offset=${offset}`);
+      seen.push(...body.map((t) => t.id));
+    }
+    expect(seen).toHaveLength(15);
+    expect(new Set(seen).size).toBe(15);
+    expect((await get('?limit=0')).res.status).toBe(400);
+    expect((await get('?type=SELL')).res.status).toBe(400);
+  });
+
+  it('GET /api/dashboard/summary adds up all 1100 stock rows (a list is cut at 1000) and the metrics agree', async () => {
+    const { u } = await bigWarehouse();
+    const res = await dashboardSummary(new NextRequest('http://app.test/api/dashboard/summary?days=7&tz=Asia/Bangkok', { headers: headers({ authorization: `Bearer ${u.token}` }) }));
+    expect(res.status).toBe(200);
+    const d = await res.json();
+    expect(d.totals).toMatchObject({ units: 2200, products: 1100, products_with_stock: 1100 });
+    expect(Number(d.totals.cost_basis)).toBe(6600);
+    expect(Number(d.totals.market_value)).toBe(11000);
+    expect(d.stock_status).toMatchObject({ low_stock: 110, healthy: 990, out_of_stock: 0 });
+    expect(d.window).toMatchObject({ days: 7, tz: 'Asia/Bangkok' });
+    expect(d.movement).toHaveLength(7);
+    expect(d.locations).toEqual([{ name: 'BIG', capacity: 100000, used: 2200, pct: 2, over: false }]);
+
+    const m = await (await dashboardMetrics(call('GET', undefined, u.token))).json();
+    expect(m).toEqual({ warehouse_capacity_pct: 2, warehouse_capacity_label: '2200 / 100000 items (2%)' });
+
+    // ADJUST is neither inbound nor outbound volume
+    const some = (await rows('products?select=id&limit=1'))[0].id;
+    expect((await createTransaction(call('POST', { type: 'ADJUST', quantity: 9, product_id: some, location: 'BIG' }, u.token))).status).toBe(201);
+    const after = await (await dashboardSummary(call('GET', undefined, u.token))).json();
+    expect(after.totals.units).toBe(2207);
+    expect(after.adjustments).toMatchObject({ count: 1, net_units: 7, legacy: 0 });
+    expect(after.movement.reduce((sum: number, e: any) => sum + e.inbound_units + e.outbound_units, 0)).toBe(0);
+  });
+
+  it('GET /api/dashboard/summary: bad input is a 400, an unknown location a 404, another tenant gets its own numbers', async () => {
+    const { u } = await bigWarehouse();
+    const get = (query: string, token = u.token) =>
+      dashboardSummary(new NextRequest(`http://app.test/api/dashboard/summary${query}`, { headers: headers({ authorization: `Bearer ${token}` }) }));
+    expect((await get('?days=0')).status).toBe(400);
+    expect((await get('?tz=Mars/Base')).status).toBe(400); // well-formed but unknown: refused by the database
+    expect((await get('?location=Nope')).status).toBe(404);
+    expect((await get('?location=BIG')).status).toBe(200);
+    const other = await signup('other@x.com');
+    expect((await get('?location=BIG', other.token)).status).toBe(404); // not their location
+    const mine = await (await get('', other.token)).json();
+    expect(mine.totals).toMatchObject({ units: 0, products: 0 });
   });
 });
 

@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseRest, getAuthUser } from '@/lib/supabase';
+import { getAuthUser } from '@/lib/supabase';
+import { getDashboardSummary } from '@/lib/stock';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Storage usage of the warehouse (or one location). Computed by the database over every stock row
+ * (it used to add up a list cut at 1000 rows). The new dashboard reads /api/dashboard/summary instead.
+ */
 export async function GET(req: NextRequest) {
   try {
     const user = await getAuthUser(req);
@@ -11,51 +16,28 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const location = searchParams.get('location');
-
-    let invPath = `inventory?select=quantity,product:products!inner(owner_id)&product.owner_id=eq.${user.id}`;
-    let locPath = `locations?owner_id=eq.${user.id}&select=capacity`;
-
-    if (location && location !== 'ALL') {
-      invPath += `&location=eq.${encodeURIComponent(location)}`;
-      locPath += `&name=eq.${encodeURIComponent(location)}`;
+    const location = (searchParams.get('location') ?? '').trim();
+    if (location.length > 50) {
+      return NextResponse.json({ detail: 'location must be at most 50 characters' }, { status: 400 });
     }
 
-    const [invRes, locRes] = await Promise.all([
-      supabaseRest(invPath),
-      supabaseRest(locPath),
-    ]);
-
-    // A failed read is an error, not an empty warehouse.
-    if (!invRes.ok || !locRes.ok) {
-      console.error('[Metrics Error]:', !invRes.ok ? await invRes.text() : await locRes.text());
-      return NextResponse.json({ detail: 'Failed to load data' }, { status: 500 });
-    }
-
-    let totalQty = 0;
-    let totalCap = 0;
-
-    if (invRes.ok) {
-      const items = await invRes.json();
-      if (Array.isArray(items)) {
-        totalQty = items.reduce((acc: number, item: any) => acc + (Number(item.quantity) || 0), 0);
+    const result = await getDashboardSummary({ userId: user.id, location: location || null, days: 1, tz: 'UTC' });
+    if (!result.ok) {
+      // an unknown location used to read as an empty one; keep that for old callers
+      if (result.status === 404) {
+        return NextResponse.json({ warehouse_capacity_pct: 0, warehouse_capacity_label: '0 items (no capacity set)' });
       }
+      return NextResponse.json({ detail: result.detail }, { status: result.status === 503 ? 503 : 500 });
     }
 
-    if (locRes.ok) {
-      const locs = await locRes.json();
-      if (Array.isArray(locs)) {
-        totalCap = locs.reduce((acc: number, loc: any) => acc + (Number(loc.capacity) || 0), 0);
-      }
-    }
-
+    const locations: Array<{ capacity: number; used: number }> = result.data.locations ?? [];
+    const totalQty = locations.reduce((sum, l) => sum + (Number(l.used) || 0), 0);
+    const totalCap = locations.reduce((sum, l) => sum + (Number(l.capacity) || 0), 0);
     const pct = totalCap > 0 ? Math.min(100, Math.round((totalQty / totalCap) * 100)) : 0;
-    const label = `${totalQty} / ${totalCap > 0 ? totalCap : 'Unlimited'} items (${pct}%)`;
+    // A location with capacity 0 accepts no stock at all (it is not "unlimited"): say that there is no capacity.
+    const label = totalCap > 0 ? `${totalQty} / ${totalCap} items (${pct}%)` : `${totalQty} items (no capacity set)`;
 
-    return NextResponse.json({
-      warehouse_capacity_pct: pct,
-      warehouse_capacity_label: label,
-    });
+    return NextResponse.json({ warehouse_capacity_pct: pct, warehouse_capacity_label: label });
   } catch {
     return NextResponse.json({ detail: 'Failed to load data' }, { status: 500 });
   }

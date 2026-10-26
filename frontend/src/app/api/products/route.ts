@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
 import { parseProductInput } from '@/lib/productInput';
+import { COUNT_HEADERS, listResponse, pagingPath, parsePaging, productFilters } from '@/lib/listQuery';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,13 +12,23 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
     }
 
-    const res = await supabaseRest(`products?owner_id=eq.${user.id}&deleted_at=is.null&select=*&order=id.desc`);
+    // Optional: limit, offset, q (name / SKU / barcode contains), category. The body is an array;
+    // X-Total-Count has the number of matching rows and X-Truncated says the default cap cut the answer.
+    const { searchParams } = new URL(req.url);
+    const paging = parsePaging(searchParams);
+    if (!paging.ok) return NextResponse.json({ detail: paging.detail }, { status: 400 });
+    const filters = productFilters(searchParams);
+    if (!filters.ok) return NextResponse.json({ detail: filters.detail }, { status: 400 });
+
+    const res = await supabaseRest(
+      `products?owner_id=eq.${user.id}&deleted_at=is.null&select=*&order=id.desc${filters.value}${pagingPath(paging.value)}`,
+      { headers: COUNT_HEADERS }
+    );
     if (!res.ok) {
       console.error('[Supabase Products Error]:', await res.text());
       return NextResponse.json({ detail: 'Failed to load data' }, { status: 500 });
     }
-    const data = await res.json();
-    return NextResponse.json(Array.isArray(data) ? data : []);
+    return listResponse(res, await res.json(), paging.value);
   } catch (err: any) {
     console.error('[GET Products Error]:', err);
     return NextResponse.json({ detail: 'Failed to load data' }, { status: 500 });
