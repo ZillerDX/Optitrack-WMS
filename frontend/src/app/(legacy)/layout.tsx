@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import ClientLayout from './ClientLayout';
+import '../globals.css';
 import { PWARegister } from '@/components/pwa/PWARegister';
 
 export const metadata: Metadata = {
@@ -25,7 +26,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark legacy-dark">
       <head>
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
