@@ -25,6 +25,10 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
       port,
       secure: port === 465,
       auth: { user, pass },
+      // a mail server that does not answer must not hold the request until the platform kills it
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 15_000,
     });
     const safeUrl = esc(resetUrl);
     await transport.sendMail({

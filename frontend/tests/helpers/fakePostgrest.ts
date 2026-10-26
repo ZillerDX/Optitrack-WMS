@@ -40,6 +40,8 @@ export class FakePostgrest {
   rpc: Record<string, RpcHandler> = {};
   /** Make every request fail (simulates an outage). */
   failAll = false;
+  /** Tables whose reads answer 503 (everything else keeps working). */
+  failTables = new Set<string>();
   /** Requests to anything that is not Supabase (LLM providers, Google, ...). */
   external: Array<{ url: string; init: any }> = [];
   externalHandler: (url: string, init: any) => { status: number; body: any } = () => ({ status: 500, body: {} });
@@ -155,7 +157,7 @@ export class FakePostgrest {
     const path = url.pathname.replace(/^\/rest\/v1\//, '');
     this.calls.push({ method, table: path, url: rawUrl, prefer, body });
 
-    if (this.failAll) return this.response({ message: 'down' }, 503);
+    if (this.failAll || this.failTables.has(path)) return this.response({ message: 'down' }, 503);
 
     if (path.startsWith('rpc/')) {
       const handler = this.rpc[path.slice(4)];

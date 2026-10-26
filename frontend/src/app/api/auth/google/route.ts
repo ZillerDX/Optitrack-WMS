@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import { supabaseRest, createSessionToken } from '@/lib/supabase';
 import { isSignupAllowed, SIGNUP_RESTRICTED_MESSAGE } from '@/lib/signup';
 import { setSessionCookie } from '@/lib/session';
+import { fetchWithTimeout, TIMEOUTS } from '@/lib/http';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,8 +36,10 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Verify token with Google's tokeninfo API
-    const googleRes = await fetch(
-      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`
+    const googleRes = await fetchWithTimeout(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`,
+      {},
+      TIMEOUTS.tokenInfo
     );
 
     if (!googleRes.ok) {
@@ -193,6 +196,12 @@ export async function POST(req: NextRequest) {
     );
   } catch (error: any) {
     console.error('[Google API Error]:', error);
+    if (error?.name === 'TimeoutError') {
+      return NextResponse.json(
+        { detail: 'Google sign-in is taking too long. Please try again.' },
+        { status: 504 }
+      );
+    }
     let detail = 'Internal server error during Google login.';
     const raw = String(error?.message ?? '');
     if (raw === 'fetch failed' || raw.includes('ENOTFOUND') || raw.includes('ECONNREFUSED')) {

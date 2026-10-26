@@ -13,6 +13,9 @@ import { DELETE as deleteInventory, PUT as updateInventory } from '@/app/api/inv
 import { DELETE as deleteLocation, PUT as updateLocation } from '@/app/api/locations/[id]/route';
 import { POST as createTransaction } from '@/app/api/transactions/route';
 import { POST as approveReorder } from '@/app/api/ai/reorder/approve/route';
+import { GET as predictive } from '@/app/api/ai/predictive/route';
+import { POST as aiReport } from '@/app/api/ai/report/route';
+import { POST as aiChat } from '@/app/api/ai/chat/route';
 
 let ip = 0;
 const headers = (extra: Record<string, string> = {}) => ({
@@ -271,6 +274,46 @@ describe('stock movements end to end', () => {
     expect((await rpc(ub, pb, 'SAME-REF')).status).toBe(200);
     expect((await rpc(ua, pa, 'SAME-REF')).status).toBe(409);
     expect(await rows('transactions?ref_code=eq.SAME-REF')).toHaveLength(2);
+  });
+});
+
+describe('AI endpoints against the real database', () => {
+  it('predictive, report and chat read the same stock (all locations) and the same 30-day velocity', async () => {
+    const u = await signup('a@x.com');
+    const p = await seedWarehouse(u.token, 'P1', 'A1', 1000);
+    expect((await createLocation(call('POST', { name: 'A2', capacity: 1000 }, u.token))).status).toBe(200);
+    await move(u.token, p, 'INBOUND', 200, 'A1');
+    await move(u.token, p, 'INBOUND', 100, 'A2');
+    // 120 OUTBOUND movements of 2 units = 240 units shipped (160 from A1, 80 from A2), all inside the window
+    for (let i = 0; i < 120; i++) expect((await move(u.token, p, 'OUTBOUND', 2, i < 80 ? 'A1' : 'A2')).status).toBe(201);
+
+    const pred = await predictive(call('GET', undefined, u.token));
+    expect(pred.status).toBe(200);
+    const item = (await pred.json()).predictive_items[0];
+    // 300 - 240 = 60 on hand over both locations; 240 / 30 = 8 a day; 60 / 8 = 7.5 -> 8 days
+    expect(item).toMatchObject({ current_stock: 60, units_sold_30d: 240, daily_burn_rate: 8, days_of_inventory: 8, urgency: 'WARNING' });
+
+    const rep = await aiReport(call('POST', {}, u.token));
+    expect(rep.status).toBe(200);
+    expect((await rep.json()).velocity_items[0]).toMatchObject({ stock: 60, units_out_30d: 240, daily_burn: 8, days_remaining: 8, status: 'WARNING' });
+
+    const chat = await aiChat(call('POST', { message: 'forecast the stockout risk' }, u.token)); // no provider key: built-in answer
+    expect(chat.status).toBe(200);
+    expect((await chat.json()).response).toMatch(/P1/);
+  });
+
+  it('shipments older than 30 days do not count, and another tenant\'s do not either', async () => {
+    const a = await signup('a@x.com');
+    const b = await signup('b@x.com');
+    const pa = await seedWarehouse(a.token, 'P1', 'A1', 1000);
+    const pb = await seedWarehouse(b.token, 'P1', 'A1', 1000);
+    await move(a.token, pa, 'INBOUND', 100);
+    await move(b.token, pb, 'INBOUND', 100);
+    const old = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString();
+    expect((await createTransaction(call('POST', { type: 'OUTBOUND', quantity: 50, product_id: pa, location: 'A1', created_at: old }, a.token))).status).toBe(201);
+    expect((await move(b.token, pb, 'OUTBOUND', 30)).status).toBe(201);
+    const item = (await (await predictive(call('GET', undefined, a.token))).json()).predictive_items[0];
+    expect(item).toMatchObject({ current_stock: 50, units_sold_30d: 0 });
   });
 });
 

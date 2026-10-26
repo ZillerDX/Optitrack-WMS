@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseRest, getAuthUser } from '@/lib/supabase';
 import { rateLimit } from '@/lib/rateLimit';
+import { analyzeProduct, DataUnavailableError, loadWarehouse, stockByProduct, unitsSoldByProduct } from '@/lib/aiData';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,18 +20,9 @@ export async function POST(req: NextRequest) {
     });
     if (limited) return limited;
 
-    // 1. Fetch live warehouse data snapshot
-    const [productsRes, inventoryRes, txRes, locRes] = await Promise.all([
-      supabaseRest(`products?owner_id=eq.${user.id}&deleted_at=is.null&select=*&order=id.desc`),
-      supabaseRest(`inventory?select=*,product:products!inner(*)&product.owner_id=eq.${user.id}&order=id.desc`),
-      supabaseRest(`transactions?user_id=eq.${user.id}&select=*,product:products(*)&order=created_at.desc&limit=50`),
-      supabaseRest(`locations?owner_id=eq.${user.id}&select=*`),
-    ]);
-
-    const products = productsRes.ok ? await productsRes.json() : [];
-    const inventory = inventoryRes.ok ? await inventoryRes.json() : [];
-    const transactions = txRes.ok ? await txRes.json() : [];
-    const locations = locRes.ok ? await locRes.json() : [];
+    // 1. One shared, checked read of the warehouse (a failed read is a 503, never "empty")
+    const now = new Date();
+    const { products, inventory, locations, outbound } = await loadWarehouse(user.id, now);
 
     // 2. Compute quantitative metrics
     const totalUnits = inventory.reduce((sum: number, i: any) => sum + (Number(i.quantity) || 0), 0);
@@ -46,43 +38,25 @@ export async function POST(req: NextRequest) {
     const totalCapacity = locations.reduce((sum: number, l: any) => sum + (Number(l.capacity) || 0), 0);
     const overallUtilizationPct = totalCapacity > 0 ? Math.min(100, Math.round((totalUnits / totalCapacity) * 100)) : 0;
 
-    // 30-day velocity calculation per product
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const outboundMap = new Map<number, number>();
-
-    transactions.forEach((tx: any) => {
-      const txDate = new Date(tx.created_at);
-      if (tx.type === 'OUTBOUND' && txDate >= thirtyDaysAgo) {
-        const current = outboundMap.get(tx.product_id) || 0;
-        outboundMap.set(tx.product_id, current + (Number(tx.quantity) || 0));
-      }
-    });
+    // 30-day velocity per product: the same numbers the chat and the reorder agent use
+    const stock = stockByProduct(inventory);
+    const sold = unitsSoldByProduct(outbound, now);
 
     const velocityItems = products.map((p: any) => {
-      const pInventory = inventory.filter((i: any) => i.product_id === p.id);
-      const stock = pInventory.reduce((sum: number, i: any) => sum + (Number(i.quantity) || 0), 0);
-      const unitsOut = outboundMap.get(p.id) || 0;
-      const dailyBurn = Number((unitsOut / 30).toFixed(2));
-      const doi = dailyBurn > 0 ? Math.round(stock / dailyBurn) : (stock > 0 ? 999 : 0);
-      const minStock = Number(p.min_stock_level) || 10;
-      let status: 'CRITICAL' | 'WARNING' | 'HEALTHY' = 'HEALTHY';
-      if (stock === 0 || doi <= 3) status = 'CRITICAL';
-      else if (stock <= minStock || doi <= 10) status = 'WARNING';
-
+      const a = analyzeProduct(p, stock.get(p.id)?.quantity ?? 0, sold.get(p.id) ?? 0);
       return {
         id: p.id,
         name: p.name,
         sku: p.sku,
         category: p.category || 'General',
-        stock,
-        min_stock: minStock,
+        stock: a.current_stock,
+        min_stock: a.min_stock_level,
         cost_price: Number(p.cost_price) || 0,
         sell_price: Number(p.sell_price) || 0,
-        units_out_30d: unitsOut,
-        daily_burn: dailyBurn,
-        days_remaining: doi,
-        status,
+        units_out_30d: a.units_sold_30d,
+        daily_burn: a.daily_burn_rate,
+        days_remaining: a.days_of_inventory ?? (a.current_stock > 0 ? 999 : 0),
+        status: a.urgency,
       };
     });
 
@@ -221,7 +195,10 @@ Status: Operational Grade ${healthGrade} (${score}/100)
       report_markdown: cleanMarkdown,
     });
   } catch (error: any) {
+    if (error instanceof DataUnavailableError) {
+      return NextResponse.json({ detail: 'Warehouse data is temporarily unavailable. Please try again shortly.' }, { status: 503 });
+    }
     console.error('[AI Report API Error]:', error);
-    return NextResponse.json({ detail: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ detail: 'Failed to generate the report' }, { status: 500 });
   }
 }

@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseRest, getAuthUser } from '@/lib/supabase';
+import { getAuthUser } from '@/lib/supabase';
 import { rateLimit } from '@/lib/rateLimit';
 import { parseChatInput, type ChatMessage } from '@/lib/aiInput';
+import {
+  analyzeProduct,
+  DataUnavailableError,
+  loadWarehouse,
+  minStockLevel,
+  PROMPT_MAX_ITEMS,
+  riskiest,
+  stockByProduct,
+  unitsSoldByProduct,
+} from '@/lib/aiData';
+import { fetchWithTimeout, TIMEOUTS } from '@/lib/http';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,20 +56,11 @@ export async function POST(req: NextRequest) {
     const history: ChatMessage[] = parsed.history;
     const isThaiQuery = containsThai(userMessage);
 
-    // 1. Fetch real-time warehouse data snapshot for authenticated user in parallel
-    const [productsRes, inventoryRes, txRes, locRes, catRes] = await Promise.all([
-      supabaseRest(`products?owner_id=eq.${user.id}&deleted_at=is.null&select=*&order=id.desc&limit=1000`),
-      supabaseRest(`inventory?select=*,product:products!inner(*)&product.owner_id=eq.${user.id}&order=id.desc&limit=2000`),
-      supabaseRest(`transactions?user_id=eq.${user.id}&select=*,product:products(*)&order=created_at.desc&limit=25`),
-      supabaseRest(`locations?owner_id=eq.${user.id}&select=*`),
-      supabaseRest(`categories?owner_id=eq.${user.id}&select=*`),
-    ]);
-
-    const products = productsRes.ok ? await productsRes.json() : [];
-    const inventory = inventoryRes.ok ? await inventoryRes.json() : [];
-    const transactions = txRes.ok ? await txRes.json() : [];
-    const locations = locRes.ok ? await locRes.json() : [];
-    const categories = catRes.ok ? await catRes.json() : [];
+    // 1. One shared, checked read of the warehouse (a failed read is a 503, never "empty")
+    const now = new Date();
+    const data = await loadWarehouse(user.id, now);
+    const { products, inventory, locations, categories } = data;
+    const transactions = data.recent;
 
     // 2. Compute live operational and financial metrics
     let totalUnits = 0;
@@ -74,7 +76,7 @@ export async function POST(req: NextRequest) {
         const qty = Number(item.quantity) || 0;
         const sellPrice = Number(item.product?.sell_price) || 0;
         const costPrice = Number(item.product?.cost_price) || 0;
-        const minStock = Number(item.product?.min_stock_level) || 5;
+        const minStock = minStockLevel(item.product);
 
         totalUnits += qty;
         totalCostBasis += qty * costPrice;
@@ -90,7 +92,7 @@ export async function POST(req: NextRequest) {
         categoryMap[cat].units += qty;
         categoryMap[cat].value += qty * sellPrice;
 
-        if (item.status === 'LOW_STOCK' || qty <= minStock) {
+        if (item.status === 'LOW_STOCK' || item.status === 'OUT_OF_STOCK' || qty < minStock) {
           lowStockItems.push({
             product_id: item.product_id,
             name: item.product?.name || 'Unknown Product',
@@ -122,50 +124,30 @@ export async function POST(req: NextRequest) {
     const potentialProfit = totalMarketValue - totalCostBasis;
     const profitMarginPct = totalCostBasis > 0 ? ((potentialProfit / totalCostBasis) * 100).toFixed(1) : '0.0';
 
-    // Compute 30-day velocity & burn rate from outbound transactions
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const velocityMap: Record<number, number> = {};
+    // 30-day velocity and days of supply: the same numbers the reorder agent and the report use
+    // (stock summed over all locations, every shipment of the window, not the last few movements)
+    const stock = stockByProduct(inventory);
+    const sold = unitsSoldByProduct(data.outbound, now);
 
-    if (Array.isArray(transactions)) {
-      for (const t of transactions) {
-        if (t.type === 'OUTBOUND') {
-          const tDate = t.created_at ? new Date(t.created_at) : now;
-          if (tDate >= thirtyDaysAgo) {
-            const pId = t.product_id;
-            velocityMap[pId] = (velocityMap[pId] || 0) + Math.abs(Number(t.quantity) || 0);
-          }
-        }
-      }
-    }
-
-    const velocityAndForecasting = Array.isArray(products)
-      ? products.map((p: any) => {
-          const pId = p.id;
-          const invItem = Array.isArray(inventory) ? inventory.find((i: any) => i.product_id === pId) : null;
-          const currentStock = invItem ? Number(invItem.quantity) || 0 : 0;
-          const unitsSold30d = velocityMap[pId] || 0;
-          const dailyVelocity = Number((unitsSold30d / 30).toFixed(2));
-          const minStock = Number(p.min_stock_level) || 5;
-          const daysLeft = currentStock <= 0 ? 0 : dailyVelocity > 0 ? Math.round(currentStock / dailyVelocity) : 999;
-          const suggestedReorder = Math.max(1, Math.max(minStock * 2 - currentStock, Math.ceil(dailyVelocity * 14)));
-
-          return {
-            sku: p.sku,
-            name: p.name,
-            current_stock: currentStock,
-            min_stock_level: minStock,
-            supplier: p.supplier || 'Primary Vendor',
-            cost_price: Number(p.cost_price) || 0,
-            units_sold_30d: unitsSold30d,
-            daily_burn_rate: `${dailyVelocity} units/day`,
-            days_of_inventory_left: daysLeft === 999 ? 'Stable (No recent sales)' : `${daysLeft} days`,
-            status: currentStock <= 0 ? 'CRITICAL_DEPLETED' : daysLeft <= 7 ? 'URGENT_REORDER' : 'HEALTHY',
-            suggested_reorder_qty: suggestedReorder,
-            draft_po_estimate: Number((suggestedReorder * (Number(p.cost_price) || 0)).toFixed(2)),
-          };
-        })
-      : [];
+    const analysed = products.map((p: any) => {
+      const a = analyzeProduct(p, stock.get(p.id)?.quantity ?? 0, sold.get(p.id) ?? 0);
+      return { p, a, urgency: a.urgency, days_of_inventory: a.days_of_inventory };
+    });
+    // The prompt carries the riskiest products only, so its size does not grow with the catalogue
+    const velocityAndForecasting = riskiest(analysed).map(({ p, a }) => ({
+      sku: p.sku,
+      name: p.name,
+      current_stock: a.current_stock,
+      min_stock_level: a.min_stock_level,
+      supplier: p.supplier || 'Primary Vendor',
+      cost_price: Number(p.cost_price) || 0,
+      units_sold_30d: a.units_sold_30d,
+      daily_burn_rate: `${a.daily_burn_rate} units/day`,
+      days_of_inventory_left: a.days_of_inventory === null ? 'Stable (No recent sales)' : `${a.days_of_inventory} days`,
+      status: a.current_stock <= 0 ? 'CRITICAL_DEPLETED' : a.urgency !== 'HEALTHY' ? 'URGENT_REORDER' : 'HEALTHY',
+      suggested_reorder_qty: a.suggested_reorder_qty,
+      draft_po_estimate: Number((a.suggested_reorder_qty * (Number(p.cost_price) || 0)).toFixed(2)),
+    }));
 
     // Recent transactions summary
     const recentTxSummary = Array.isArray(transactions)
@@ -195,7 +177,13 @@ export async function POST(req: NextRequest) {
         total_categories: Array.isArray(categories) ? categories.length : 0,
       },
       predictive_velocity_and_forecasting: velocityAndForecasting,
-      low_stock_shortages: lowStockItems,
+      low_stock_shortages: lowStockItems.slice(0, PROMPT_MAX_ITEMS),
+      low_stock_total: lowStockItems.length,
+      data_notes:
+        analysed.length > velocityAndForecasting.length
+          ? `Only the ${velocityAndForecasting.length} riskiest of ${analysed.length} products are listed in predictive_velocity_and_forecasting.`
+          : undefined,
+      data_limits: data.limits.outboundTruncated || data.limits.inventoryTruncated || data.limits.productsTruncated ? data.limits : undefined,
       zones: locationMap,
       categories: categoryMap,
       recent_movements: recentTxSummary,
@@ -232,9 +220,14 @@ AUTONOMOUS AGENT CAPABILITIES:
     const geminiKey = process.env.GEMINI_API_KEY;
     const groqKey = process.env.GROQ_API_KEY;
 
+    // Every provider call has a deadline, and all attempts together stay inside one budget, after which
+    // the built-in answer below is used: a provider that hangs must not hold this function.
+    const llmDeadline = Date.now() + TIMEOUTS.llmTotal;
+
     // Step A: Primary Engine - Google Gemini (Fast & Reliable Flash-Lite / Flash)
     if (geminiKey) {
       for (const modelName of GEMINI_MODELS) {
+        if (Date.now() >= llmDeadline) break;
         try {
           const geminiContents = [
             ...history.slice(-6).map((h) => ({
@@ -244,7 +237,7 @@ AUTONOMOUS AGENT CAPABILITIES:
             { role: 'user', parts: [{ text: userMessage }] },
           ];
 
-          const geminiRes = await fetch(
+          const geminiRes = await fetchWithTimeout(
             `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`,
             {
               method: 'POST',
@@ -258,7 +251,8 @@ AUTONOMOUS AGENT CAPABILITIES:
                   maxOutputTokens: 1500,
                 },
               }),
-            }
+            },
+            Math.min(TIMEOUTS.llmCall, Math.max(1_000, llmDeadline - Date.now()))
           );
 
           if (geminiRes.ok) {
@@ -278,9 +272,9 @@ AUTONOMOUS AGENT CAPABILITIES:
     }
 
     // Step B: Secondary Failover - Groq
-    if (!aiResponseText && groqKey && groqKey.startsWith('gsk_')) {
+    if (!aiResponseText && groqKey && groqKey.startsWith('gsk_') && Date.now() < llmDeadline) {
       try {
-        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        const groqRes = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${groqKey}`,
@@ -296,7 +290,7 @@ AUTONOMOUS AGENT CAPABILITIES:
             max_tokens: 1500,
             temperature: 0.2,
           }),
-        });
+        }, Math.min(TIMEOUTS.llmCall, Math.max(1_000, llmDeadline - Date.now())));
 
         if (groqRes.ok) {
           const groqData = await groqRes.json();
@@ -322,6 +316,12 @@ AUTONOMOUS AGENT CAPABILITIES:
 
     return NextResponse.json({ response: aiResponseText });
   } catch (err: any) {
+    if (err instanceof DataUnavailableError) {
+      return NextResponse.json(
+        { response: 'Warehouse data is temporarily unavailable. Please try again shortly.' },
+        { status: 503 }
+      );
+    }
     console.error('[AI Chat Route Error]:', err);
     return NextResponse.json(
       { response: 'Temporary connection error. Please try again.' },
