@@ -25,7 +25,7 @@ export interface MovementDone {
 
 const TYPES: MovementType[] = ['INBOUND', 'OUTBOUND', 'ADJUST'];
 
-function ProductPicker({ value, onChange, disabled }: { value: ProductOption | null; onChange: (p: ProductOption | null) => void; disabled?: boolean }) {
+export function ProductPicker({ value, onChange, disabled }: { value: ProductOption | null; onChange: (p: ProductOption | null) => void; disabled?: boolean }) {
   const [q, setQ] = useState('');
   const options = useProductOptions(q.trim());
   const listId = useId();
