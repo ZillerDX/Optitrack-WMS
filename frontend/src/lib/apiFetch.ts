@@ -30,6 +30,9 @@ function detailOf(body: unknown, status: number): string {
     if (typeof detail === 'string' && detail.trim()) return detail;
     const message = (body as { message?: unknown }).message;
     if (typeof message === 'string' && message.trim()) return message;
+    // the assistant's chat route words its errors as a reply
+    const reply = (body as { response?: unknown }).response;
+    if (typeof reply === 'string' && reply.trim()) return reply;
   }
   if (status === 401) return 'Your session has ended. Please sign in again.';
   if (status === 429) return 'Too many requests. Please wait a moment and try again.';

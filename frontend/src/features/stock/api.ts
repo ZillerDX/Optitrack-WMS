@@ -69,9 +69,10 @@ export function useLocations() {
   });
 }
 
-export function useProductOptions(q: string) {
+export function useProductOptions(q: string, enabled = true) {
   return useQuery({
     queryKey: stockKeys.products(q),
+    enabled,
     queryFn: ({ signal }) => {
       const params = new URLSearchParams({ limit: '8' });
       if (q) params.set('q', q);

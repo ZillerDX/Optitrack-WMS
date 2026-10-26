@@ -87,3 +87,23 @@ export const LogoutIcon = (p: IconProps) => (
     <path d="M16 17l5-5-5-5M21 12H9" />
   </Icon>
 );
+
+export const SearchIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="M21 21l-4.3-4.3" />
+  </Icon>
+);
+
+export const PlusIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 5v14M5 12h14" />
+  </Icon>
+);
+
+export const SparkIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
+    <path d="M19 16l.7 1.8L21.5 18.5l-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7z" />
+  </Icon>
+);

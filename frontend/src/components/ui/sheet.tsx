@@ -15,6 +15,7 @@ export function Sheet({
   description,
   children,
   footer,
+  size = 'md',
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -22,6 +23,7 @@ export function Sheet({
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
+  size?: 'md' | 'lg';
 }) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -31,7 +33,8 @@ export function Sheet({
           className={cn(
             'fixed z-50 flex max-h-[92vh] flex-col bg-card text-card-foreground shadow-xl outline-none',
             'inset-x-0 bottom-0 rounded-t-2xl border-t border-border',
-            'sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[440px] sm:rounded-none sm:border-l sm:border-t-0'
+            'sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:rounded-none sm:border-l sm:border-t-0',
+            size === 'lg' ? 'sm:w-[560px]' : 'sm:w-[440px]'
           )}
         >
           <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">

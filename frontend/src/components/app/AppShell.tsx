@@ -7,7 +7,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, apiGet } from '@/lib/apiFetch';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/brand/Logo';
-import { DashboardIcon, HistoryIcon, LogoutIcon, ProductsIcon, SettingsIcon, StockIcon } from '@/components/app/icons';
+import { Avatar } from '@/components/app/Avatar';
+import { DashboardIcon, HistoryIcon, LogoutIcon, PlusIcon, ProductsIcon, SearchIcon, SettingsIcon, SparkIcon, StockIcon } from '@/components/app/icons';
+import { useShellOverlays } from '@/components/app/useShellOverlays';
 
 interface NavItem {
   href: string;
@@ -75,12 +77,9 @@ function UserChip({ compact = false }: { compact?: boolean }) {
 
   return (
     <div className={cn('flex items-center gap-3', compact ? '' : 'border-t border-border px-2.5 pt-3')}>
-      <div
-        aria-hidden="true"
-        className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-accent text-[13px] font-semibold text-accent-foreground"
-      >
-        {initials(me.data)}
-      </div>
+      <Link href="/profile" aria-label="Your profile" className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <Avatar user={me.data} />
+      </Link>
       {!compact && (
         <div className="min-w-0 flex-1">
           <div className="truncate text-[13px] font-semibold">{name || (me.isPending ? ' ' : 'Signed in')}</div>
@@ -109,6 +108,7 @@ function UserChip({ compact = false }: { compact?: boolean }) {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const me = useCurrentUser();
+  const shell = useShellOverlays();
 
   return (
     <div className="min-h-screen lg:flex">
@@ -124,6 +124,25 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Link href="/dashboard" aria-label="OptiTrack WMS home" className="mb-4 rounded-lg px-2.5 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <Logo />
         </Link>
+        <div className="mb-4 space-y-2">
+          <button
+            type="button"
+            onClick={shell.openPalette}
+            className="flex h-10 w-full items-center gap-2.5 rounded-[10px] border border-border bg-background px-3 text-sm text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <SearchIcon size={16} />
+            <span className="flex-1 text-left">Search</span>
+            <kbd className="rounded border border-border px-1.5 text-[11px] font-medium">Ctrl K</kbd>
+          </button>
+          <button
+            type="button"
+            onClick={() => shell.recordMovement()}
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-[10px] bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            <PlusIcon size={16} />
+            Record movement
+          </button>
+        </div>
         <nav aria-label="Main" className="flex flex-1 flex-col gap-1.5">
           {NAV_ITEMS.map(({ href, label, Icon }) => {
             const active = isActive(pathname, href);
@@ -143,6 +162,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
+        <button
+          type="button"
+          onClick={shell.openAssistant}
+          className="mb-3 flex h-10 w-full items-center gap-2.5 rounded-[10px] px-3 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <SparkIcon size={18} />
+          Assistant
+        </button>
         <UserChip />
       </aside>
 
@@ -152,7 +179,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link href="/dashboard" aria-label="OptiTrack WMS home" className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <Logo />
           </Link>
-          <UserChip compact />
+          <div className="flex items-center gap-1">
+            <button type="button" onClick={shell.openPalette} aria-label="Search" className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <SearchIcon size={18} />
+            </button>
+            <button type="button" onClick={shell.openAssistant} aria-label="Assistant" className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <SparkIcon size={18} />
+            </button>
+            <button type="button" onClick={() => shell.recordMovement()} aria-label="Record movement" className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <PlusIcon size={18} />
+            </button>
+            <UserChip compact />
+          </div>
         </div>
 
         <main id="content" tabIndex={-1} className="mx-auto w-full max-w-[1280px] flex-1 px-4 pb-28 pt-6 outline-none sm:px-6 lg:px-8 lg:pb-12 lg:pt-8">
@@ -175,10 +213,22 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
             </div>
           ) : (
-            children
+            <>
+              {shell.notice && (
+                <div role="status" className="mb-4 flex items-center justify-between gap-3 rounded-[10px] border border-success/30 bg-success-bg px-4 py-2.5 text-sm text-success">
+                  <span>{shell.notice}</span>
+                  <button type="button" onClick={shell.dismissNotice} className="rounded-md px-2 py-0.5 font-semibold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    Dismiss
+                  </button>
+                </div>
+              )}
+              {children}
+            </>
           )}
         </main>
       </div>
+
+      {shell.overlays}
 
       {/* phone bottom navigation */}
       <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] lg:hidden">
