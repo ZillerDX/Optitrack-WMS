@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { choose } from './pickers';
 
 /* The reviewer demo: one click on the login page gives a private account with mock data and a guide that
    ticks off by itself while the reviewer walks through the whole system. */
@@ -92,7 +93,7 @@ test('the guide walks from creating a location to the end, and each step ticks w
   await expect(movement.getByRole('note')).toContainText('Guide, step 3');
   await movement.getByLabel('Product').fill('Demo widget');
   await movement.getByRole('button', { name: /Demo widget/ }).click();
-  await movement.getByLabel('Location').selectOption('Overflow Shelf');
+  await choose(page, movement.getByRole('combobox', { name: 'Location' }), 'Overflow Shelf');
   await movement.getByLabel('Quantity received').fill('20');
   await movement.getByRole('button', { name: 'Receive 20' }).click();
   await expect(stepRow(page, 'Receive stock into your location')).toContainText('(done)');

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Sheet } from '@/components/ui/sheet';
 import { FormNotice, TextField } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import { EMPTY_PRODUCT_FORM, productFormToChanges, productToForm, type ProductFormValues } from '@/lib/productForm';
 import { useCategories, useSaveProduct, type Product } from './api';
 
@@ -85,21 +86,18 @@ export function ProductSheet({
           <label htmlFor="product-category" className="text-sm font-medium">
             Category (optional)
           </label>
-          <select
+          <Select
             id="product-category"
+            size="lg"
             value={values.category}
-            onChange={set('category')}
+            onChange={(category) => setValues((v) => ({ ...v, category }))}
             disabled={save.isPending}
-            className="h-11 w-full rounded-md border border-input bg-background px-3 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="">No category</option>
-            {values.category && !categories.data?.some((c) => c.name === values.category) && <option value={values.category}>{values.category}</option>}
-            {categories.data?.map((c) => (
-              <option key={c.id} value={c.name}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            options={[
+              { value: '', label: 'No category' },
+              ...(values.category && !categories.data?.some((c) => c.name === values.category) ? [{ value: values.category, label: values.category }] : []),
+              ...(categories.data ?? []).map((c) => ({ value: c.name, label: c.name })),
+            ]}
+          />
         </div>
         <TextField id="product-barcode" label="Barcode (optional)" maxLength={100} value={values.barcode} onChange={set('barcode')} disabled={save.isPending} />
         <TextField id="product-supplier" label="Supplier (optional)" maxLength={255} value={values.supplier} onChange={set('supplier')} disabled={save.isPending} />

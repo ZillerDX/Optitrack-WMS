@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useState, type FormEvent } from 'react';
 import { Sheet } from '@/components/ui/sheet';
 import { SegmentedControl } from '@/components/ui/segmented';
+import { Select } from '@/components/ui/select';
 import { FormNotice, TextField } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
 import { formatNumber } from '@/lib/format';
@@ -158,23 +159,15 @@ export function MovementSheet({
           <label htmlFor="movement-location" className="text-sm font-medium">
             Location
           </label>
-          <select
+          <Select
             id="movement-location"
+            size="lg"
             value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            required
+            onChange={setLocation}
+            placeholder="Choose a location"
             disabled={record.isPending}
-            className="h-11 w-full rounded-md border border-input bg-background px-3 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="" disabled>
-              Choose a location
-            </option>
-            {locations.data?.map((l) => (
-              <option key={l.id} value={l.name}>
-                {l.name}
-              </option>
-            ))}
-          </select>
+            options={(locations.data ?? []).map((l) => ({ value: l.name, label: l.name }))}
+          />
         </div>
 
         {product && location && (

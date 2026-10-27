@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { choose } from './pickers';
 
 /* What the shell adds on every page: the command palette and its actions (U6), the assistant, and the profile (U10). */
 
@@ -74,7 +75,7 @@ test('a product found in the palette opens the movement form with it chosen, and
   await page.getByRole('option', { name: /Sprocket/ }).click();
   const sheet = page.getByRole('dialog', { name: 'Record a movement' });
   await expect(sheet.getByText('Sprocket')).toBeVisible();
-  await sheet.getByLabel('Location').selectOption('Shelf-A');
+  await choose(page, sheet.getByRole('combobox', { name: 'Location' }), 'Shelf-A');
   await expect(sheet.getByTestId('stock-now')).toContainText('4');
   await sheet.getByLabel('Quantity received').fill('6');
   await sheet.getByRole('button', { name: 'Receive 6' }).click();

@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { dayFromToday, dayName, pickDay } from './pickers';
 import { readFile } from 'node:fs/promises';
 
 /* The History page: ADJUST has its own label and filter (U3), the day filter follows the viewer's days (U2), the CSV is safe (U9). */
@@ -56,14 +57,16 @@ test('movements read correctly, ADJUST has its own label and filter, filters nar
   await page.getByRole('radio', { name: 'All' }).click();
 
   // today's day contains all three; a day in the past contains none
-  const today = new Date();
-  const pad = (v: number) => String(v).padStart(2, '0');
-  const day = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
-  await page.getByLabel('From').fill(day);
-  await page.getByLabel('To').fill(day);
+  const day = dayFromToday(0);
+  await pickDay(page, 'From', day);
+  await pickDay(page, 'To', day);
   await expect(page.getByText('1-3 of 3')).toBeVisible();
-  await page.getByLabel('From').fill('2020-01-01');
-  await page.getByLabel('To').fill('2020-01-02');
+  // the From picker refuses a day after the To day
+  await page.getByLabel('From', { exact: true }).click();
+  await expect(page.getByRole('button', { name: dayName(dayFromToday(1)), exact: true })).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await pickDay(page, 'From', dayFromToday(-3));
+  await pickDay(page, 'To', dayFromToday(-2));
   await expect(page.getByText('No movement matches')).toBeVisible();
   await page.getByRole('button', { name: 'Clear filters' }).click();
   await expect(page.getByText('1-3 of 3')).toBeVisible();

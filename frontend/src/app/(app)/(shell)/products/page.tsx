@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { FormNotice } from '@/components/ui/field';
 import { Sheet } from '@/components/ui/sheet';
+import { Select } from '@/components/ui/select';
 import { useCurrency } from '@/components/providers/CurrencyProvider';
 import { PAGE_SIZE, useCategories, useDeleteProduct, useProducts, type Product } from '@/features/products/api';
 import { ProductSheet } from '@/features/products/ProductSheet';
@@ -127,19 +128,13 @@ export default function ProductsPage() {
             <label htmlFor="product-category-filter" className="sr-only">
               Category
             </label>
-            <select
+            <Select
               id="product-category-filter"
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="">All categories</option>
-              {categories.data?.map((c) => (
-                <option key={c.id} value={c.name}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              onChange={setCategory}
+              className="min-w-[176px]"
+              options={[{ value: '', label: 'All categories' }, ...(categories.data ?? []).map((c) => ({ value: c.name, label: c.name }))]}
+            />
           </div>
         </div>
 
