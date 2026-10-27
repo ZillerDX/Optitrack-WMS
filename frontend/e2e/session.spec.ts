@@ -68,8 +68,11 @@ test('a wrong password shows an error, sets no cookie and stays on the login pag
 });
 
 test('an unauthenticated visitor is sent to the login page', async ({ page }) => {
-  await page.goto('/dashboard');
-  await page.waitForURL('**/login');
+  // The visitor is redirected while the first navigation is still loading, which aborts that load
+  // (net::ERR_ABORTED). goto and waitForURL both wait for a load, so neither is used: only the URL is polled.
+  await page.goto('/dashboard', { waitUntil: 'commit' }).catch(() => undefined);
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 });
 
 test('signing out ends the session: the old cookie is refused by the API', async ({ page, context, request }) => {
