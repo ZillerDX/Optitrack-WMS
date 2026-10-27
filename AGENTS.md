@@ -22,7 +22,7 @@ Next.js 15 (App Router) + React 19 + TypeScript strict + Tailwind 3 + Radix (dia
 - `frontend/src/app/api/**` route handlers; every query is scoped by `owner_id`/`user_id` from `getAuthUser`, never from the body.
 - `frontend/src/lib/` server helpers (`supabase.ts`, `session.ts`, `stock.ts` RPC client, validation) and the client `api.ts`.
 - `frontend/src/components/` `app/` (shell, palette, avatar, icons), `auth/`, `brand/`, `providers/` (theme, query client, display currency), `ui/` primitives (Sheet, TextField, Meter, StatusBadge, SegmentedControl, Card). Design tokens are in `globals.css` (light default, dark, WCAG contrast test in `tests/theme-contrast.test.ts`).
-- `supabase/migrations/0000-0014` hand-run, idempotent, numbered; `supabase/rollback/` manual rollback.
+- `supabase/migrations/0000-0015` hand-run, idempotent, numbered; `supabase/rollback/` manual rollback.
 
 ## Rules
 - Stock changes only through the Postgres functions (`apply_stock_movement`, `approve_reorder`, `update_location`, `delete_product`, `delete_inventory`). No direct writes to `inventory`/`transactions` from route handlers.
@@ -39,6 +39,7 @@ Next.js 15 (App Router) + React 19 + TypeScript strict + Tailwind 3 + Radix (dia
 - From migration 0012 an ADJUST stores the signed change in `quantity` and every movement records `stock_after`; ADJUST rows with `stock_after IS NULL` are older and hold the target level. PO numbers / reference codes are unique per tenant. 0012 and 0013 are applied on production (2026-10-26).
 - Reviewer demo (0014, applied on production 2026-10-27): the login button calls `POST /api/auth/demo` -> `create_demo_account()` (service_role only), a throw-away `demo-xxxx@demo.invalid` ADMIN with mock data, `users.demo_expires_at` = +48 h, purged by the next creation (no cron), at most 50 live, 6 per hour per IP. `/api/auth/me` returns `is_demo`; the guide (`features/tour`) is shown only then. Do not give demo accounts real data or e-mail.
 - `0008` redefines `apply_stock_movement` without the `deleted_at` check; re-running `0008` alone after `0010` drops the soft-delete guard. Always apply the full sequence.
+- `0012` and `0015` also define `apply_stock_movement`: re-running `0012` alone after `0015` brings back the 6-character reference suffix (collisions, HTTP 409). Apply the full sequence.
 - The session cookie is `__Host-session` (`session` in development) and needs HTTPS outside localhost.
 - Env var names are in `frontend/.env.example`; never put values in files or chat.
 - CI runs Node 20 (npm 10). A `package-lock.json` written by a newer local npm can fail `npm ci` in CI (it dropped a nested `@swc/helpers`). Generate or update the lockfile with `npx -y npm@10 install --package-lock-only`, and check `npx -y npm@10 ci --dry-run`. Do not run `npm audit fix --omit=dev`, and diff `package.json` after `next build` (it can rewrite `@types/node`).
