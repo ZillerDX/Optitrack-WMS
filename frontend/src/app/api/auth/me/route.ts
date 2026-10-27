@@ -30,6 +30,8 @@ export async function GET(req: NextRequest) {
       role: user.role,
       image_url: user.image_url,
       is_active: user.is_active,
+      // a reviewer demo account (0014): the app shows its guided tour
+      is_demo: Boolean(user.demo_expires_at),
     });
   } catch (error: any) {
     console.error('[Get Me Error]:', error);

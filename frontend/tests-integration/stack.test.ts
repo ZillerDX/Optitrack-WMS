@@ -19,6 +19,8 @@ import { POST as aiChat } from '@/app/api/ai/chat/route';
 import { GET as dashboardSummary } from '@/app/api/dashboard/summary/route';
 import { GET as dashboardMetrics } from '@/app/api/dashboard/metrics/route';
 import { GET as listTransactions } from '@/app/api/transactions/route';
+import { POST as startDemo } from '@/app/api/auth/demo/route';
+import { GET as getMe } from '@/app/api/auth/me/route';
 
 let ip = 0;
 const headers = (extra: Record<string, string> = {}) => ({
@@ -580,6 +582,38 @@ describe('lists and dashboard over more than 1000 rows (real PostgREST)', () => 
     const emptied = await send('ADJUST', 0);
     expect(emptied.status).toBe(201);
     expect(await emptied.json()).toMatchObject({ type: 'ADJUST', quantity: -8, stock_after: 0 });
+  });
+
+  it('POST /api/auth/demo: a signed-in demo account with mock data that the real routes see, apart from other tenants', async () => {
+    const other = await signup('normal@x.com');
+    const res = await startDemo(call('POST', undefined));
+    expect(res.status).toBe(200);
+    const cookie = res.headers.getSetCookie().find((c) => /session=/.test(c))!;
+    const token = decodeURIComponent(cookie.split(';')[0].split('=').slice(1).join('='));
+
+    const mine = await (await getMe(call('GET', undefined, token))).json();
+    expect(mine).toMatchObject({ is_demo: true, first_name: 'Reviewer', role: 'ADMIN' });
+    expect(mine.email).toMatch(/^demo-.*@demo.invalid$/);
+    expect((await (await getMe(call('GET', undefined, other.token))).json()).is_demo).toBe(false);
+
+    // the mock data, read through the same routes the app uses
+    const products = await (await listProducts(call('GET', undefined, token))).json();
+    expect(products).toHaveLength(10);
+    const summary = await (await dashboardSummary(new NextRequest('http://app.test/api/dashboard/summary?days=30', { headers: headers({ authorization: `Bearer ${token}` }) }))).json();
+    expect(summary.totals.products).toBe(10);
+    expect(summary.stock_status.out_of_stock).toBe(1);
+    expect(summary.stock_status.low_stock).toBeGreaterThanOrEqual(1);
+    expect(summary.locations).toHaveLength(3);
+    expect(summary.movement.reduce((n: number, d: any) => n + d.inbound_units + d.outbound_units, 0)).toBeGreaterThan(100);
+
+    // the account is real: it can create a location and move stock like anyone
+    expect((await createLocation(call('POST', { name: 'Overflow', capacity: 50 }, token))).status).toBe(200);
+    const any = products[0];
+    const tx = await createTransaction(call('POST', { type: 'INBOUND', quantity: 5, product_id: any.id, location: 'Overflow' }, token));
+    expect(tx.status).toBe(201);
+
+    // nothing leaks to the other tenant
+    expect(await (await listProducts(call('GET', undefined, other.token))).json()).toHaveLength(0);
   });
 
   it('GET /api/transactions: type, product and date filters, paging and a stable order', async () => {

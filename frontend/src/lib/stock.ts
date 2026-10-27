@@ -182,3 +182,23 @@ export function updateLocation(params: {
     'A location with this name already exists'
   );
 }
+
+export interface DemoAccount {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  image_url: string | null;
+  is_active: boolean;
+  token_version: number;
+  demo_expires_at: string;
+}
+
+/**
+ * Create a reviewer demo account with mock data in one database call (0014_reviewer_demo.sql). The
+ * function also removes expired demos and refuses (PT429, a message to show) when too many are alive.
+ */
+export function createDemoAccount(passwordHash: string): Promise<RpcResult<DemoAccount>> {
+  return callRpc<DemoAccount>('create_demo_account', { p_password_hash: passwordHash });
+}

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Meter } from '@/components/ui/meter';
 import { SegmentedControl } from '@/components/ui/segmented';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { TourTarget } from '@/features/tour/TourTarget';
 import { LocationsSheet } from '@/features/stock/LocationsSheet';
 import { MovementSheet, type MovementDone, type MovementPreset } from '@/features/stock/MovementSheet';
 import { useLocations, useStock, type StockRow } from '@/features/stock/api';
@@ -60,12 +61,16 @@ export default function StockPage() {
         description="What you have, where it is, and what needs attention."
         actions={
           <>
-            <Button type="button" variant="outline" onClick={() => setLocationsOpen(true)}>
-              Locations
-            </Button>
-            <Button type="button" onClick={() => openMovement()}>
-              Record movement
-            </Button>
+            <TourTarget steps={['location']}>
+              <Button type="button" variant="outline" onClick={() => setLocationsOpen(true)}>
+                Locations
+              </Button>
+            </TourTarget>
+            <TourTarget steps={['receive', 'ship', 'adjust']}>
+              <Button type="button" onClick={() => openMovement()}>
+                Record movement
+              </Button>
+            </TourTarget>
           </>
         }
       />

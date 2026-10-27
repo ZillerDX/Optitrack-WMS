@@ -29,6 +29,12 @@ function LoginForm() {
     },
   });
 
+  // Reviewer demo: a private account with sample data, made on the spot (see POST /api/auth/demo)
+  const startDemo = useMutation({
+    mutationFn: () => apiFetch('/api/auth/demo', { method: 'POST' }),
+    onSuccess: () => router.push('/dashboard'),
+  });
+
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     setGoogleError(null);
@@ -80,6 +86,23 @@ function LoginForm() {
         <span className="h-px flex-1 bg-border" />
       </div>
       <GoogleSignInButton mode="signin" onError={setGoogleError} />
+
+      <section aria-labelledby="demo-title" className="mt-8 rounded-[14px] border border-dashed border-primary/50 bg-accent/60 p-4">
+        <h2 id="demo-title" className="text-sm font-bold">
+          Reviewing this project?
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Open a private demo account with sample data and a step-by-step guide that walks you through the whole system. No sign-up needed.
+        </p>
+        {startDemo.error && (
+          <div className="mt-3">
+            <FormNotice tone="error">{startDemo.error.message}</FormNotice>
+          </div>
+        )}
+        <Button type="button" variant="outline" className="mt-3 h-10 w-full font-semibold" onClick={() => startDemo.mutate()} disabled={startDemo.isPending || startDemo.isSuccess}>
+          {startDemo.isPending || startDemo.isSuccess ? 'Preparing your demo...' : 'Open the reviewer demo'}
+        </Button>
+      </section>
     </AuthShell>
   );
 }
