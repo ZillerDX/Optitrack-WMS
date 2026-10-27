@@ -10,6 +10,7 @@ import { Sheet } from '@/components/ui/sheet';
 import { useCurrency } from '@/components/providers/CurrencyProvider';
 import { PAGE_SIZE, useCategories, useDeleteProduct, useProducts, type Product } from '@/features/products/api';
 import { ProductSheet } from '@/features/products/ProductSheet';
+import { TourTarget } from '@/features/tour/TourTarget';
 import { useStock } from '@/features/stock/api';
 import { formatNumber } from '@/lib/format';
 
@@ -97,9 +98,11 @@ export default function ProductsPage() {
         title="Products"
         description="What you sell or keep, with its prices and minimum stock."
         actions={
-          <Button type="button" onClick={() => setEditing({ open: true, product: null })}>
-            Add product
-          </Button>
+          <TourTarget steps={['product']}>
+            <Button type="button" onClick={() => setEditing({ open: true, product: null })}>
+              Add product
+            </Button>
+          </TourTarget>
         }
       />
 

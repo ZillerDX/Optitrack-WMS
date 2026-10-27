@@ -13,6 +13,18 @@
 
 ---
 
+## 🎓 For reviewers: try it in two minutes
+
+1. Open the live application and, on the **Sign in** page, press **Open the reviewer demo**. No sign-up is needed.
+2. You get a **private demo account** with mock data: 3 locations, 10 products and about a month of stock movements, so the dashboard and charts are already filled in. Nobody else can see or change your data.
+3. A **Reviewer guide** (bottom-right corner) lists 9 steps and walks you through the whole system. Small **"Step N" tags** sit on the buttons you need; click a tag to read what the button does. Steps tick by themselves when you really do them:
+   1. Create a location → 2. Add a product → 3. Receive stock into your location → 4. Ship stock (try shipping more than is in stock to see it refused) → 5. Adjust after a stock count → 6. Read and export the history → 7. See the result on the dashboard → 8. Let the assistant suggest a purchase order → 9. Shortcuts (Ctrl+K) and settings.
+4. The demo account is deleted automatically after about 48 hours. You can also sign in with Google or create a normal account.
+
+> **Hosting note:** the project runs entirely on free tiers (Vercel Hobby, Supabase Free, Brevo free SMTP). A free Supabase project pauses after about a week without use; if the first request is slow or fails, reload after a minute.
+
+---
+
 ## 📑 Table of Contents
 
 1. [Visual Showcase & UI Tour](#-visual-showcase--ui-tour)

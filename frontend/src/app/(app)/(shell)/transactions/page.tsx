@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { FormNotice } from '@/components/ui/field';
 import { SegmentedControl } from '@/components/ui/segmented';
 import { EMPTY_FILTERS, HISTORY_PAGE_SIZE, fetchAllMatching, useHistory, type HistoryFilters, type Movement } from '@/features/history/api';
+import { TourTarget } from '@/features/tour/TourTarget';
 import { ProductPicker } from '@/features/stock/MovementSheet';
 import { useLocations, type ProductOption } from '@/features/stock/api';
 import { toCsv } from '@/lib/csv';
@@ -93,9 +94,11 @@ export default function HistoryPage() {
         title="History"
         description="Every movement of stock, newest first."
         actions={
-          <Button type="button" variant="outline" onClick={exportCsv} disabled={exporting || total === 0}>
-            {exporting ? 'Exporting...' : 'Export CSV'}
-          </Button>
+          <TourTarget steps={['history']}>
+            <Button type="button" variant="outline" onClick={exportCsv} disabled={exporting || total === 0}>
+              {exporting ? 'Exporting...' : 'Export CSV'}
+            </Button>
+          </TourTarget>
         }
       />
 

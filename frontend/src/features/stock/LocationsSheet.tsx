@@ -5,6 +5,7 @@ import { Sheet } from '@/components/ui/sheet';
 import { FormNotice, TextField } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
 import { Meter } from '@/components/ui/meter';
+import { TourTarget } from '@/features/tour/TourTarget';
 import { formatNumber } from '@/lib/format';
 import { useDeleteLocation, useLocations, useSaveLocation, type LocationRow } from './api';
 
@@ -121,9 +122,11 @@ export function LocationsSheet({ open, onOpenChange, usage }: { open: boolean; o
         {draft ? (
           <LocationForm key={draft.id ?? 'new'} draft={draft} onCancel={() => setDraft(null)} onSaved={() => setDraft(null)} />
         ) : (
-          <Button type="button" onClick={() => setDraft(EMPTY)}>
-            Add location
-          </Button>
+          <TourTarget steps={['location']} className="w-fit">
+            <Button type="button" onClick={() => setDraft(EMPTY)}>
+              Add location
+            </Button>
+          </TourTarget>
         )}
         {locations.isPending && <p className="text-sm text-muted-foreground">Loading...</p>}
         {locations.isError && <FormNotice tone="error">{locations.error.message}</FormNotice>}

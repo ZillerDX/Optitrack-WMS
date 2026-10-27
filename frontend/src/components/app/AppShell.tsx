@@ -10,6 +10,9 @@ import { Logo } from '@/components/brand/Logo';
 import { Avatar } from '@/components/app/Avatar';
 import { DashboardIcon, HistoryIcon, LogoutIcon, PlusIcon, ProductsIcon, SearchIcon, SettingsIcon, SparkIcon, StockIcon } from '@/components/app/icons';
 import { useShellOverlays } from '@/components/app/useShellOverlays';
+import { TourPanel } from '@/features/tour/TourPanel';
+import { TourProvider } from '@/features/tour/TourProvider';
+import { TourTarget } from '@/features/tour/TourTarget';
 
 interface NavItem {
   href: string;
@@ -35,6 +38,8 @@ export interface CurrentUser {
   first_name: string;
   last_name: string;
   image_url?: string | null;
+  /** A reviewer demo account: the guided tour is shown. */
+  is_demo?: boolean;
 }
 
 export const ME_QUERY_KEY = ['auth', 'me'] as const;
@@ -105,7 +110,7 @@ function UserChip({ compact = false }: { compact?: boolean }) {
  * user. The page content is shown only once the session is confirmed, so nothing flashes for someone who is
  * not signed in (a 401 sends the browser to /login, see apiFetch).
  */
-export function AppShell({ children }: { children: ReactNode }) {
+function AppShellFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const me = useCurrentUser();
   const shell = useShellOverlays();
@@ -125,6 +130,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Logo />
         </Link>
         <div className="mb-4 space-y-2">
+          <TourTarget steps={['tips']} className="flex w-full">
           <button
             type="button"
             onClick={shell.openPalette}
@@ -134,6 +140,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="flex-1 text-left">Search</span>
             <kbd className="rounded border border-border px-1.5 text-[11px] font-medium">Ctrl K</kbd>
           </button>
+          </TourTarget>
+          <TourTarget steps={['receive', 'ship', 'adjust']} className="flex w-full">
           <button
             type="button"
             onClick={() => shell.recordMovement()}
@@ -142,6 +150,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <PlusIcon size={16} />
             Record movement
           </button>
+          </TourTarget>
         </div>
         <nav aria-label="Main" className="flex flex-1 flex-col gap-1.5">
           {NAV_ITEMS.map(({ href, label, Icon }) => {
@@ -162,14 +171,16 @@ export function AppShell({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
+        <TourTarget steps={['assistant']} className="mb-3 flex w-full">
         <button
           type="button"
           onClick={shell.openAssistant}
-          className="mb-3 flex h-10 w-full items-center gap-2.5 rounded-[10px] px-3 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex h-10 w-full items-center gap-2.5 rounded-[10px] px-3 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <SparkIcon size={18} />
           Assistant
         </button>
+        </TourTarget>
         <UserChip />
       </aside>
 
@@ -229,6 +240,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       {shell.overlays}
+      <TourPanel />
 
       {/* phone bottom navigation */}
       <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] lg:hidden">
@@ -251,5 +263,15 @@ export function AppShell({ children }: { children: ReactNode }) {
         })}
       </nav>
     </div>
+  );
+}
+
+/** The frame of every signed-in page. For a reviewer demo account it also carries the step-by-step guide. */
+export function AppShell({ children }: { children: ReactNode }) {
+  const me = useCurrentUser();
+  return (
+    <TourProvider enabled={me.data?.is_demo === true} userId={me.data?.id}>
+      <AppShellFrame>{children}</AppShellFrame>
+    </TourProvider>
   );
 }

@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { formatNumber } from '@/lib/format';
 import { MOVEMENT_LABELS, type MovementType } from '@/lib/labels';
 import { checkMovement } from '@/lib/movement';
+import { stepNumber } from '@/features/tour/steps';
+import { useTour } from '@/features/tour/TourProvider';
 import { useLocations, useProductOptions, useProductStock, useRecordMovement, type ProductOption } from './api';
 
 export interface MovementPreset {
@@ -117,6 +119,8 @@ export function MovementSheet({
   const typed = quantity.trim() === '' ? null : Number(quantity);
   const check = checkMovement(type, current, typed);
   const label = MOVEMENT_LABELS[type];
+  const tour = useTour();
+  const guide = tour?.pendingAmong([type === 'INBOUND' ? 'receive' : type === 'OUTBOUND' ? 'ship' : 'adjust']) ?? null;
   const ready = product !== null && location !== '' && typed !== null && !check.error && !record.isPending;
 
   const submit = (e: FormEvent) => {
@@ -138,6 +142,14 @@ export function MovementSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title="Record a movement" description="Receive, ship or correct stock at one location.">
       <form id="movement-form" onSubmit={submit} className="space-y-5">
+        {guide && (
+          <div role="note" className="rounded-[10px] border border-primary/40 bg-accent/60 p-3 text-[13px] leading-relaxed">
+            <p className="font-bold">
+              Guide, step {stepNumber(guide.id)}: {guide.title}
+            </p>
+            <p className="mt-1 text-muted-foreground">{guide.body}</p>
+          </div>
+        )}
         <SegmentedControl<MovementType> label="Movement" value={type} onChange={setType} options={TYPES.map((t) => ({ value: t, label: MOVEMENT_LABELS[t].action }))} />
 
         <ProductPicker value={product} onChange={setProduct} disabled={record.isPending} />
