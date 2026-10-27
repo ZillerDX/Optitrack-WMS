@@ -50,7 +50,7 @@ BEGIN
     ASSERT pg_temp.qty(pa, 'A1') = 8, 'inbound creates the stock row';
     ASSERT (r -> 'transaction' ->> 'unit_price')::numeric = 5 AND (r -> 'transaction' ->> 'total_price')::numeric = 40, 'inbound priced at cost';
     ASSERT r -> 'transaction' ->> 'status' = 'COMPLETED', 'status is server side';
-    ASSERT r -> 'transaction' ->> 'ref_code' ~ '^TXN-[0-9]{8}-[0-9A-F]{6}$', 'generated reference: ' || (r -> 'transaction' ->> 'ref_code');
+    ASSERT r -> 'transaction' ->> 'ref_code' ~ '^TXN-[0-9]{8}-[0-9A-F]{12}$', 'generated reference: ' || (r -> 'transaction' ->> 'ref_code');
     ASSERT (r -> 'inventory' ->> 'status') = 'IN_STOCK', 'inbound 8 with minimum 3 is in stock';
 
     -- OUTBOUND is priced at the sell price and moves the status through LOW_STOCK to OUT_OF_STOCK
