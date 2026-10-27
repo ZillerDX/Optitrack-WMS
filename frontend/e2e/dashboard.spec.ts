@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { choose } from './pickers';
 
 /* The Dashboard: an empty state for a new account, figures that match the seeded stock, charts in both themes. */
 
@@ -77,6 +78,6 @@ test('figures match the stock, the reorder list uses product totals, and the cha
   }
 
   // one location only: Shelf-B holds 5 of Alpha
-  await page.getByLabel('Location').selectOption('Shelf-B');
+  await choose(page, page.getByRole('combobox', { name: 'Location' }), 'Shelf-B');
   await expect(tiles.getByText('Units in stock').locator('..')).toContainText('5');
 });

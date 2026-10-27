@@ -29,6 +29,7 @@ Next.js 15 (App Router) + React 19 + TypeScript strict + Tailwind 3 + Radix (dia
 - New schema change = new numbered, idempotent migration plus a SQL test. Apply to production before deploying code that needs it.
 - The UI is English only (owner decision 2026-10-26). Do not add translations or a language switch. Format dates, numbers and money through `src/lib/format.ts`; words for movements and statuses come from `src/lib/labels.ts`.
 - Client data fetching goes through TanStack Query (decided 2026-10-26, added with the M3 foundation): query keys `[feature, resource, params]`, mutations invalidate what they change, no `setInterval` polling, errors shown from the API's own message. Do not add new `useEffect` + axios fetching. See PLAN.md "Architecture assessment".
+- Dropdowns and dates use `components/ui/select.tsx` and `date-picker.tsx` (own popup, keyboard support, themed); do not use the browser's `<select>` or `<input type="date">`. Playwright: choose with `choose()` / `pickDay()` from `e2e/pickers.ts`.
 - Production (Supabase `hdvalaxaujjyqcejhyqb`, Vercel) is read-only for agents unless the user approves each write: migrations, deploys, data changes.
 - Local verification uses the Docker stack, never the production database.
 - Branches `feat/`, `fix/`, `chore/`; Conventional Commits. Do not commit, push, merge or deploy unless the user asks. Ask before adding dependencies.

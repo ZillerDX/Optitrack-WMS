@@ -4,8 +4,10 @@ import { useState } from 'react';
 import { PageHeader } from '@/components/app/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { DatePicker } from '@/components/ui/date-picker';
 import { FormNotice } from '@/components/ui/field';
 import { SegmentedControl } from '@/components/ui/segmented';
+import { Select } from '@/components/ui/select';
 import { EMPTY_FILTERS, HISTORY_PAGE_SIZE, fetchAllMatching, useHistory, type HistoryFilters, type Movement } from '@/features/history/api';
 import { TourTarget } from '@/features/tour/TourTarget';
 import { ProductPicker } from '@/features/stock/MovementSheet';
@@ -126,26 +128,25 @@ export default function HistoryPage() {
               <label htmlFor="history-from" className="mb-1 block text-xs font-medium text-muted-foreground">
                 From
               </label>
-              <input id="history-from" type="date" value={filters.from} max={filters.to || undefined} onChange={(e) => change({ from: e.target.value })} className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+              <DatePicker id="history-from" value={filters.from} max={filters.to || undefined} onChange={(day) => change({ from: day })} />
             </div>
             <div>
               <label htmlFor="history-to" className="mb-1 block text-xs font-medium text-muted-foreground">
                 To
               </label>
-              <input id="history-to" type="date" value={filters.to} min={filters.from || undefined} onChange={(e) => change({ to: e.target.value })} className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+              <DatePicker id="history-to" value={filters.to} min={filters.from || undefined} onChange={(day) => change({ to: day })} />
             </div>
             <div>
               <label htmlFor="history-location" className="mb-1 block text-xs font-medium text-muted-foreground">
                 Location
               </label>
-              <select id="history-location" value={filters.location} onChange={(e) => change({ location: e.target.value })} className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <option value="">All locations</option>
-                {locations.data?.map((l) => (
-                  <option key={l.id} value={l.name}>
-                    {l.name}
-                  </option>
-                ))}
-              </select>
+              <Select
+                id="history-location"
+                value={filters.location}
+                onChange={(location) => change({ location })}
+                className="min-w-[168px]"
+                options={[{ value: '', label: 'All locations' }, ...(locations.data ?? []).map((l) => ({ value: l.name, label: l.name }))]}
+              />
             </div>
             {!choosingProduct && !product && (
               <Button type="button" variant="outline" onClick={() => setChoosingProduct(true)}>

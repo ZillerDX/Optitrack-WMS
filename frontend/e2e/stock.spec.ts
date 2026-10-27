@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { choose } from './pickers';
 
 /* The Stock page: receive, ship (refused over the stock), adjust to 0, and managing locations. */
 
@@ -42,7 +43,7 @@ test('receive, ship over the stock is refused with the reason, ship within it, a
   const sheet = page.getByRole('dialog', { name: 'Record a movement' });
   await sheet.getByLabel('Product').fill(product);
   await sheet.getByRole('button', { name: new RegExp(product) }).click();
-  await sheet.getByLabel('Location').selectOption('Shelf-A');
+  await choose(page, sheet.getByRole('combobox', { name: 'Location' }), 'Shelf-A');
   await sheet.getByLabel('Quantity received').fill('10');
   await expect(sheet.getByTestId('stock-after')).toContainText('10');
   await sheet.getByRole('button', { name: 'Receive 10' }).click();

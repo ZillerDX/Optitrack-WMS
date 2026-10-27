@@ -13,6 +13,7 @@ import { useDashboard } from '@/features/dashboard/api';
 import { useAllProducts } from '@/features/products/api';
 import { useLocations, useStock } from '@/features/stock/api';
 import { formatNumber } from '@/lib/format';
+import { Select } from '@/components/ui/select';
 import { reorderList } from '@/lib/reorder';
 import { cn } from '@/lib/utils';
 
@@ -80,14 +81,13 @@ export default function DashboardPage() {
               <label htmlFor="dash-location" className="sr-only">
                 Location
               </label>
-              <select id="dash-location" value={location} onChange={(e) => setLocation(e.target.value)} className="h-10 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <option value="">All locations</option>
-                {locations.data?.map((l) => (
-                  <option key={l.id} value={l.name}>
-                    {l.name}
-                  </option>
-                ))}
-              </select>
+              <Select
+                id="dash-location"
+                value={location}
+                onChange={setLocation}
+                className="min-w-[168px]"
+                options={[{ value: '', label: 'All locations' }, ...(locations.data ?? []).map((l) => ({ value: l.name, label: l.name }))]}
+              />
             </div>
             <SegmentedControl<Range>
               label="Period"
